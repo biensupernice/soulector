@@ -8,6 +8,9 @@
     "start": "next start"
   },
   "dependencies": {
+    "@types/mongodb": "^3.6.3",
+    "@yotie/micron": "^2.0.0",
+    "mongodb": "^3.6.3",
     "next": "10.0.1",
     "react": "17.0.1",
     "react-dom": "17.0.1"
