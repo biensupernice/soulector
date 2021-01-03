@@ -1,28 +1,62 @@
 import { Collection, Db } from "mongodb";
 import { IEpisode } from "../domain/Episode";
 
-interface DbEpisode {
+export interface IDbEntity {
   _id: string;
-  source: string;
-  created_time: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+interface DbEpisode extends IDbEntity {
   name: string;
-  url: string;
-  picture_large: string;
+  artwork_url: string;
   duration: number;
+  release_date: Date;
+  source_url: string;
+  source: string;
 }
 
 export class EpisodesRepo {
   private collection: Collection<DbEpisode>;
 
   constructor(private db: Db) {
-    this.collection = this.db.collection<DbEpisode>("tracks");
+    this.collection = this.db.collection<DbEpisode>("episodes");
   }
 
   async getAllEpisodes(): Promise<IEpisode[]> {
-    const cursor = this.collection.find({});
-    const eps = cursor.map(fromDbEpisode);
+    const cursor = this.collection
+      .find()
+      .sort({ release_date: -1 })
+      .map(fromDbEpisode);
+    const episodes = await cursor.toArray();
+    cursor.close();
+    return episodes;
+  }
 
-    return eps.toArray();
+  async getLatestEpisode(): Promise<IEpisode | null> {
+    const cursor = this.collection
+      .find({})
+      .sort({ release_date: -1 })
+      .limit(1)
+      .map(fromDbEpisode);
+    const eps = await cursor.toArray();
+
+    cursor.close();
+
+    if (eps.length === 1) {
+      return eps[0];
+    }
+    return null;
+  }
+
+  async saveEpisode(episode: IEpisode): Promise<void> {
+    const dbEp = toDbEpisode(episode);
+
+    await this.collection.updateOne(
+      { _id: episode.id },
+      { $set: dbEp },
+      { upsert: true }
+    );
   }
 
   async insertMany(episodes: IEpisode[]): Promise<IEpisode[]> {
@@ -39,11 +73,13 @@ export function createEpisodesRepo(db: Db) {
 function fromDbEpisode(dbEp: DbEpisode): IEpisode {
   return {
     id: dbEp._id,
-    source: dbEp.source === "MIXCLOUD" ? "MIXCLOUD" : "SOUNDCLOUD",
-    createdAt: new Date(dbEp.created_time),
     name: dbEp.name,
-    source_url: dbEp.url,
-    artwork_url: dbEp.picture_large,
+    artworkUrl: dbEp.artwork_url,
+    releaseDate: dbEp.release_date,
+    source: dbEp.source === "MIXCLOUD" ? "MIXCLOUD" : "SOUNDCLOUD",
+    sourceUrl: dbEp.source_url,
+    createdAt: dbEp.created_at,
+    updatedAt: dbEp.updated_at,
     duration: dbEp.duration,
   };
 }
@@ -52,10 +88,12 @@ function toDbEpisode(ep: IEpisode): DbEpisode {
   return {
     _id: ep.id,
     source: ep.source,
-    created_time: ep.createdAt.toISOString(),
+    created_at: ep.createdAt,
+    updated_at: ep.updatedAt,
     name: ep.name,
-    url: ep.source_url,
-    picture_large: ep.artwork_url,
+    source_url: ep.sourceUrl,
+    artwork_url: ep.artworkUrl,
     duration: ep.duration,
+    release_date: ep.releaseDate,
   };
 }

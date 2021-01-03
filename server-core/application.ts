@@ -5,7 +5,7 @@ import { createEpisodesService } from "./services/episodesService";
 export async function createApp() {
   const db = await createDbConnection();
   const episodesRepo = createEpisodesRepo(db);
-  const episodesService = createEpisodesService(episodesRepo);
+  const episodesService = createEpisodesService(episodesRepo, db);
 
   return { episodesService };
 }
