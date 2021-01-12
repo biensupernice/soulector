@@ -33,6 +33,34 @@ export class EpisodesRepo {
     return episodes;
   }
 
+  async existManyByUrl(
+    urls: string[]
+  ): Promise<{ url: string; exists: boolean }[]> {
+    const cursor = this.collection.find({ source_url: { $in: urls } });
+    const existingEpisodes = await cursor.toArray();
+
+    cursor.close();
+
+    const existingUrls = existingEpisodes.map((e) => e.source_url);
+
+    return urls.map((newUrl) => {
+      return {
+        url: newUrl,
+        exists: !existingUrls.includes(newUrl),
+      };
+    });
+  }
+
+  async getEpisodesByUrl(urls: string[]) {
+    const cursor = this.collection
+      .find({ source_url: { $in: urls } })
+      .map(fromDbEpisode);
+    cursor.close();
+
+    const episodes = await cursor.toArray();
+    return episodes;
+  }
+
   async getLatestEpisode(): Promise<IEpisode | null> {
     const cursor = this.collection
       .find({})

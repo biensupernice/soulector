@@ -1,4 +1,5 @@
 import { Db } from "mongodb";
+import { unauthorizedInvariant } from "../crosscutting/errorTypes";
 import { SoundCloudApiClient } from "../crosscutting/soundCloudApiClient";
 import { createNewEpisode, IEpisode } from "../domain/Episode";
 import { EpisodesRepo } from "../repositories/episodesRepository";
@@ -56,6 +57,10 @@ export class EpisodesService {
     const scTrackDtos = await this.scClient
       .getPlaylistInfo(soulectionRadioSessionsPlaylistId)
       .then((res) => res.tracks);
+
+    const candidatesUrls = await this.episodesRepo.existManyByUrl(
+      scTrackDtos.map((dto) => dto.permalink_url)
+    );
 
     let newEpisodes: IEpisode[] = [];
     if (latestEpisode) {

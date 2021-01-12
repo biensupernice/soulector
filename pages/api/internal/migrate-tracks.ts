@@ -1,9 +1,13 @@
-import { MicronParams, post } from "@yotie/micron";
-import { createApp } from "../../../server-core/application";
+import { asyncResult } from "@expo/results";
+import { post } from "@yotie/micron";
+import { getApp } from "../../../server-core/application";
+import { responseFromResult } from "../../../server-core/crosscutting/responseHelpers";
 
-export default post(async ({ ok }: MicronParams) => {
-  const app = await createApp();
-  const migratedEpisodes = await app.episodesService.migrateTracksToEpisodes();
+export default post(async (micronParams) => {
+  const app = await getApp();
+  const migratedEpisodesRes = await asyncResult(
+    app.episodesService.migrateTracksToEpisodes()
+  );
 
-  return ok({ migratedEpisodes });
+  return responseFromResult(migratedEpisodesRes, micronParams);
 });

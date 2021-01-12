@@ -1,9 +1,13 @@
-import { MicronParams, post } from "@yotie/micron";
-import { createApp } from "../../../server-core/application";
+import { asyncResult } from "@expo/results";
+import { post } from "@yotie/micron";
+import { createApp, getApp } from "../../../server-core/application";
+import { responseFromResult } from "../../../server-core/crosscutting/responseHelpers";
 
-export default post(async ({ ok }: MicronParams) => {
-  const app = await createApp();
-  const sycnedEpisodes = await app.episodesService.syncSoulectionFromSoundcloud();
+export default post(async (micronPrams) => {
+  const app = await getApp();
+  const sycnedEpisodesRes = await asyncResult(
+    app.episodesService.syncSoulectionFromSoundcloud()
+  );
 
-  return ok({ sycnedEpisodes });
+  return responseFromResult(sycnedEpisodesRes, micronPrams);
 });

@@ -1,5 +1,5 @@
 import { v4 } from "uuid";
-import { invariant } from "../crosscutting/invariants";
+import { invariant } from "../crosscutting/errorTypes";
 
 export interface IEntity {
   id: string;
