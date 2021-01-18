@@ -1,7 +1,6 @@
 import { Db } from "mongodb";
-import { unauthorizedInvariant } from "../crosscutting/errorTypes";
 import { SoundCloudApiClient } from "../crosscutting/soundCloudApiClient";
-import { createNewEpisode, IEpisode } from "../domain/Episode";
+import { createNewEpisode } from "../domain/Episode";
 import { EpisodesRepo } from "../repositories/episodesRepository";
 
 export class EpisodesService {
