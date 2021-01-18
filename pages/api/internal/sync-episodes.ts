@@ -1,7 +1,7 @@
 import { asyncResult } from "@expo/results";
 import { post } from "@yotie/micron";
-import { createApp, getApp } from "../../../server-core/application";
-import { responseFromResult } from "../../../server-core/crosscutting/responseHelpers";
+import { getApp } from "../../../server-core/application";
+import { mapErrorToResponse } from "../../../server-core/crosscutting/responseHelpers";
 
 export default post(async (micronPrams) => {
   const app = await getApp();
@@ -9,5 +9,9 @@ export default post(async (micronPrams) => {
     app.episodesService.syncSoulectionFromSoundcloud()
   );
 
-  return responseFromResult(sycnedEpisodesRes, micronPrams);
+  if (!sycnedEpisodesRes.ok) {
+    return mapErrorToResponse(sycnedEpisodesRes.reason, micronPrams);
+  }
+
+  return micronPrams.res.status(201).send(null);
 });

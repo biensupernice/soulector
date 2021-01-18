@@ -46,7 +46,7 @@ export class EpisodesRepo {
     return urls.map((newUrl) => {
       return {
         url: newUrl,
-        exists: !existingUrls.includes(newUrl),
+        exists: existingUrls.includes(newUrl),
       };
     });
   }

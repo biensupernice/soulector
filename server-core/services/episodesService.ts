@@ -4,16 +4,6 @@ import { SoundCloudApiClient } from "../crosscutting/soundCloudApiClient";
 import { createNewEpisode, IEpisode } from "../domain/Episode";
 import { EpisodesRepo } from "../repositories/episodesRepository";
 
-interface DBTrack {
-  _id: string;
-  source: string;
-  created_time: string;
-  name: string;
-  url: string;
-  picture_large: string;
-  duration: number;
-}
-
 export class EpisodesService {
   private scClient: SoundCloudApiClient;
 
@@ -30,6 +20,16 @@ export class EpisodesService {
   }
 
   async migrateTracksToEpisodes() {
+    type DBTrack = {
+      _id: string;
+      source: string;
+      created_time: string;
+      name: string;
+      url: string;
+      picture_large: string;
+      duration: number;
+    };
+
     const tracksCollection = this.db.collection<DBTrack>("tracks");
     const oldTracks = await tracksCollection.find({}).toArray();
 
@@ -50,63 +50,39 @@ export class EpisodesService {
   async syncSoulectionFromSoundcloud() {
     const soulectionRadioSessionsPlaylistId = "8025093";
 
-    // get latest episode
-    const latestEpisode = await this.episodesRepo.getLatestEpisode();
-
     // get soulection episodes from soundcloud
     const scTrackDtos = await this.scClient
       .getPlaylistInfo(soulectionRadioSessionsPlaylistId)
       .then((res) => res.tracks);
 
-    const candidatesUrls = await this.episodesRepo.existManyByUrl(
+    const existsRes = await this.episodesRepo.existManyByUrl(
       scTrackDtos.map((dto) => dto.permalink_url)
     );
 
-    let newEpisodes: IEpisode[] = [];
-    if (latestEpisode) {
-      const sortedDtos = scTrackDtos.sort(
-        (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)
-      );
+    const missingEpUsrls = existsRes
+      .filter((res) => !res.exists)
+      .map((r) => r.url);
 
-      const existingIndex = sortedDtos.findIndex(
-        (dto) => dto.permalink_url === latestEpisode.sourceUrl
-      );
+    const missingDtos = scTrackDtos.filter((dto) =>
+      missingEpUsrls.includes(dto.permalink_url)
+    );
 
-      if (existingIndex > 0) {
-        newEpisodes = sortedDtos.slice(0, existingIndex).map((dto) =>
-          createNewEpisode({
-            name: dto.title,
-            artworkUrl: dto.artwork_url,
-            duration: dto.duration,
-            releaseDate: new Date(dto.created_at),
-            source: "SOUNDCLOUD",
-            sourceUrl: dto.permalink_url,
-          })
-        );
+    const eps = missingDtos.map((dto) =>
+      createNewEpisode({
+        name: dto.title,
+        artworkUrl: dto.artwork_url,
+        duration: dto.duration,
+        releaseDate: new Date(dto.created_at),
+        source: "SOUNDCLOUD",
+        sourceUrl: dto.permalink_url,
+      })
+    );
 
-        console.log(`INFO: Found ${newEpisodes.length} episodes for sync`);
-      } else {
-        console.log("INFO: No new episodes synched");
-      }
-    } else {
-      newEpisodes = scTrackDtos.map((dto) =>
-        createNewEpisode({
-          name: dto.title,
-          artworkUrl: dto.artwork_url,
-          duration: dto.duration,
-          releaseDate: new Date(dto.created_at),
-          source: "SOUNDCLOUD",
-          sourceUrl: dto.permalink_url,
-        })
-      );
+    if (eps.length > 0) {
+      return await this.episodesRepo.insertMany(eps);
     }
 
-    // Save the new episodes
-    if (newEpisodes.length > 0) {
-      await this.episodesRepo.insertMany(newEpisodes);
-    }
-
-    return newEpisodes;
+    return [];
   }
 }
 
