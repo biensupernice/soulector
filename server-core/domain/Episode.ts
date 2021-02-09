@@ -1,5 +1,6 @@
 import { v4 } from "uuid";
 import { invariant } from "../crosscutting/errorTypes";
+import { ICollective } from "./Collective";
 
 export interface IEntity {
   id: string;
@@ -14,6 +15,7 @@ export interface IEpisode extends IEntity {
   duration: number;
   releaseDate: Date;
   source: "MIXCLOUD" | "SOUNDCLOUD";
+  collective: ICollective;
 }
 
 interface EpisodeOpts {
@@ -23,6 +25,7 @@ interface EpisodeOpts {
   duration: number;
   releaseDate: Date;
   source: IEpisode["source"];
+  collective: ICollective;
 }
 
 export function createNewEpisode(opts: EpisodeOpts): Readonly<IEpisode> {
@@ -41,5 +44,6 @@ export function createNewEpisode(opts: EpisodeOpts): Readonly<IEpisode> {
     duration: opts.duration,
     releaseDate: opts.releaseDate,
     source: opts.source,
+    collective: opts.collective,
   };
 }
