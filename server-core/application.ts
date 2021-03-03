@@ -5,7 +5,7 @@ import {
   EpisodesService,
 } from "./services/episodesService";
 
-interface ISoulectorApp {
+export interface ISoulectorApp {
   episodesService: EpisodesService;
 }
 
