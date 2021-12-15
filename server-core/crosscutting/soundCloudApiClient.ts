@@ -2,21 +2,39 @@ import axios, { AxiosInstance, AxiosResponse } from "axios";
 
 const SOUNDCLOUD_CLIENT_ID =
   process.env.SOUNDCLOUD_CLIENT_ID || "no_sound_client_id_read";
+const SOUNDCLOUD_CLIENT_SECRET =
+  process.env.SOUNDCLOUD_CLIENT_SECRET || "no_sound_client_secret_read";
 
 export class SoundCloudApiClient {
   private client: AxiosInstance;
+  private token: string = "";
 
   constructor() {
     this.client = axios.create({
       baseURL: "http://api.soundcloud.com",
     });
+
+    this.client.interceptors.request.use((config) => {
+      config.headers.Authorization = `OAuth ${this.token}`;
+      return config;
+    });
+  }
+
+  async getToken() {
+    const res = await this.client
+      .post<{ access_token: string }>(
+        `/oauth2/token?client_id=${SOUNDCLOUD_CLIENT_ID}&client_secret=${SOUNDCLOUD_CLIENT_SECRET}&grant_type=client_credentials`
+      )
+      .then(this._data);
+
+    this.token = res.access_token;
   }
 
   async getPlaylistInfo(playlistId: string) {
     return this.client
       .get<{
         tracks: SoundCloudTrackDTO[];
-      }>(`/playlists/${playlistId}?client_id=${SOUNDCLOUD_CLIENT_ID}`)
+      }>(`/playlists/${playlistId}`)
       .then(this._data);
   }
 
