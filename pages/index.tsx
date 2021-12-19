@@ -1,16 +1,24 @@
 import Head from "next/head";
+import { useState } from "react";
+import TracksScreen from "../client/TracksScreen";
+import { useShortcutHandlers } from "../client/useKeyboardHandlers";
 
 export default function Home() {
+  const [searchText, setSearchText] = useState("");
+
+  useShortcutHandlers();
+
   return (
-    <div className="flex justify-center items-center h-screen">
+    <>
       <Head>
         <title>Soulector</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
-
-      <main className="flex align-center justify-center">
-        <h1 className="text-7xl font-bold">Soulector v2</h1>
-      </main>
-    </div>
+      <TracksScreen
+        onSearchChange={setSearchText}
+        onSearchClose={() => setSearchText("")}
+        searchText={searchText}
+      />
+    </>
   );
 }
