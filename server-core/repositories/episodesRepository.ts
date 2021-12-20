@@ -87,10 +87,10 @@ export class EpisodesRepo {
     );
   }
 
-  async insertMany(episodes: IEpisode[]): Promise<IEpisode[]> {
+  async insertMany(episodes: IEpisode[]): Promise<boolean> {
     const dbEps = episodes.map(toDbEpisode);
     const insertRes = await this.collection.insertMany(dbEps);
-    return insertRes.ops.map(fromDbEpisode);
+    return dbEps.length === insertRes.insertedCount;
   }
 }
 
