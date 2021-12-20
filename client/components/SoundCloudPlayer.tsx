@@ -3,6 +3,13 @@ import { TrackModel } from "../TracksScreen/TracksStore";
 
 type WidgetApiLoadingState = "loading" | "loaded";
 
+declare global {
+  interface Window {
+    SC: any;
+  }
+}
+
+
 export function useSoundCloudWidgetApi() {
   const [loadingState, setLoadingState] = useState<WidgetApiLoadingState>(
     !window.SC ? "loading" : "loaded"
