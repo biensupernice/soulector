@@ -12,8 +12,8 @@ export default function Home() {
     <>
       <Head>
         <title>Soulector</title>
-        <link rel="shortcut icon" href="/favicon.ico" />
         <link rel="manifest" href="/manifest.json"></link>
+        <link rel="shortcut icon" href="/favicon.ico" />
         <meta name="theme-color" content="#000000"></meta>
       </Head>
       <TracksScreen
