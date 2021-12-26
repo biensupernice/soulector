@@ -28,6 +28,8 @@ function TracksScreen({ searchText, onSearchChange, onSearchClose }: Props) {
     );
   }, [searchText, tracks]);
 
+  const shouldShowSuffleButton = !searchText && activate !== "rejected";
+
   return (
     <div className="flex flex-col h-screen text-gray-900">
       <div className="flex-1">
@@ -54,7 +56,7 @@ function TracksScreen({ searchText, onSearchChange, onSearchClose }: Props) {
             ),
           })}
         </div>
-        {!searchText && activate != "rejected" && (
+        {shouldShowSuffleButton && (
           <div className="absolute border-blue-500 right-0 bottom-0 mb-2 mr-2 md:mb-5 md:mr-5 z-10">
             <ShuffleButton onClick={onRandomClick} />
           </div>
