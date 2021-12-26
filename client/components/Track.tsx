@@ -38,7 +38,7 @@ export function Track(props: TrackProps) {
             </div>
           )}
         </div>
-        <div className="ml-2 md:flex md:flex-col md:flex-col-reverse">
+        <div className="ml-2 md:flex md:flex-col-reverse">
           <div className="text-sm md:text-base text-gray-700">
             <span>{formatDate(track.created_time)}</span>
             <span className="mx-1 inline-block md:hidden">&bull;</span>
