@@ -1,11 +1,11 @@
 import React, { useEffect } from "react";
 import { sample } from "lodash-es";
-import { useTracksStore } from "../TracksStore";
 import shallow from "zustand/shallow";
-import { usePlayerStore } from "../PlayerStore";
 import ReactGA from "react-ga";
+import { usePlayerStore } from "./PlayerStore";
+import { useTracksStore } from "./TracksStore";
 
-export function useTrackListContainer(filterText: string) {
+export function useTracksScreenContainer() {
   const currentTrackId = usePlayerStore((state) => state.currentTrackId);
   const play = usePlayerStore((state) => state.play);
 
@@ -42,22 +42,12 @@ export function useTrackListContainer(filterText: string) {
     }
   }
 
-  const filteredTracks = React.useMemo(() => {
-    if (!filterText) {
-      return tracks;
-    }
-
-    return tracks.filter((track) =>
-      track.name.toLocaleLowerCase().includes(filterText.toLocaleLowerCase())
-    );
-  }, [filterText, tracks]);
-
   return {
     currentTrackId,
     onTrackClick,
     onRandomClick,
-    filteredTracks,
     activate: fetchTracksState,
     fetchTracksErr,
+    tracks,
   };
 }

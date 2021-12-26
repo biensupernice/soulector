@@ -2,11 +2,13 @@
 
 @tailwind components;
 
-/* body,
-html,
-#root {
-  height: 100%;
-} */
+body,
+html {
+  @apply h-full flex w-full flex-col
+  /* height: 100%;
+  display: flex
+  width: 100% */
+}
 
 body {
   @apply font-body;

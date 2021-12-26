@@ -1,7 +1,12 @@
 import React from "react";
 import Navbar from "./Navbar";
-import TrackList from "./TrackList";
 import Player from "./Player";
+import { ShuffleButton } from "../components/ShuffleButton";
+import { match } from "../infra/match";
+import TrackListSpinner from "./EpisodeList/TrackListSpinner";
+import { EpisodeList } from "./EpisodeList";
+import { useTracksScreenContainer } from "./TracksScreenContainer";
+import { TrackListError } from "./EpisodeList/TrackListError";
 
 type Props = {
   searchText: string;
@@ -10,16 +15,58 @@ type Props = {
 };
 
 function TracksScreen({ searchText, onSearchChange, onSearchClose }: Props) {
+  const { activate, tracks, currentTrackId, onTrackClick, onRandomClick } =
+    useTracksScreenContainer();
+
+  const filteredTracks = React.useMemo(() => {
+    if (!searchText) {
+      return tracks;
+    }
+
+    return tracks.filter((track) =>
+      track.name.toLocaleLowerCase().includes(searchText.toLocaleLowerCase())
+    );
+  }, [searchText, tracks]);
+
   return (
     <div className="flex flex-col h-screen text-gray-900">
-      <Navbar
-        searchText={searchText}
-        onSearchChange={onSearchChange}
-        onSearchClose={onSearchClose}
-      />
-      <TrackList filterText={searchText}></TrackList>
-      <Player />
+      <div className="flex-1">
+        <Navbar
+          searchText={searchText}
+          onSearchChange={onSearchChange}
+          onSearchClose={onSearchClose}
+        />
+      </div>
+      <div className="flex-2 h-full overflow-scroll relative">
+        <div className="h-full overflow-scroll pb-16">
+          {match(activate, {
+            pending: () => <TrackListSpinner />,
+            rejected: () => <TrackListError />,
+            resolved: () => (
+              <EpisodeList
+                filterText={searchText}
+                episodes={filteredTracks}
+                currentEpisodeId={currentTrackId}
+                onEpisodeClick={onTrackClick}
+                onRandomClick={onRandomClick}
+                focusedEpisodeId={currentTrackId}
+              />
+            ),
+          })}
+        </div>
+        {!searchText && activate != "rejected" && (
+          <div className="absolute border-blue-500 right-0 bottom-0 mb-2 mr-2 md:mb-5 md:mr-5 z-10">
+            <ShuffleButton onClick={onRandomClick} />
+          </div>
+        )}
+      </div>
+      {currentTrackId && (
+        <div className="w-full">
+          <Player />
+        </div>
+      )}
     </div>
   );
 }
+
 export default TracksScreen;
