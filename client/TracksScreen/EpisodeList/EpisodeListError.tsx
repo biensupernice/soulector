@@ -1,6 +1,6 @@
 import React from "react";
 
-export function TrackListError() {
+export function EpisodeListError() {
   return (
     <div className="flex max-w-4xl m-auto flex-col h-full items-start justify-start p-16 px-10 md:px-6 text-3xl md:text-6xl font-bold space-y-8 md:space-y-16">
       <div>Err...</div>

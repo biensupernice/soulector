@@ -3,10 +3,10 @@ import Navbar from "./Navbar";
 import Player from "./Player";
 import { ShuffleButton } from "../components/ShuffleButton";
 import { match } from "../infra/match";
-import TrackListSpinner from "./EpisodeList/TrackListSpinner";
+import EpisodeListSpinner from "./EpisodeList/EpisodeListSpinner";
 import { EpisodeList } from "./EpisodeList";
 import { useTracksScreenContainer } from "./TracksScreenContainer";
-import { TrackListError } from "./EpisodeList/TrackListError";
+import { EpisodeListError } from "./EpisodeList/EpisodeListError";
 
 type Props = {
   searchText: string;
@@ -40,8 +40,8 @@ function TracksScreen({ searchText, onSearchChange, onSearchClose }: Props) {
       <div className="flex-2 h-full overflow-scroll relative">
         <div className="h-full overflow-scroll pb-16">
           {match(activate, {
-            pending: () => <TrackListSpinner />,
-            rejected: () => <TrackListError />,
+            pending: () => <EpisodeListSpinner />,
+            rejected: () => <EpisodeListError />,
             resolved: () => (
               <EpisodeList
                 filterText={searchText}
