@@ -2,14 +2,13 @@
 
 @tailwind components;
 
-/* body,
-html,
-#root {
-  height: 100%;
-} */
+html {
+  @apply h-full
+}
+
 
 body {
-  @apply font-body;
+  @apply font-body h-full;
 }
 
 @font-face {

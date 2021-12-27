@@ -4,7 +4,7 @@ import "@reach/slider/styles.css";
 import "../styles/globals.css";
 
 import { useRouter } from "next/router";
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import Head from "next/head";
 
 function MyApp({ Component, pageProps }: AppProps) {
@@ -24,6 +24,7 @@ function MyApp({ Component, pageProps }: AppProps) {
     };
   }, [router.events]);
 
+
   return (
     <>
       <Head>
@@ -32,6 +33,12 @@ function MyApp({ Component, pageProps }: AppProps) {
         <title>Soulector</title>
 
         <link rel="manifest" href="/manifest.json" />
+        <meta
+          name="apple-mobile-web-app-status-bar-style"
+          content="black-translucent"
+        />
+
+        <meta name="viewport" content="initial-scale=1, viewport-fit=cover" />
         <link
           href="/icons/favicon-16x16.png"
           rel="icon"
