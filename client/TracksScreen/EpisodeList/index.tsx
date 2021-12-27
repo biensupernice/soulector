@@ -34,7 +34,7 @@ export function EpisodeList({
   }, [focusedEpisodeId, episodes]);
 
   return (
-    <div ref={episodeListRef} className="flex h-full max-w-4xl m-auto flex-col">
+    <div ref={episodeListRef} className="flex max-w-4xl m-auto flex-col mb-16">
       <BeforeList filterText={filterText} numEpisodes={episodes.length} />
       {episodes.map((episode) => (
         <div key={episode.id} data-episode-id={episode.id} className="w-full">

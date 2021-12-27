@@ -28,19 +28,19 @@ function TracksScreen({ searchText, onSearchChange, onSearchClose }: Props) {
     );
   }, [searchText, tracks]);
 
-  const shouldShowSuffleButton = !searchText && activate !== "rejected";
+  const shouldShowSuffleButton = !searchText && activate === "resolved";
 
   return (
-    <div className="flex flex-col h-screen text-gray-900">
-      <div className="flex-1">
+    <div className="flex flex-col text-gray-900 fixed h-full w-full">
+      <div className="flex-1 h-full">
         <Navbar
           searchText={searchText}
           onSearchChange={onSearchChange}
           onSearchClose={onSearchClose}
         />
       </div>
-      <div className="flex-2 h-full overflow-scroll relative">
-        <div className="h-full overflow-scroll pb-16">
+      <div className="flex-col flex-2 h-full overflow-hidden relative">
+        <div className="h-full overflow-scroll">
           {match(activate, {
             pending: () => <EpisodeListSpinner />,
             rejected: () => <EpisodeListError />,
