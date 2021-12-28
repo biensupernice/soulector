@@ -3,6 +3,7 @@ import cx from "classnames";
 import { formatDate, formatTimeSecs } from "../helpers";
 import { IconSpeaker } from "./Icons";
 import { TrackModel } from "../TracksScreen/TracksStore";
+import Image from "next/image";
 
 export type TrackProps = {
   track: TrackModel;
@@ -23,11 +24,15 @@ export function Track(props: TrackProps) {
     >
       <div className="flex items-center justify-start text-left">
         <div className="flex-shrink-0 h-16 w-16 rounded-lg overflow-hidden relative">
-          <img
-            className="w-full h-full bg-gray-200"
-            src={track.picture_large}
-            alt={track.name}
-          />
+          <div className="w-full h-full bg-gray-200">
+            <Image
+              src={track.picture_large}
+              alt={track.name}
+              width={500}
+              height={500}
+              lazyBoundary="500px"
+            />
+          </div>
           {playing && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="absolute inset-0 bg-indigo-600 opacity-75" />
