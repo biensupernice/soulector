@@ -98,6 +98,7 @@ function BeforeList({
           </button>
           <button
             className={cx(
+              "hidden md:inline-flex",
               "inline-flex px-3 py-1 rounded hover:bg-gray-100",
               activeSection === "favorites" && "text-indigo-800 font-bold",
               "text-gray-900"
