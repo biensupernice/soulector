@@ -17,7 +17,7 @@ export function Track(props: TrackProps) {
     playing = false,
     onClick,
     favorite = false,
-    onFavoriteClick = () => undefined,
+    onFavoriteClick = () => {},
   } = props;
 
   return (
