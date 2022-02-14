@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import { Track } from "../../components/Track";
+import { useFavorites } from "../FavoritesStore";
 import { TrackModel } from "../TracksStore";
 
 type EpisodeListProps = {
@@ -33,6 +34,8 @@ export function EpisodeList({
     }
   }, [focusedEpisodeId, episodes]);
 
+  const { isFavorite, addFavorite, removeFavorite } = useFavorites();
+
   return (
     <div ref={episodeListRef} className="flex max-w-4xl m-auto flex-col mb-16">
       <BeforeList filterText={filterText} numEpisodes={episodes.length} />
@@ -42,6 +45,14 @@ export function EpisodeList({
             onClick={() => onEpisodeClick(episode.id)}
             track={episode}
             playing={episode.id === currentEpisodeId}
+            favorite={isFavorite(episode.id)}
+            onFavoriteClick={() => {
+              if (isFavorite(episode.id)) {
+                removeFavorite(episode.id);
+              } else {
+                addFavorite(episode.id);
+              }
+            }}
           />
         </div>
       ))}
