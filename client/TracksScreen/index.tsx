@@ -16,20 +16,29 @@ type Props = {
 };
 
 function TracksScreen({ searchText, onSearchChange, onSearchClose }: Props) {
+  const [activeSection, setActiveSection] = React.useState<"all" | "favorites">(
+    "all"
+  );
   const { activate, tracks, currentTrackId, onTrackClick, onRandomClick } =
     useTracksScreenContainer();
 
-  const { favorites } = useFavorites();
+  const { isFavorite } = useFavorites();
 
   const filteredTracks = React.useMemo(() => {
+    if (activeSection === "favorites") {
+      return tracks.filter((track) => isFavorite(track.id));
+    }
+
     if (!searchText) {
       return tracks;
     }
 
-    return tracks.filter((track) =>
-      track.name.toLocaleLowerCase().includes(searchText.toLocaleLowerCase())
-    );
-  }, [searchText, tracks]);
+    return tracks.filter((track) => {
+      return track.name
+        .toLocaleLowerCase()
+        .includes(searchText.toLocaleLowerCase());
+    });
+  }, [searchText, tracks, activeSection]);
 
   const shouldShowSuffleButton = !searchText && activate === "resolved";
 
@@ -49,6 +58,8 @@ function TracksScreen({ searchText, onSearchChange, onSearchClose }: Props) {
             rejected: () => <EpisodeListError />,
             resolved: () => (
               <EpisodeList
+                activeSection={activeSection}
+                onSectionClick={(section) => setActiveSection(section)}
                 filterText={searchText}
                 episodes={filteredTracks}
                 currentEpisodeId={currentTrackId}

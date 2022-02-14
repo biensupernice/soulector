@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from "react";
 import { Track } from "../../components/Track";
 import { useFavorites } from "../FavoritesStore";
 import { TrackModel } from "../TracksStore";
+import cx from "classnames";
 
 type EpisodeListProps = {
   episodes: TrackModel[];
@@ -10,6 +11,8 @@ type EpisodeListProps = {
   onRandomClick: () => void;
   focusedEpisodeId?: string;
   filterText?: string;
+  activeSection?: "favorites" | "all";
+  onSectionClick?: (section: "favorites" | "all") => void;
 };
 
 export function EpisodeList({
@@ -18,6 +21,8 @@ export function EpisodeList({
   currentEpisodeId,
   focusedEpisodeId,
   filterText,
+  activeSection = "all",
+  onSectionClick = () => {},
 }: EpisodeListProps) {
   const episodeListRef = useRef<HTMLDivElement | null>(null);
 
@@ -38,7 +43,12 @@ export function EpisodeList({
 
   return (
     <div ref={episodeListRef} className="flex max-w-4xl m-auto flex-col mb-16">
-      <BeforeList filterText={filterText} numEpisodes={episodes.length} />
+      <BeforeList
+        filterText={filterText}
+        numEpisodes={episodes.length}
+        activeSection={activeSection}
+        onSectionClick={onSectionClick}
+      />
       {episodes.map((episode) => (
         <div key={episode.id} data-episode-id={episode.id} className="w-full">
           <Track
@@ -63,12 +73,40 @@ export function EpisodeList({
 type BeforeListProps = {
   numEpisodes: number;
   filterText?: string;
+  activeSection?: "all" | "favorites";
+  onSectionClick?: (section: "all" | "favorites") => void;
 };
-function BeforeList({ numEpisodes, filterText }: BeforeListProps) {
+function BeforeList({
+  numEpisodes,
+  filterText,
+  activeSection = "all",
+  onSectionClick = () => {},
+}: BeforeListProps) {
   return (
     <div className="px-4 flex item-center mt-4 mb-2">
-      <div className="font-semibold mr-auto text-indigo-900">
-        {filterText ? `Episodes matching "${filterText}"` : "All Episodes"}
+      <div className="font-semibold mr-auto">
+        <div className="space-x-4 -mx-3">
+          <button
+            className={cx(
+              "inline-flex px-3 py-1 rounded hover:bg-gray-100",
+              activeSection === "all" && "text-indigo-800 font-bold",
+              "text-gray-900"
+            )}
+            onClick={() => onSectionClick("all")}
+          >
+            {filterText ? `Episodes matching "${filterText}"` : "All Episodes"}
+          </button>
+          <button
+            className={cx(
+              "inline-flex px-3 py-1 rounded hover:bg-gray-100",
+              activeSection === "favorites" && "text-indigo-800 font-bold",
+              "text-gray-900"
+            )}
+            onClick={() => onSectionClick("favorites")}
+          >
+            Favorites
+          </button>
+        </div>
       </div>
       <div className="font-semibold text-gray-600">{numEpisodes} Total</div>
     </div>
