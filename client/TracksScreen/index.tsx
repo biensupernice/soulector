@@ -7,6 +7,7 @@ import EpisodeListSpinner from "./EpisodeList/EpisodeListSpinner";
 import { EpisodeList } from "./EpisodeList";
 import { useTracksScreenContainer } from "./TracksScreenContainer";
 import { EpisodeListError } from "./EpisodeList/EpisodeListError";
+import { useFavorites } from "./FavoritesStore";
 
 type Props = {
   searchText: string;
@@ -17,6 +18,8 @@ type Props = {
 function TracksScreen({ searchText, onSearchChange, onSearchClose }: Props) {
   const { activate, tracks, currentTrackId, onTrackClick, onRandomClick } =
     useTracksScreenContainer();
+
+  const { favorites } = useFavorites();
 
   const filteredTracks = React.useMemo(() => {
     if (!searchText) {
