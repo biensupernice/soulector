@@ -24,7 +24,6 @@ function MyApp({ Component, pageProps }: AppProps) {
     };
   }, [router.events]);
 
-
   return (
     <>
       <Head>
@@ -38,7 +37,10 @@ function MyApp({ Component, pageProps }: AppProps) {
           content="black-translucent"
         />
 
-        <meta name="viewport" content="initial-scale=1, viewport-fit=cover" />
+        <meta
+          name="viewport"
+          content="initial-scale=1, viewport-fit=cover, user-scalable=no"
+        />
         <link
           href="/icons/favicon-16x16.png"
           rel="icon"
