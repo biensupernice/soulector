@@ -42,7 +42,10 @@ export function EpisodeList({
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
 
   return (
-    <div ref={episodeListRef} className="flex max-w-4xl m-auto flex-col mb-16">
+    <div
+      ref={episodeListRef}
+      className="flex max-w-4xl m-auto flex-col mb-16 w-full"
+    >
       <BeforeList
         filterText={filterText}
         numEpisodes={episodes.length}
