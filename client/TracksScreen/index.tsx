@@ -43,7 +43,7 @@ function TracksScreen({ searchText, onSearchChange, onSearchClose }: Props) {
   const shouldShowSuffleButton = !searchText && activate === "resolved";
 
   return (
-    <div className="flex flex-col text-gray-900 fixed h-full w-full">
+    <div className="flex flex-col text-gray-900 fixed h-full w-full pt-safe-top">
       <div className="flex-1 h-full">
         <Navbar
           searchText={searchText}
