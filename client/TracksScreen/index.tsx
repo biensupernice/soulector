@@ -8,6 +8,7 @@ import { EpisodeList } from "./EpisodeList";
 import { useTracksScreenContainer } from "./TracksScreenContainer";
 import { EpisodeListError } from "./EpisodeList/EpisodeListError";
 import { useFavorites } from "./FavoritesStore";
+import classNames from "classnames";
 
 type Props = {
   searchText: string;
@@ -43,20 +44,33 @@ function TracksScreen({ searchText, onSearchChange, onSearchClose }: Props) {
   const shouldShowSuffleButton = !searchText && activate === "resolved";
 
   return (
-    <div className="flex flex-col text-gray-900 fixed h-full w-full pt-safe-top">
-      <div className="flex-1 h-full">
+    <div className="text-gray-900 h-full w-full">
+      <div className="pt-safe-top h-15 fixed top-0 w-full bg-white shadow-md z-10">
         <Navbar
           searchText={searchText}
           onSearchChange={onSearchChange}
           onSearchClose={onSearchClose}
         />
       </div>
-      <div className="flex-col flex-2 h-full overflow-hidden relative">
-        <div className="h-full overflow-scroll">
-          {match(activate, {
-            pending: () => <EpisodeListSpinner />,
-            rejected: () => <EpisodeListError />,
-            resolved: () => (
+      {match(activate, {
+        pending: () => (
+          <div className="h-screen overflow-hidden pt-safe-top mb-safe-bottom">
+            <EpisodeListSpinner />
+          </div>
+        ),
+        rejected: () => (
+          <div className="h-full overflow-hidden pt-safe-top mt-14 mb-safe-bottom">
+            <EpisodeListError />
+          </div>
+        ),
+        resolved: () => (
+          <div className="flex-col flex-2 mt-14 h-full overflow-hidden pt-safe-top md-safe-bottom relative">
+            <div
+              className={classNames(
+                "h-full py-2 overflow-scroll relative pb-safe-bottom",
+                currentTrackId && "mb-24"
+              )}
+            >
               <EpisodeList
                 activeSection={activeSection}
                 onSectionClick={(section) => setActiveSection(section)}
@@ -67,20 +81,22 @@ function TracksScreen({ searchText, onSearchChange, onSearchClose }: Props) {
                 onRandomClick={onRandomClick}
                 focusedEpisodeId={currentTrackId}
               />
-            ),
-          })}
-        </div>
-        {shouldShowSuffleButton && (
-          <div className="absolute border-blue-500 right-0 bottom-0 mb-2 mr-2 md:mb-5 md:mr-5 z-10">
-            <ShuffleButton onClick={onRandomClick} />
+            </div>
+            {shouldShowSuffleButton && (
+              <div className="fixed w-full right-0 bottom-0 pb-safe-bottom z-20 bg-white">
+                <div className="absolute bottom-full w-full flex justify-end pr-4 mb-2 md:mb-4">
+                  <ShuffleButton onClick={onRandomClick} />
+                </div>
+                {currentTrackId && (
+                  <div className="w-full bg-white md-safe-bottom">
+                    <Player />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-        )}
-      </div>
-      {currentTrackId && (
-        <div className="w-full">
-          <Player />
-        </div>
-      )}
+        ),
+      })}
     </div>
   );
 }
