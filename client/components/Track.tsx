@@ -24,10 +24,9 @@ export function Track(props: TrackProps) {
     <div
       onClick={onClick}
       className={cx(
-        "flex flex-column items-center justify-between text-left cursor-pointer w-full p-3 rounded-lg border border-transparent",
-        "hover:shadow-lg hover:border hover:border-gray-200",
-        "focus:outline-none focus:bg-gray-100 focus:border focus:border-gray-200",
-        "group"
+        "flex flex-column items-center justify-between text-left cursor-pointer w-full p-3 md:rounded-lg border border-transparent",
+        "hover:bg-slate-50 hover:border hover:border-gray-200",
+        "group focus:outline-none transition-colors duration-75"
       )}
     >
       <div className="flex items-center justify-start text-left">
