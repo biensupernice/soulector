@@ -41,8 +41,8 @@ export function Track(props: TrackProps) {
             {playing && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="absolute inset-0 bg-indigo-600 opacity-75" />
-                <div className="relative leading-none p-1 bg-white group-hover:bg-white rounded-full text-indigo-600 hover:bg-gray-200 hover:shadow-sm">
-                  <IconSpeaker className="relative block group-hover:hidden fill-current w-6 h-6" />
+                <div className="relative leading-none p-1 bg-white rounded-full text-indigo-600 hover:shadow-sm">
+                  <IconSpeaker className="relative block fill-current w-6 h-6" />
                   {/* <PauseIcon className="fill-current w-6 h-6" /> */}
                 </div>
               </div>
