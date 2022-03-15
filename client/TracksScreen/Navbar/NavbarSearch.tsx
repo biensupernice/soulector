@@ -40,7 +40,7 @@ export default function NavbarSearch({
             value={searchText}
             onChange={(e) => onSearchChange(e.target.value)}
             type="text"
-            className="w-full py-2 pl-12 rounded-lg bg-gray-100 text-gray-900 outline-none focus:bg-gray-200 focus:border-gray-400"
+            className="w-full py-2 pl-12 rounded-lg bg-gray-100 text-gray-900 outline-none active:bg-gray-200 active:border-gray-400"
             placeholder="Search for episodes..."
           ></input>
           <div className="flex items-center ml-auto absolute right-0 mr-3">
