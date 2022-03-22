@@ -1,9 +1,9 @@
 import { asyncResult } from "@expo/results";
 import { createLambda, match } from "@yotie/micron";
-import { createApp } from "../../../server-core/application";
-import { responseFromResult } from "../../../server-core/crosscutting/responseHelpers";
+import { createApp } from "../../../server/application";
+import { responseFromResult } from "../../../server/crosscutting/responseHelpers";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createDbConnection } from "../../../server-core/db";
+import { createDbConnection } from "../../../server/db";
 
 // export default createLambda(
 //   match({

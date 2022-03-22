@@ -1,7 +1,7 @@
 import Logo from "./Logo";
 import React, { useEffect } from "react";
 import { IconSearch } from "../../components/Icons";
-import NavbarSearch from "../Navbar/NavbarSearch";
+import NavbarSearch from "./NavbarSearch";
 import cx from "classnames";
 import create from "zustand";
 

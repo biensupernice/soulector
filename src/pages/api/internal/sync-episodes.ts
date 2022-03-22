@@ -1,13 +1,10 @@
 import { asyncResult } from "@expo/results";
 import { createLambda, match } from "@yotie/micron";
 import { NextApiRequest, NextApiResponse } from "next";
-import { getApp } from "../../../server-core/application";
-import { mapErrorToResponse } from "../../../server-core/crosscutting/responseHelpers";
-import { adminAuth } from "../../../server-core/middleware/adminAuthMiddleware";
-import axios, { AxiosInstance, AxiosResponse } from "axios";
-import { createDbConnection } from "../../../server-core/db";
-import { SoundCloudApiClient } from "../../../server-core/crosscutting/soundCloudApiClient";
+
 import _ from "lodash";
+import { SoundCloudApiClient } from "../../../server/crosscutting/soundCloudApiClient";
+import { createDbConnection } from "../../../server/db";
 
 let SOUNDCLOUD_URL = process.env.SOUNDCLOUD_URL || "no_sooundcloud_url";
 let MONGO_CONNECTION_STRING =
