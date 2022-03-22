@@ -1,6 +1,6 @@
 import { useState } from "react";
-import TracksScreen from "../client/TracksScreen";
-import { useShortcutHandlers } from "../client/useKeyboardHandlers";
+import TracksScreen from "@/client/TracksScreen";
+import { useShortcutHandlers } from "@/client/useKeyboardHandlers";
 
 export default function Home() {
   const [searchText, setSearchText] = useState("");

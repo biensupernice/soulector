@@ -1,8 +1,8 @@
 import { asyncResult } from "@expo/results";
 import { createLambda, match } from "@yotie/micron";
-import { getApp } from "../../../server/application";
-import { responseFromResult } from "../../../server/crosscutting/responseHelpers";
-import { adminAuth } from "../../../server/middleware/adminAuthMiddleware";
+import { getApp } from "@/server/application";
+import { responseFromResult } from "@/server/crosscutting/responseHelpers";
+import { adminAuth } from "@/server/middleware/adminAuthMiddleware";
 
 export default createLambda(
   match({

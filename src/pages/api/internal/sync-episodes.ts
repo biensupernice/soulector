@@ -3,8 +3,8 @@ import { createLambda, match } from "@yotie/micron";
 import { NextApiRequest, NextApiResponse } from "next";
 
 import _ from "lodash";
-import { SoundCloudApiClient } from "../../../server/crosscutting/soundCloudApiClient";
-import { createDbConnection } from "../../../server/db";
+import { SoundCloudApiClient } from "@/server/crosscutting/soundCloudApiClient";
+import { createDbConnection } from "@/server/db";
 
 let SOUNDCLOUD_URL = process.env.SOUNDCLOUD_URL || "no_sooundcloud_url";
 let MONGO_CONNECTION_STRING =
