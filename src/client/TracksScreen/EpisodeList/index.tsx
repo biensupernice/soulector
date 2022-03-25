@@ -1,11 +1,12 @@
 import React, { useRef, useEffect } from "react";
 import { Track } from "../../components/Track";
 import { useFavorites } from "../FavoritesStore";
-import { TrackModel } from "../TracksStore";
 import cx from "classnames";
+import { IEpisode } from "@/server/domain/Episode";
+import { inferQueryOutput } from "@/utils/trpc";
 
 type EpisodeListProps = {
-  episodes: TrackModel[];
+  episodes: inferQueryOutput<"episodes.all">;
   currentEpisodeId?: string;
   onEpisodeClick: (trackId: string) => void;
   onRandomClick: () => void;
@@ -53,17 +54,17 @@ export function EpisodeList({
         onSectionClick={onSectionClick}
       />
       {episodes.map((episode) => (
-        <div key={episode.id} data-episode-id={episode.id} className="w-full">
+        <div key={episode._id} data-episode-id={episode._id} className="w-full">
           <Track
-            onClick={() => onEpisodeClick(episode.id)}
+            onClick={() => onEpisodeClick(episode._id)}
             track={episode}
-            playing={episode.id === currentEpisodeId}
-            favorite={isFavorite(episode.id)}
+            playing={episode._id === currentEpisodeId}
+            favorite={isFavorite(episode._id)}
             onFavoriteClick={() => {
-              if (isFavorite(episode.id)) {
-                removeFavorite(episode.id);
+              if (isFavorite(episode._id)) {
+                removeFavorite(episode._id);
               } else {
-                addFavorite(episode.id);
+                addFavorite(episode._id);
               }
             }}
           />

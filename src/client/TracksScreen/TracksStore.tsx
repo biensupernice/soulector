@@ -16,7 +16,7 @@ export type TrackModel = {
   picture_large: string;
 };
 
-function trackMapper(dto: TrackDTO): TrackModel {
+export function trackMapper(dto: TrackDTO): TrackModel {
   return {
     id: dto._id,
     created_time: dto.created_time,

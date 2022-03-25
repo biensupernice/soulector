@@ -1,19 +1,15 @@
+import { inferAsyncReturnType } from "@trpc/server";
 import { createDbConnection } from "./db";
 import { createEpisodesRepo } from "./repositories/episodesRepository";
-import {
-  createEpisodesService,
-  EpisodesService,
-} from "./services/episodesService";
+import { createEpisodesService } from "./services/episodesService";
 
-interface ISoulectorApp {
-  episodesService: EpisodesService;
-}
+type ISoulectorApp = inferAsyncReturnType<typeof createApp>;
 
-export async function createApp(): Promise<ISoulectorApp> {
+export async function createApp() {
   const db = await createDbConnection();
   const episodesRepo = createEpisodesRepo(db);
   const episodesService = createEpisodesService(episodesRepo, db);
-  return { episodesService };
+  return { db, episodesService };
 }
 
 let app: ISoulectorApp;

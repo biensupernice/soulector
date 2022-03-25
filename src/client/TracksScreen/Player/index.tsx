@@ -21,6 +21,8 @@ import cx from "classnames";
 import shallow from "zustand/shallow";
 import { useMedia } from "../../infra/useMedia";
 import Head from "next/head";
+import { useEpisode, useEpisodes } from "../TracksScreenContainer";
+import { inferQueryOutput } from "@/utils/trpc";
 
 function Player() {
   const playerSelectors = (state: PlayerStore) => ({
@@ -64,17 +66,12 @@ function Player() {
     setTrackDuration,
   } = usePlayerStore(playerSelectors, shallow);
 
-  const tracks = useTracksStore((state) => state.tracks);
-  const fetchTracksState = useTracksStore((state) => state.fetchTracksState);
-  const findTrackById = useTracksStore((state) => state.findById);
-
-  const currentTrack = currentTrackId ? findTrackById(currentTrackId) : null;
-  const showPlayer =
-    fetchTracksState !== "pending" && tracks.length > 0 && currentTrack;
+  const currentTrack = useEpisode(currentTrackId);
+  const showPlayer = currentTrack;
 
   return (
     <React.Fragment>
-      {showPlayer && currentTrack && (
+      {showPlayer && (
         <React.Fragment>
           <Head>
             <title>{currentTrack.name}</title>
@@ -86,12 +83,12 @@ function Player() {
                 "0 -4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
             }}
           >
-            {currentTrack.source === "mixcloud" && (
+            {currentTrack.source === "MIXCLOUD" && (
               <div className="max-w-4xl m-auto">
                 <EmbedPlayer track={currentTrack} />
               </div>
             )}
-            {currentTrack.source === "soundcloud" && (
+            {currentTrack.source === "SOUNDCLOUD" && (
               <PlayerControls
                 volume={volume}
                 onVolumeChange={setVolume}
@@ -120,7 +117,7 @@ function Player() {
 }
 
 type PlayerControlsProps = {
-  track: TrackModel;
+  track: inferQueryOutput<"episodes.all">[number];
   playing: boolean;
   volume: number;
   onVolumeChange: (vol: number) => void;
@@ -331,7 +328,7 @@ function PlayerControls({
         </div>
       )}
       <SoundCloudPlayer
-        key={track.id}
+        key={track._id}
         onReady={onPlayerReady}
         showNative={useEmbed}
         track={track}

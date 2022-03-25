@@ -1,15 +1,15 @@
+import { inferQueryOutput } from "@/utils/trpc";
 import React from "react";
 import { TrackModel } from "../TracksScreen/TracksStore";
-// import { ITrack } from "../types";
 
 type Props = {
-  track: TrackModel;
+  track: inferQueryOutput<"episodes.all">[number];
 };
 
 export function EmbedPlayer(props: Props) {
   const { track } = props;
 
-  return track.source === "soundcloud" ? (
+  return track.source === "SOUNDCLOUD" ? (
     <SoundCloudWidgetPlayer track={track} />
   ) : (
     <MixCloudWidgetPlayer track={track} />
