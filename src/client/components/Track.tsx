@@ -2,10 +2,10 @@ import React from "react";
 import cx from "classnames";
 import { formatDate, formatTimeSecs } from "../helpers";
 import { HeartFilled, HeartOutline, IconSpeaker } from "./Icons";
-import { inferQueryOutput } from "@/utils/trpc";
+import { ITrack } from "../TracksScreen/TracksStore";
 
 export type TrackProps = {
-  track: inferQueryOutput<"episodes.all">[number];
+  track: ITrack;
   playing?: boolean;
   favorite?: boolean;
   onFavoriteClick?: () => void;

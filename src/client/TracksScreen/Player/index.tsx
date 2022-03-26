@@ -21,7 +21,7 @@ import shallow from "zustand/shallow";
 import { useMedia } from "../../infra/useMedia";
 import Head from "next/head";
 import { inferQueryOutput } from "@/utils/trpc";
-import { useEpisode } from "../TracksStore";
+import { ITrack, useEpisode } from "../TracksStore";
 
 function Player() {
   const playerSelectors = (state: PlayerStore) => ({
@@ -116,7 +116,7 @@ function Player() {
 }
 
 type PlayerControlsProps = {
-  track: inferQueryOutput<"episodes.all">[number];
+  track: ITrack;
   playing: boolean;
   volume: number;
   onVolumeChange: (vol: number) => void;
