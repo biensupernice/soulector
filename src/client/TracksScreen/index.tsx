@@ -1,14 +1,13 @@
 import React from "react";
-import Navbar from "./Navbar";
 import Player from "./Player";
 import { ShuffleButton } from "../components/ShuffleButton";
-import { match } from "../infra/match";
 import EpisodeListSpinner from "./EpisodeList/EpisodeListSpinner";
 import { EpisodeList } from "./EpisodeList";
-import { useEpisodes, useTracksScreenContainer } from "./TracksScreenContainer";
+import { useTracksScreenContainer } from "./TracksScreenContainer";
 import { EpisodeListError } from "./EpisodeList/EpisodeListError";
 import { useFavorites } from "./FavoritesStore";
 import classNames from "classnames";
+import { useEpisodes, useFilterEpisodes } from "./TracksStore";
 
 type Props = {
   searchText: string;
@@ -26,25 +25,26 @@ function TracksScreen({ searchText }: Props) {
 
   const { isFavorite } = useFavorites();
 
-  const filteredTracks = React.useMemo(() => {
-    if (episodes) {
-      if (activeSection === "favorites") {
-        return episodes.filter((episode) => isFavorite(episode._id));
-      }
+  const filteredTracks = useFilterEpisodes(
+    React.useCallback(
+      (episodes) => {
+        if (activeSection === "favorites") {
+          return episodes.filter((episode) => isFavorite(episode._id));
+        }
 
-      if (!searchText) {
-        return episodes;
-      }
+        if (!searchText) {
+          return episodes;
+        }
 
-      return episodes.filter((episode) => {
-        return episode.name
-          .toLocaleLowerCase()
-          .includes(searchText.toLocaleLowerCase());
-      });
-    }
-
-    return [];
-  }, [searchText, episodes, activeSection]);
+        return episodes.filter((episode) => {
+          return episode.name
+            .toLocaleLowerCase()
+            .includes(searchText.toLocaleLowerCase());
+        });
+      },
+      [activeSection, searchText, isFavorite]
+    )
+  );
 
   const shouldShowSuffleButton = !searchText && episodes;
 

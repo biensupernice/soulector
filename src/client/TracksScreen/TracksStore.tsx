@@ -1,61 +1,29 @@
-import create from "zustand";
-import { createApiClient, TrackDTO } from "../infra/apiClient";
+import { inferQueryOutput, trpc } from "@/utils/trpc";
 
-const apiClient = createApiClient();
+export type ITrack = inferQueryOutput<"episodes.all">[number];
 
-export type TrackSource = "soundcloud" | "mixcloud";
-
-export type TrackModel = {
-  id: string;
-  source: TrackSource;
-  duration: number;
-  created_time: string;
-  key: number | string;
-  name: string;
-  url: string;
-  picture_large: string;
-};
-
-export function trackMapper(dto: TrackDTO): TrackModel {
-  return {
-    id: dto._id,
-    created_time: dto.created_time,
-    duration: dto.duration,
-    key: dto.key,
-    name: dto.name,
-    picture_large: dto.picture_large,
-    source: dto.source === "SOUNDCLOUD" ? "soundcloud" : "mixcloud",
-    url: dto.url,
-  };
+export function useEpisodes() {
+  return trpc.useQuery(["episodes.all"]);
 }
 
-type TrackStore = {
-  tracks: TrackModel[];
-  fetchTracksState: "pending" | "resolved" | "rejected";
-  rejectionReason?: string;
-  fetchTracks: () => Promise<void>;
-  findById: (id: string) => TrackModel | undefined;
-};
+export function useEpisode(id: string | undefined) {
+  const { data: queryRes } = trpc.useQuery(["episodes.all"], {
+    select: (episodes) => {
+      return episodes.filter((t) => t._id === id);
+    },
+  });
 
-export const useTracksStore = create<TrackStore>((set, get) => ({
-  tracks: [],
-  fetchTracksState: "pending",
-  findById(id: string) {
-    return get().tracks.find((t) => t.id === id);
-  },
-  fetchTracks: async () => {
-    try {
-      const trackDtos = await apiClient.getEpisodes();
-      const trackModels = trackDtos.map(trackMapper);
-      set({
-        tracks: trackModels,
-        fetchTracksState: "resolved",
-      });
-    } catch (err: any) {
-      set({
-        fetchTracksState: "rejected",
-        rejectionReason: err.message,
-      });
-    }
-  },
-}));
+  if (!id) {
+    return null;
+  }
+
+  return queryRes?.[0] || null;
+}
+
+type FilterFunction = (episodes: ITrack[]) => ITrack[];
+
+export function useFilterEpisodes(filterFunction: FilterFunction) {
+  const { data: episodes } = trpc.useQuery(["episodes.all"]);
+
+  return filterFunction(episodes || []);
+}

@@ -1,6 +1,5 @@
-import { inferQueryOutput } from "@/utils/trpc";
 import React, { useState, useRef, useEffect } from "react";
-import { TrackModel } from "../TracksScreen/TracksStore";
+import { ITrack } from "../TracksScreen/TracksStore";
 
 type WidgetApiLoadingState = "loading" | "loaded";
 
@@ -46,7 +45,7 @@ export interface SoundCloudPlayerWidgetProps {
   onPause?: () => void;
   onPlay?: () => void;
   showNative?: boolean;
-  track: inferQueryOutput<"episodes.all">[number];
+  track: ITrack;
 }
 
 export function SoundCloudPlayerWidget(props: SoundCloudPlayerWidgetProps) {

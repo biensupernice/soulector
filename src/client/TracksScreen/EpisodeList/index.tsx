@@ -2,11 +2,10 @@ import React, { useRef, useEffect } from "react";
 import { Track } from "../../components/Track";
 import { useFavorites } from "../FavoritesStore";
 import cx from "classnames";
-import { IEpisode } from "@/server/domain/Episode";
-import { inferQueryOutput } from "@/utils/trpc";
+import { ITrack } from "../TracksStore";
 
 type EpisodeListProps = {
-  episodes: inferQueryOutput<"episodes.all">;
+  episodes: ITrack[];
   currentEpisodeId?: string;
   onEpisodeClick: (trackId: string) => void;
   onRandomClick: () => void;
@@ -26,6 +25,7 @@ export function EpisodeList({
   onSectionClick = () => {},
 }: EpisodeListProps) {
   const episodeListRef = useRef<HTMLDivElement | null>(null);
+  const beforeListRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (focusedEpisodeId) {
@@ -36,6 +36,12 @@ export function EpisodeList({
         episode.scrollIntoView({
           block: "center",
         });
+      } else {
+        if (beforeListRef.current) {
+          beforeListRef.current.scrollIntoView({
+            block: "center",
+          });
+        }
       }
     }
   }, [focusedEpisodeId, episodes]);
@@ -47,12 +53,14 @@ export function EpisodeList({
       ref={episodeListRef}
       className="flex max-w-4xl m-auto flex-col mb-16 w-full"
     >
-      <BeforeList
-        filterText={filterText}
-        numEpisodes={episodes.length}
-        activeSection={activeSection}
-        onSectionClick={onSectionClick}
-      />
+      <div ref={beforeListRef}>
+        <BeforeList
+          filterText={filterText}
+          numEpisodes={episodes.length}
+          activeSection={activeSection}
+          onSectionClick={onSectionClick}
+        />
+      </div>
       {episodes.map((episode) => (
         <div key={episode._id} data-episode-id={episode._id} className="w-full">
           <Track

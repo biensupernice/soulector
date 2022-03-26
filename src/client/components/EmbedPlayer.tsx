@@ -1,9 +1,8 @@
-import { inferQueryOutput } from "@/utils/trpc";
 import React from "react";
-import { TrackModel } from "../TracksScreen/TracksStore";
+import { ITrack } from "../TracksScreen/TracksStore";
 
 type Props = {
-  track: inferQueryOutput<"episodes.all">[number];
+  track: ITrack;
 };
 
 export function EmbedPlayer(props: Props) {

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { EmbedPlayer } from "../../components/EmbedPlayer";
 import { SoundCloudPlayer } from "../../components/SoundCloudPlayer";
-import { TrackModel, useTracksStore } from "../TracksStore";
 import { formatDate, formatTime } from "../../helpers";
 import {
   IconPause,
@@ -21,8 +20,8 @@ import cx from "classnames";
 import shallow from "zustand/shallow";
 import { useMedia } from "../../infra/useMedia";
 import Head from "next/head";
-import { useEpisode, useEpisodes } from "../TracksScreenContainer";
 import { inferQueryOutput } from "@/utils/trpc";
+import { useEpisode } from "../TracksStore";
 
 function Player() {
   const playerSelectors = (state: PlayerStore) => ({
