@@ -20,7 +20,6 @@ import cx from "classnames";
 import shallow from "zustand/shallow";
 import { useMedia } from "../../infra/useMedia";
 import Head from "next/head";
-import { inferQueryOutput } from "@/utils/trpc";
 import { ITrack, useEpisode } from "../TracksStore";
 
 function Player() {
