@@ -5,7 +5,7 @@ import "../styles/globals.css";
 import { loggerLink } from "@trpc/client/links/loggerLink";
 import { httpBatchLink } from "@trpc/client/links/httpBatchLink";
 import { useRouter } from "next/router";
-import { useEffect, useLayoutEffect } from "react";
+import { useEffect } from "react";
 import Head from "next/head";
 import { withTRPC } from "@trpc/next";
 import { AppRouter } from "./api/trpc/[trpc]";

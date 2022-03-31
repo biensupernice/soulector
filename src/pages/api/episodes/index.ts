@@ -1,16 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createDbConnection } from "@/server/db";
 
-// export default createLambda(
-//   match({
-//     get: async (micronParams) => {
-//       const app = await createApp();
-//       const epsRes = await asyncResult(app.episodesService.getAllEpisodes());
-//       return responseFromResult(epsRes, micronParams);
-//     },
-//   })
-// );
-
 async function getAllTracks() {
   const db = await createDbConnection();
 

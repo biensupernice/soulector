@@ -16,7 +16,6 @@
     "@trpc/server": "^9.20.3",
     "@types/lodash-es": "^4.17.5",
     "@types/uuid": "^8.3.0",
-    "@yotie/micron": "^2.0.0",
     "axios": "^0.21.1",
     "classnames": "^2.3.1",
     "date-fns": "^2.27.0",

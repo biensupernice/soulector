@@ -3,17 +3,14 @@ import { NextApiRequest, NextApiResponse } from "next";
 import _ from "lodash";
 import { SoundCloudApiClient } from "@/server/crosscutting/soundCloudApiClient";
 import { createDbConnection } from "@/server/db";
-
-let SOUNDCLOUD_URL = process.env.SOUNDCLOUD_URL || "no_sooundcloud_url";
-let MONGO_CONNECTION_STRING =
-  process.env.MONGO_CONNECTION_STRING || "noconnectionstringpassed";
+import { Db } from "mongodb";
 
 function createLargeSoundtrackThumbUrl(url: string) {
   const newUrl = url.replace("-large", "-t500x500");
   return newUrl;
 }
 
-async function getSoundCloudTracks() {
+export async function getSoundCloudTracks(db: Db) {
   const soundCloudClient = new SoundCloudApiClient();
   await soundCloudClient.getToken();
 
@@ -33,7 +30,6 @@ async function getSoundCloudTracks() {
 
   type TrackType = typeof mapped[0];
 
-  const db = await createDbConnection();
   let incomingIds = mapped.map((it) => it.key);
 
   const trackCollection = db.collection<TrackType>("tracksOld");
@@ -67,7 +63,8 @@ async function getSoundCloudTracks() {
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {
   try {
-    let retrieved = await getSoundCloudTracks();
+    const db = await createDbConnection();
+    let retrieved = await getSoundCloudTracks(db);
 
     console.log("successfully retrieved tracks");
     res.status(200).json({
@@ -79,21 +76,3 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     res.status(500).json({ msg: err.message });
   }
 };
-
-// export default createLambda(
-//   match({
-//     post: async (micronParams) => {
-//       const app = await getApp();
-//       const sycnedEpisodesRes = await asyncResult(
-//         app.episodesService.syncSoulectionFromSoundcloud()
-//       );
-
-//       if (!sycnedEpisodesRes.ok) {
-//         return mapErrorToResponse(sycnedEpisodesRes.reason, micronParams);
-//       }
-
-//       return micronParams.res.status(201).send(null);
-//     },
-//   }),
-//   { middlewares: [adminAuth] }
-// );

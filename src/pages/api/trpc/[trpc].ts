@@ -2,6 +2,7 @@ import { Context, createContext } from "@/server/context";
 import * as trpc from "@trpc/server";
 import * as trpcNext from "@trpc/server/adapters/next";
 import { z } from "zod";
+import { getSoundCloudTracks } from "../internal/sync-episodes";
 
 export type ITrack = {
   _id: string;
@@ -25,6 +26,16 @@ const appRouter = trpc
     resolve({ input }) {
       return {
         greeting: `hello ${input?.text ?? "world"}`,
+      };
+    },
+  })
+  .query("internal.episodesSync", {
+    async resolve({ ctx }) {
+      let retrieved = await getSoundCloudTracks(ctx.db);
+
+      return {
+        msg: "Successfully Fetched New Tracks",
+        retrievedTracks: retrieved,
       };
     },
   })
