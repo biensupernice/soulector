@@ -17,18 +17,6 @@ export type ITrack = {
 
 const appRouter = trpc
   .router<Context>()
-  .query("hello", {
-    input: z
-      .object({
-        text: z.string().nullish(),
-      })
-      .nullish(),
-    resolve({ input }) {
-      return {
-        greeting: `hello ${input?.text ?? "world"}`,
-      };
-    },
-  })
   .query("internal.episodesSync", {
     async resolve({ ctx }) {
       let retrieved = await getSoundCloudTracks(ctx.db);
