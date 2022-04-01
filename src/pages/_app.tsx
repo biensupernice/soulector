@@ -182,7 +182,7 @@ function MyApp({ Component, pageProps }: AppProps) {
           type="image/png"
           sizes="16x16"
         />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png"></link>
+        <link rel="apple-touch-icon" href="/apple-icon-180.png"></link>
         <link rel="icon" href="/favicon.ico" />
         <meta name="theme-color" content="#000000" />
       </Head>
