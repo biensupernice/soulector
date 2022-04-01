@@ -5,6 +5,13 @@ const SOUNDCLOUD_CLIENT_ID =
 const SOUNDCLOUD_CLIENT_SECRET =
   process.env.SOUNDCLOUD_CLIENT_SECRET || "no_sound_client_secret_read";
 
+export async function createSoundCloudApiClient() {
+  const client = new SoundCloudApiClient();
+  await client.getToken();
+
+  return client;
+}
+
 export class SoundCloudApiClient {
   private client: AxiosInstance;
   private token: string = "";
@@ -28,6 +35,12 @@ export class SoundCloudApiClient {
       .then(this._data);
 
     this.token = res.access_token;
+  }
+
+  async getStreamUrls(trackId: string) {
+    return this.client
+      .get<GetStreamUrlsDTO>(`tracks/${trackId}/streams`)
+      .then(this._data);
   }
 
   async getPlaylistInfo(playlistId: string) {
@@ -98,4 +111,11 @@ interface SoundCloudTrackDTO {
   reposts_count: number;
   downloadable: boolean;
   downloads_remaining: null;
+}
+
+interface GetStreamUrlsDTO {
+  http_mp3_128_url: string;
+  hls_mp3_128_url: string;
+  hls_opus_64_url: string;
+  preview_mp3_128_url: string;
 }
