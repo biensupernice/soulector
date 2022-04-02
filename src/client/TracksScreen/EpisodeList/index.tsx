@@ -3,6 +3,7 @@ import { Track } from "../../components/Track";
 import { useFavorites } from "../FavoritesStore";
 import cx from "classnames";
 import { ITrack } from "../TracksStore";
+import { useTrackOptionsStore } from "@/pages/TrackOptionsModal";
 
 type EpisodeListProps = {
   episodes: ITrack[];
@@ -26,6 +27,7 @@ export function EpisodeList({
 }: EpisodeListProps) {
   const episodeListRef = useRef<HTMLDivElement | null>(null);
   const beforeListRef = useRef<HTMLDivElement | null>(null);
+  const setContextMenuTrack = useTrackOptionsStore((state) => state.setTrack);
 
   useEffect(() => {
     if (focusedEpisodeId) {
@@ -68,6 +70,9 @@ export function EpisodeList({
             track={episode}
             playing={episode._id === currentEpisodeId}
             favorite={isFavorite(episode._id)}
+            onOptionsClick={() => {
+              setContextMenuTrack(episode);
+            }}
             onFavoriteClick={() => {
               if (isFavorite(episode._id)) {
                 removeFavorite(episode._id);
