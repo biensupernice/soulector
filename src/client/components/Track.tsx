@@ -14,6 +14,7 @@ export type TrackProps = {
   playing?: boolean;
   favorite?: boolean;
   onFavoriteClick?: () => void;
+  onOptionsClick?: () => void;
 } & React.HTMLAttributes<HTMLDivElement>;
 
 export function Track(props: TrackProps) {
@@ -23,6 +24,7 @@ export function Track(props: TrackProps) {
     onClick,
     favorite = false,
     onFavoriteClick = () => {},
+    onOptionsClick = () => {},
   } = props;
 
   return (
@@ -104,9 +106,7 @@ export function Track(props: TrackProps) {
             "active:bg-slate-50",
             "focus:outline-none"
           )}
-          onClick={() => {
-            alert(`Clicked ${track.name}`);
-          }}
+          onClick={() => onOptionsClick()}
         >
           <IconDotsHorizontal className="stroke-current h-5 w-5 " />
         </button>
