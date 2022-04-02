@@ -3,7 +3,7 @@ import { Track } from "../../components/Track";
 import { useFavorites } from "../FavoritesStore";
 import cx from "classnames";
 import { ITrack } from "../TracksStore";
-import { useTrackOptionsStore } from "@/pages/TrackOptionsModal";
+import { useTrackOptionsStore } from "@/client/TracksScreen/TrackOptionsModal";
 
 type EpisodeListProps = {
   episodes: ITrack[];
@@ -115,7 +115,6 @@ function BeforeList({
           </button>
           <button
             className={cx(
-              "inline-flex",
               "inline-flex px-2 py-1 rounded hover:bg-gray-100",
               activeSection === "favorites" && "text-indigo-800 font-bold",
               "text-gray-900"

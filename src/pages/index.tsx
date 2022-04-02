@@ -3,7 +3,7 @@ import TracksScreen from "@/client/TracksScreen";
 import { useShortcutHandlers } from "@/client/useKeyboardHandlers";
 import Navbar from "@/client/TracksScreen/Navbar";
 import "react-spring-bottom-sheet/dist/style.css";
-import { TrackOptionsModal } from "./TrackOptionsModal";
+import { TrackOptionsModal } from "../client/TracksScreen/TrackOptionsModal";
 
 export default function Home() {
   const [searchText, setSearchText] = useState("");
