@@ -126,4 +126,25 @@ body {
     1px 1px 4px 1px rgba(0, 0, 0, 0.3) inset !important;
 }
 
+
+:root {
+  --rsbs-max-w: 640px;
+  --rsbs-ml: auto;
+  --rsbs-mr: auto;
+}
+
+[data-rsbs-overlay],
+[data-rsbs-backdrop],
+[data-rsbs-root]:after {
+  @apply mt-safe-top !z-50;
+}
+
+.rsbs-not-full-height [data-rsbs-header] {
+  padding-top: calc(20px) !important;
+}
+.rsbs-not-full-height [data-rsbs-header]:before {
+  top: 8px !important;
+}
+
+
 @tailwind utilities;

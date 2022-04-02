@@ -3,6 +3,7 @@ import { Track } from "../../components/Track";
 import { useFavorites } from "../FavoritesStore";
 import cx from "classnames";
 import { ITrack } from "../TracksStore";
+import { useTrackOptionsStore } from "@/client/TracksScreen/TrackOptionsModal";
 
 type EpisodeListProps = {
   episodes: ITrack[];
@@ -26,6 +27,7 @@ export function EpisodeList({
 }: EpisodeListProps) {
   const episodeListRef = useRef<HTMLDivElement | null>(null);
   const beforeListRef = useRef<HTMLDivElement | null>(null);
+  const setContextMenuTrack = useTrackOptionsStore((state) => state.setTrack);
 
   useEffect(() => {
     if (focusedEpisodeId) {
@@ -68,6 +70,9 @@ export function EpisodeList({
             track={episode}
             playing={episode._id === currentEpisodeId}
             favorite={isFavorite(episode._id)}
+            onOptionsClick={() => {
+              setContextMenuTrack(episode);
+            }}
             onFavoriteClick={() => {
               if (isFavorite(episode._id)) {
                 removeFavorite(episode._id);
@@ -97,10 +102,10 @@ function BeforeList({
   return (
     <div className="px-4 flex item-center mt-4 mb-2">
       <div className="font-semibold mr-auto">
-        <div className="space-x-4 -mx-3">
+        <div className="space-x-1 md:space-x-4 -mx-2">
           <button
             className={cx(
-              "inline-flex px-3 py-1 rounded hover:bg-gray-100",
+              "inline-flex px-2 py-1 rounded hover:bg-gray-100",
               activeSection === "all" && "text-indigo-800 font-bold",
               "text-gray-900"
             )}
@@ -110,8 +115,7 @@ function BeforeList({
           </button>
           <button
             className={cx(
-              "hidden md:inline-flex",
-              "inline-flex px-3 py-1 rounded hover:bg-gray-100",
+              "inline-flex px-2 py-1 rounded hover:bg-gray-100",
               activeSection === "favorites" && "text-indigo-800 font-bold",
               "text-gray-900"
             )}
