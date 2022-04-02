@@ -102,10 +102,10 @@ function BeforeList({
   return (
     <div className="px-4 flex item-center mt-4 mb-2">
       <div className="font-semibold mr-auto">
-        <div className="space-x-4 -mx-3">
+        <div className="space-x-1 md:space-x-4 -mx-2">
           <button
             className={cx(
-              "inline-flex px-3 py-1 rounded hover:bg-gray-100",
+              "inline-flex px-2 py-1 rounded hover:bg-gray-100",
               activeSection === "all" && "text-indigo-800 font-bold",
               "text-gray-900"
             )}
@@ -115,8 +115,8 @@ function BeforeList({
           </button>
           <button
             className={cx(
-              "hidden md:inline-flex",
-              "inline-flex px-3 py-1 rounded hover:bg-gray-100",
+              "inline-flex",
+              "inline-flex px-2 py-1 rounded hover:bg-gray-100",
               activeSection === "favorites" && "text-indigo-800 font-bold",
               "text-gray-900"
             )}
