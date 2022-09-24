@@ -29,7 +29,7 @@ export type PlayerStore = {
 
 export const usePlayerStore = create<PlayerStore>((set, get) => ({
   playing: false,
-  currentTrackId: undefined,
+  currentTrackId: "624632f8ccc079804723e07b", //undefined,
   volume: 80,
   lastVol: 80,
   progress: 0,
