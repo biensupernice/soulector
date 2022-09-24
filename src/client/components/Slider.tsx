@@ -37,9 +37,8 @@ export function Slider(props: SliderProps) {
       onMouseDown={props.onMouseDown}
       onMouseUp={props.onMouseUp}
       className={cx(
-        "slider",
         "flex",
-        horizontal && "flex-col w-full",
+        horizontal && "w-full flex-col",
         vertical && "h-[150px]"
       )}
     >
@@ -55,13 +54,13 @@ export function Slider(props: SliderProps) {
         {...trackProps}
         ref={trackRef}
         className={cx(
-          horizontal && "h-[30px] w-full",
-          state.isDisabled && "opacity-40",
-          `track ${state.isDisabled ? "disabled" : ""}`
+          horizontal && "group h-6 w-full",
+          state.isDisabled && "opacity-40"
         )}
       >
-        <div className="block absolute bg-gray-400 h-1 w-full top-1/2 -translate-y-1/2"></div>
-        <Thumb index={0} state={state} trackRef={trackRef} />
+        <div className="relative top-1/2 h-[5px] w-full -translate-y-1/2 rounded-full bg-gray-300">
+          <Thumb index={0} state={state} trackRef={trackRef} />
+        </div>
       </div>
     </div>
   );
@@ -86,18 +85,30 @@ function Thumb(props: ThumbProps) {
 
   let { focusProps, isFocusVisible } = useFocusRing();
   return (
-    <div
-      {...thumbProps}
-      className={cx(
-        "w-[20px] h-[20px] rounded-full bg-gray-400 top-1/2",
-        isDragging && "bg-gray-600",
-        isFocusVisible && "bg-orange-400",
-        `thumb ${isFocusVisible ? "focus" : ""} ${isDragging ? "dragging" : ""}`
-      )}
-    >
-      <VisuallyHidden>
-        <input ref={inputRef} {...mergeProps(inputProps, focusProps)} />
-      </VisuallyHidden>
-    </div>
+    <>
+      <div
+        {...thumbProps}
+        className={cx(
+          "absolute top-0 block h-full rounded-full bg-gray-500 group-hover:bg-indigo-600",
+          isFocusVisible && "!bg-indigo-600"
+        )}
+        style={{
+          width: `${state.getThumbPercent(0) * 100}%`,
+        }}
+      ></div>
+      <div
+        {...thumbProps}
+        className={cx(
+          "top-1/2 h-[12px] w-[12px] rounded-full border border-gray-500 bg-indigo-100 opacity-0 group-hover:opacity-100",
+          isDragging &&
+            "shadow-[0_0_0_1px_rgba(255,255,255)_inset,1px_1px_4px_1px_rgba(0,0,0,0.3)_inset]",
+          isFocusVisible && "ring-3 opacity-100 ring ring-offset-1"
+        )}
+      >
+        <VisuallyHidden>
+          <input ref={inputRef} {...mergeProps(inputProps, focusProps)} />
+        </VisuallyHidden>
+      </div>
+    </>
   );
 }

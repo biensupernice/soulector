@@ -9,7 +9,6 @@ import {
   IconSoundcloud,
   IconSpeaker,
 } from "../../components/Icons";
-import { Slider as ReachSlider } from "@reach/slider";
 import cx from "classnames";
 import { useMedia } from "../../infra/useMedia";
 import { ITrack } from "../TracksStore";
@@ -69,7 +68,7 @@ export function PlayerControls({
     setPlayerProgress(0);
   }
 
-  const newProgress = seeking ? seekPosition : playerProgress;
+  const scrubberProgress = seeking ? seekPosition : playerProgress;
 
   // TODO: Remove when mobile player done
   const useEmbed = useMemo(() => {
@@ -92,14 +91,14 @@ export function PlayerControls({
     <React.Fragment>
       {playerReady && (
         <div
-          className={cx("gap-5 grid grid-cols-3 xl:grid-cols-10", {
+          className={cx("grid grid-cols-3 gap-5 xl:grid-cols-10", {
             hidden: useEmbed,
           })}
         >
-          <div className="xl:col-span-2 flex items-center space-x-3 ">
-            <div className="flex-shrink-0 h-16 w-16 rounded-lg overflow-hidden relative">
+          <div className="flex items-center space-x-3 xl:col-span-2 ">
+            <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg">
               <img
-                className="w-full h-full bg-gray-200"
+                className="h-full w-full bg-gray-200"
                 src={track.picture_large}
                 alt={track.name}
               />
@@ -108,79 +107,65 @@ export function PlayerControls({
               <div className="text-md font-bold leading-tight">
                 {track.name}
               </div>
-              <div className="text-gray-700 text-md">
+              <div className="text-md text-gray-700">
                 {formatDate(track.created_time)}
               </div>
             </div>
           </div>
           {/* Player */}
-          <div className="flex flex-col items-center justify-center xl:col-span-6 space-y-1">
+          <div className="flex flex-col items-center justify-center space-y-1 xl:col-span-6">
             <div className="flex items-center justify-center space-x-4">
               <button
                 title="Rewind 30 seconds"
                 onClick={() => onRewind(30)}
                 className={cx(
-                  "bg-transparent rounded-full text-gray-700 p-2",
+                  "rounded-full bg-transparent p-2 text-gray-700",
                   "transition-all duration-200 ease-in-out",
                   "hover:text-gray-900",
-                  "focus:outline-none focus:bg-gray-200"
+                  "focus:bg-gray-200 focus:outline-none"
                 )}
               >
-                <IconBackThirty className="fill-current h-8 w-8" />
+                <IconBackThirty className="h-8 w-8 fill-current" />
               </button>
               <button
                 onClick={() => (playing ? onPause() : onResume())}
                 className={cx(
-                  "p-2 rounded-full bg-indigo-600 border shadow-md text-white leading-none",
+                  "rounded-full border bg-indigo-600 p-2 leading-none text-white shadow-md",
                   "transition-all duration-200 ease-in-out",
                   "hover:bg-indigo-700 hover:shadow-lg",
-                  "focus:outline-none focus:bg-indigo-700"
+                  "focus:bg-indigo-700 focus:outline-none"
                 )}
               >
                 {playing ? (
-                  <IconPause className="fill-current w-8 h-8 inline-block" />
+                  <IconPause className="inline-block h-8 w-8 fill-current" />
                 ) : (
-                  <IconPlay className="fill-current w-8 h-8 inline-block" />
+                  <IconPlay className="inline-block h-8 w-8 fill-current" />
                 )}
               </button>
               <button
                 title="Forward 30 seconds"
                 onClick={() => onForward(30)}
                 className={cx(
-                  "bg-transparent rounded-full text-gray-700 p-2",
+                  "rounded-full bg-transparent p-2 text-gray-700",
                   "transition-all duration-200 ease-in-out",
                   "hover:text-gray-900",
-                  "focus:outline-none focus:bg-gray-200"
+                  "focus:bg-gray-200 focus:outline-none"
                 )}
               >
-                <IconSkipThirty className="fill-current h-8 w-8" />
+                <IconSkipThirty className="h-8 w-8 fill-current" />
               </button>
             </div>
-            <div className="max-w-3xl w-full">
+            <div className="w-full max-w-3xl">
               <>
-                <div className="flex justify-center items-center">
-                  <div className="text-xs w-10 text-right">
-                    {formatTime(Math.ceil(playerProgress))} <br />
-                    {formatTime(Math.ceil(newProgress))}
+                <div className="flex items-center justify-center">
+                  <div className="w-10 text-right text-xs">
+                    {formatTime(Math.ceil(scrubberProgress))}
                   </div>
-                  <div className="flex flex-1 flex-col justify-center max-w-xl mx-3 relative w-full">
-                    <ReachSlider
-                      max={trackDuration}
-                      value={playerProgress}
-                      onMouseDown={() => setSeeking(true)}
-                      onChange={(newVal) => {
-                        setPlayerProgress(newVal);
-                        lastSeekPos.current = newVal;
-                      }}
-                      onMouseUp={() => {
-                        setSeeking(false);
-                        onCuePositionChange(lastSeekPos.current);
-                      }}
-                    />
+                  <div className="relative mx-3 flex w-full max-w-xl flex-1 flex-col justify-center">
                     <Slider
                       minValue={0}
                       maxValue={trackDuration}
-                      value={newProgress}
+                      value={scrubberProgress}
                       onChange={(val) => {
                         setSeeking(true);
                         const newVal = Array.isArray(val) ? val[0] : val;
@@ -195,7 +180,7 @@ export function PlayerControls({
                       }}
                     />
                   </div>
-                  <div className="text-xs w-10">
+                  <div className="w-10 text-xs">
                     {formatTime(Math.ceil(trackDuration))}
                   </div>
                 </div>
@@ -203,11 +188,11 @@ export function PlayerControls({
             </div>
           </div>
           {/* Volume */}
-          <div className="xl:col-span-2 flex items-center space-x-2 justify-end">
-            <div className="flex space-x-1 items-center">
+          <div className="flex items-center justify-end space-x-2 xl:col-span-2">
+            <div className="flex items-center space-x-1">
               <a
                 className={cx(
-                  "inline-block p-2 rounded-full",
+                  "inline-block rounded-full p-2",
                   "transition-all duration-200 ease-in-out",
                   "hover:bg-gray-200 "
                 )}
@@ -216,12 +201,12 @@ export function PlayerControls({
                 rel="noopener noreferrer"
                 href={track.url}
               >
-                <IconSoundcloud className="fill-current w-5 h-5" />
+                <IconSoundcloud className="h-5 w-5 fill-current" />
               </a>
-              <div className="flex space-x-1 items-center">
+              <div className="flex items-center space-x-1">
                 <button
                   className={cx(
-                    "inline-block p-1 rounded-full",
+                    "inline-block rounded-full p-1",
                     "transition-all duration-200 ease-in-out",
                     "hover:bg-gray-200",
                     "focus:outline-none"
@@ -231,23 +216,16 @@ export function PlayerControls({
                     muted ? onUnmute() : onMute();
                   }}
                 >
-                  <IconSpeaker className="fill-current w-5 h-5" />
+                  <IconSpeaker className="h-5 w-5 fill-current" />
                 </button>
                 <div className="w-40 pr-4">
-                  <ReachSlider
-                    min={0}
-                    max={100}
-                    value={volume}
-                    onChange={(val) => onVolumeChange(val)}
-                  />
                   <Slider
                     minValue={0}
                     maxValue={100}
                     value={volume}
-                    label="test"
                     onChange={(val) => {
-                      const nval = Array.isArray(val) ? val[0] : val;
-                      onVolumeChange(nval);
+                      const newVal = Array.isArray(val) ? val[0] : val;
+                      onVolumeChange(newVal);
                     }}
                   />
                 </div>
