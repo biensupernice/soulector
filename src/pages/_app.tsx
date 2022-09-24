@@ -1,6 +1,5 @@
 import { AppProps } from "next/dist/shared/lib/router/router";
 import ReactGA from "react-ga";
-import "@reach/slider/styles.css";
 import "../styles/globals.css";
 import { loggerLink } from "@trpc/client/links/loggerLink";
 import { httpBatchLink } from "@trpc/client/links/httpBatchLink";
