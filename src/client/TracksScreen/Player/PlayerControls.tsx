@@ -163,6 +163,7 @@ export function PlayerControls({
                   </div>
                   <div className="relative mx-3 flex w-full max-w-xl flex-1 flex-col justify-center">
                     <Slider
+                      aria-label="progress"
                       minValue={0}
                       maxValue={trackDuration}
                       value={scrubberProgress}
@@ -220,6 +221,7 @@ export function PlayerControls({
                 </button>
                 <div className="w-40 pr-4">
                   <Slider
+                    aria-label="volume"
                     minValue={0}
                     maxValue={100}
                     value={volume}

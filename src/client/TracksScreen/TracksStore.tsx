@@ -3,19 +3,22 @@ import { inferQueryOutput, trpc } from "@/utils/trpc";
 export type ITrack = inferQueryOutput<"episodes.all">[number];
 
 export function useEpisodes() {
-  return trpc.useQuery(["episodes.all"]);
+  return trpc.useQuery(["episodes.all"], {
+    refetchOnWindowFocus: false,
+  });
 }
 
 export function useEpisode(id: string | undefined) {
+  if (!id) {
+    return null;
+  }
+
   const { data: queryRes } = trpc.useQuery(["episodes.all"], {
+    refetchOnWindowFocus: false,
     select: (episodes) => {
       return episodes.filter((t) => t._id === id);
     },
   });
-
-  if (!id) {
-    return null;
-  }
 
   return queryRes?.[0] || null;
 }
@@ -23,7 +26,7 @@ export function useEpisode(id: string | undefined) {
 type FilterFunction = (episodes: ITrack[]) => ITrack[];
 
 export function useFilterEpisodes(filterFunction: FilterFunction) {
-  const { data: episodes } = trpc.useQuery(["episodes.all"]);
+  const { data } = useEpisodes();
 
-  return filterFunction(episodes || []);
+  return filterFunction(data || []);
 }

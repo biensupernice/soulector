@@ -8,6 +8,8 @@ import { EpisodeListError } from "./EpisodeList/EpisodeListError";
 import { useFavorites } from "./FavoritesStore";
 import classNames from "classnames";
 import { useEpisodes, useFilterEpisodes } from "./TracksStore";
+import { AnimatePresence } from "framer-motion";
+import { EpisodeListHeader } from "./EpisodeListHeader";
 
 type Props = {
   searchText: string;
@@ -27,16 +29,16 @@ function TracksScreen({ searchText }: Props) {
 
   const filteredTracks = useFilterEpisodes(
     React.useCallback(
-      (episodes) => {
+      (eps) => {
         if (activeSection === "favorites") {
-          return episodes.filter((episode) => isFavorite(episode._id));
+          return eps.filter((episode) => isFavorite(episode._id));
         }
 
         if (!searchText) {
-          return episodes;
+          return eps;
         }
 
-        return episodes.filter((episode) => {
+        return eps.filter((episode) => {
           return episode.name
             .toLocaleLowerCase()
             .includes(searchText.toLocaleLowerCase());
@@ -50,32 +52,37 @@ function TracksScreen({ searchText }: Props) {
 
   if (episodes) {
     return (
-      <div className="flex-col flex-2 mt-14 h-full overflow-hidden pt-safe-top md-safe-bottom relative">
+      <div className="flex-2 md-safe-bottom relative mt-14 h-full flex-col overflow-hidden pt-safe-top">
         <div
           className={classNames(
-            "h-full py-2 overflow-scroll relative pb-safe-bottom",
+            "relative h-full overflow-scroll py-2 pb-safe-bottom",
             currentTrackId && "mb-24"
           )}
         >
           <EpisodeList
-            activeSection={activeSection}
-            onSectionClick={(section) => setActiveSection(section)}
-            filterText={searchText}
             episodes={filteredTracks}
             currentEpisodeId={currentTrackId}
             onEpisodeClick={onTrackClick}
             onRandomClick={onRandomClick}
             focusedEpisodeId={currentTrackId}
+            beforeList={
+              <EpisodeListHeader
+                filterText={searchText}
+                numEpisodes={filteredTracks.length}
+                activeSection={activeSection}
+                onSectionClick={(section) => setActiveSection(section)}
+              />
+            }
           />
         </div>
-        <div className="fixed w-full right-0 bottom-0 pb-safe-bottom z-20 bg-white">
+        <div className="fixed right-0 bottom-0 z-20 w-full bg-white pb-safe-bottom">
           {shouldShowSuffleButton && (
-            <div className="absolute bottom-full w-full flex justify-end pr-4 mb-2 md:mb-4">
+            <div className="absolute bottom-full mb-2 flex w-full justify-end pr-4 md:mb-4">
               <ShuffleButton onClick={onRandomClick} />
             </div>
           )}
           {currentTrackId && (
-            <div className="w-full bg-white md-safe-bottom">
+            <div className="md-safe-bottom w-full bg-white">
               <Player />
             </div>
           )}
@@ -85,7 +92,7 @@ function TracksScreen({ searchText }: Props) {
   }
   if (error) {
     return (
-      <div className="h-full overflow-hidden pt-safe-top mt-14 mb-safe-bottom">
+      <div className="mt-14 mb-safe-bottom h-full overflow-hidden pt-safe-top">
         <EpisodeListError />
         <code>{error.message}</code>
       </div>
@@ -93,7 +100,7 @@ function TracksScreen({ searchText }: Props) {
   }
 
   return (
-    <div className="h-screen overflow-hidden pt-safe-top mb-safe-bottom">
+    <div className="mb-safe-bottom h-screen overflow-hidden pt-safe-top">
       <EpisodeListSpinner />
     </div>
   );
