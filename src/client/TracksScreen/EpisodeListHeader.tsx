@@ -21,7 +21,8 @@ export function EpisodeListHeader({
           <button
             className={cx(
               "inline-flex rounded px-2 py-1 hover:bg-gray-100",
-              activeSection === "all" && "font-bold text-indigo-800",
+              activeSection === "all" &&
+                "bg-indigo-50 font-bold text-indigo-800",
               "text-gray-900"
             )}
             onClick={() => onSectionClick("all")}
@@ -31,7 +32,8 @@ export function EpisodeListHeader({
           <button
             className={cx(
               "inline-flex rounded px-2 py-1 hover:bg-gray-100",
-              activeSection === "favorites" && "font-bold text-indigo-800",
+              activeSection === "favorites" &&
+                "bg-indigo-50 font-bold text-indigo-800",
               "text-gray-900"
             )}
             onClick={() => onSectionClick("favorites")}

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import Player from "./Player";
 import { ShuffleButton } from "../components/ShuffleButton";
 import EpisodeListSpinner from "./EpisodeList/EpisodeListSpinner";
@@ -7,9 +7,10 @@ import { useTracksScreenContainer } from "./TracksScreenContainer";
 import { EpisodeListError } from "./EpisodeList/EpisodeListError";
 import { useFavorites } from "./FavoritesStore";
 import classNames from "classnames";
-import { useEpisodes, useFilterEpisodes } from "./TracksStore";
-import { AnimatePresence } from "framer-motion";
+import { ITrack, useEpisodes, useFilterEpisodes } from "./TracksStore";
 import { EpisodeListHeader } from "./EpisodeListHeader";
+import { useTrackOptionsStore } from "./TrackOptionsModal";
+import { Track } from "../components/Track";
 
 type Props = {
   searchText: string;
@@ -25,28 +26,44 @@ function TracksScreen({ searchText }: Props) {
   const { currentTrackId, onTrackClick, onRandomClick } =
     useTracksScreenContainer();
 
-  const { isFavorite } = useFavorites();
+  const { isFavorite, addFavorite, removeFavorite } = useFavorites();
+  const setContextMenuTrack = useTrackOptionsStore((state) => state.setTrack);
 
-  const filteredTracks = useFilterEpisodes(
-    React.useCallback(
-      (eps) => {
-        if (activeSection === "favorites") {
-          return eps.filter((episode) => isFavorite(episode._id));
-        }
+  const favorites = useMemo(() => {
+    if (episodes) {
+      return episodes.filter((episode) => isFavorite(episode._id));
+    }
 
-        if (!searchText) {
-          return eps;
-        }
+    return [];
+  }, [episodes, activeSection]);
 
-        return eps.filter((episode) => {
-          return episode.name
-            .toLocaleLowerCase()
-            .includes(searchText.toLocaleLowerCase());
-        });
-      },
-      [activeSection, searchText, isFavorite]
-    )
-  );
+  const filteredTracks = useMemo(() => {
+    if (episodes) {
+      if (activeSection === "favorites") {
+        return favorites;
+      }
+
+      if (!searchText) {
+        return episodes;
+      }
+
+      return episodes.filter((episode) =>
+        episode.name
+          .toLocaleLowerCase()
+          .includes(searchText.toLocaleLowerCase())
+      );
+    }
+
+    return [];
+  }, [episodes, favorites, activeSection, searchText, isFavorite]);
+
+  function onFavoriteClick(episode: ITrack) {
+    if (isFavorite(episode._id)) {
+      removeFavorite(episode._id);
+    } else {
+      addFavorite(episode._id);
+    }
+  }
 
   const shouldShowSuffleButton = !searchText && episodes;
 
@@ -59,21 +76,27 @@ function TracksScreen({ searchText }: Props) {
             currentTrackId && "mb-24"
           )}
         >
-          <EpisodeList
-            episodes={filteredTracks}
-            currentEpisodeId={currentTrackId}
-            onEpisodeClick={onTrackClick}
-            onRandomClick={onRandomClick}
-            focusedEpisodeId={currentTrackId}
-            beforeList={
+          <EpisodeList focusedEpisodeId={currentTrackId}>
+            <>
               <EpisodeListHeader
                 filterText={searchText}
                 numEpisodes={filteredTracks.length}
                 activeSection={activeSection}
                 onSectionClick={(section) => setActiveSection(section)}
               />
-            }
-          />
+              {filteredTracks.map((episode) => (
+                <Track
+                  key={episode._id}
+                  onClick={() => onTrackClick(episode._id)}
+                  track={episode}
+                  playing={episode._id === currentTrackId}
+                  favorite={isFavorite(episode._id)}
+                  onOptionsClick={() => setContextMenuTrack(episode)}
+                  onFavoriteClick={() => onFavoriteClick(episode)}
+                />
+              ))}
+            </>
+          </EpisodeList>
         </div>
         <div className="fixed right-0 bottom-0 z-20 w-full bg-white pb-safe-bottom">
           {shouldShowSuffleButton && (

@@ -28,35 +28,38 @@ export function Track(props: TrackProps) {
   } = props;
 
   return (
-    <div className="flex items-stretch h-full">
+    <div
+      data-episode-id={track._id}
+      className="flex h-full w-full items-stretch"
+    >
       <div
         onClick={onClick}
         className={cx(
-          "flex items-center justify-between text-left cursor-pointer w-full p-3 md:rounded-lg border border-transparent",
-          "active:bg-slate-50 md:hover:bg-slate-50 md:hover:border md:hover:border-gray-100",
-          "group focus:outline-none transition-colors duration-75"
+          "flex w-full cursor-pointer items-center justify-between border border-transparent p-3 text-left md:rounded-lg",
+          "active:bg-slate-50 md:hover:border md:hover:border-gray-100 md:hover:bg-slate-50",
+          "group transition-colors duration-75 focus:outline-none"
         )}
       >
         <div className="flex items-center justify-start text-left">
-          <div className="flex items-center w-full">
-            <div className="flex-shrink-0 h-16 w-16 rounded-lg overflow-hidden relative">
+          <div className="flex w-full items-center">
+            <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg">
               <img
-                className="w-full h-full bg-gray-200"
+                className="h-full w-full bg-gray-200"
                 src={track.picture_large}
                 alt={track.name}
               />
               {playing && (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="absolute inset-0 bg-indigo-600 opacity-75" />
-                  <div className="relative leading-none p-1 bg-white rounded-full text-indigo-600 hover:shadow-sm">
-                    <IconSpeaker className="relative block fill-current w-6 h-6" />
+                  <div className="relative rounded-full bg-white p-1 leading-none text-indigo-600 hover:shadow-sm">
+                    <IconSpeaker className="relative block h-6 w-6 fill-current" />
                     {/* <PauseIcon className="fill-current w-6 h-6" /> */}
                   </div>
                 </div>
               )}
             </div>
             <div className="ml-2 md:flex md:flex-col-reverse">
-              <div className="text-sm md:text-base text-gray-700">
+              <div className="text-sm text-gray-700 md:text-base">
                 <span>{formatDate(track.created_time)}</span>
                 <span className="mx-1 inline-block md:hidden">&bull;</span>
                 <span className="inline-block md:hidden">
@@ -73,10 +76,10 @@ export function Track(props: TrackProps) {
             </div>
           </div>
         </div>
-        <div className="hidden md:flex items-center space-x-4 w-28 justify-between">
+        <div className="hidden w-28 items-center justify-between space-x-4 md:flex">
           <button
             className={cx(
-              "inline-block p-1 rounded-full",
+              "inline-block rounded-full p-1",
               "transition-all duration-200 ease-in-out",
               "hover:bg-gray-200",
               "focus:outline-none",
@@ -90,9 +93,9 @@ export function Track(props: TrackProps) {
             }}
           >
             {favorite ? (
-              <HeartFilled className="fill-current w-5 h-5" />
+              <HeartFilled className="h-5 w-5 fill-current" />
             ) : (
-              <HeartOutline className="stroke-current w-5 h-5" />
+              <HeartOutline className="h-5 w-5 stroke-current" />
             )}
           </button>
 
@@ -102,13 +105,13 @@ export function Track(props: TrackProps) {
       <div className="flex md:hidden">
         <button
           className={cx(
-            "h-full w-full pl-2 pr-3 flex items-center",
+            "flex h-full w-full items-center pl-2 pr-3",
             "active:bg-slate-50",
             "focus:outline-none"
           )}
           onClick={() => onOptionsClick()}
         >
-          <IconDotsHorizontal className="stroke-current h-5 w-5 " />
+          <IconDotsHorizontal className="h-5 w-5 stroke-current " />
         </button>
       </div>
     </div>

@@ -62,15 +62,9 @@ function Player() {
           <Head>
             <title>{currentTrack.name}</title>
           </Head>
-          <div
-            className="bg-white px-3 pt-3 pb-1"
-            style={{
-              boxShadow:
-                "0 -4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-            }}
-          >
+          <div className="border border-t-gray-200 bg-white px-3 pt-3 pb-1">
             {currentTrack.source === "MIXCLOUD" && (
-              <div className="max-w-4xl m-auto">
+              <div className="m-auto max-w-4xl">
                 <EmbedPlayer track={currentTrack} />
               </div>
             )}
