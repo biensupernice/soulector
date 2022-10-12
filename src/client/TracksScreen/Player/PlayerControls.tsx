@@ -13,6 +13,7 @@ import cx from "classnames";
 import { useMedia } from "../../infra/useMedia";
 import { ITrack } from "../TracksStore";
 import { Slider } from "@/client/components/Slider";
+import { AnimatePresence, motion } from "framer-motion";
 
 type PlayerControlsProps = {
   track: ITrack;
@@ -115,7 +116,8 @@ export function PlayerControls({
           {/* Player */}
           <div className="flex flex-col items-center justify-center space-y-1 xl:col-span-6">
             <div className="flex items-center justify-center space-x-4">
-              <button
+              <motion.button
+                whileTap={{ scale: 0.9 }}
                 title="Rewind 30 seconds"
                 onClick={() => onRewind(30)}
                 className={cx(
@@ -126,8 +128,10 @@ export function PlayerControls({
                 )}
               >
                 <IconBackThirty className="h-8 w-8 fill-current" />
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                transition={{ type: "spring" }}
                 onClick={() => (playing ? onPause() : onResume())}
                 className={cx(
                   "rounded-full border bg-indigo-600 p-2 leading-none text-white shadow-md",
@@ -137,12 +141,28 @@ export function PlayerControls({
                 )}
               >
                 {playing ? (
-                  <IconPause className="inline-block h-8 w-8 fill-current" />
+                  <motion.div
+                    key="pause"
+                    initial={{ scale: 0.6, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="inline-block h-8 w-8"
+                  >
+                    <IconPause className="inline-block h-8 w-8 fill-current" />
+                  </motion.div>
                 ) : (
-                  <IconPlay className="inline-block h-8 w-8 fill-current" />
+                  <motion.div
+                    key="play"
+                    initial={{ scale: 0.6, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="inline-block h-8 w-8"
+                  >
+                    <IconPlay className="inline-block h-8 w-8 fill-current" />
+                  </motion.div>
                 )}
-              </button>
-              <button
+              </motion.button>
+
+              <motion.button
+                whileTap={{ scale: 0.9 }}
                 title="Forward 30 seconds"
                 onClick={() => onForward(30)}
                 className={cx(
@@ -153,7 +173,7 @@ export function PlayerControls({
                 )}
               >
                 <IconSkipThirty className="h-8 w-8 fill-current" />
-              </button>
+              </motion.button>
             </div>
             <div className="w-full max-w-3xl">
               <>

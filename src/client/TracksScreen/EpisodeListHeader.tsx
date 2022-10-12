@@ -29,17 +29,19 @@ export function EpisodeListHeader({
           >
             {filterText ? `Episodes matching "${filterText}"` : "All Episodes"}
           </button>
-          <button
-            className={cx(
-              "inline-flex rounded px-2 py-1 hover:bg-gray-100",
-              activeSection === "favorites" &&
-                "bg-indigo-50 font-bold text-indigo-800",
-              "text-gray-900"
-            )}
-            onClick={() => onSectionClick("favorites")}
-          >
-            Favorites
-          </button>
+          {filterText ? null : (
+            <button
+              className={cx(
+                "inline-flex rounded px-2 py-1 hover:bg-gray-100",
+                activeSection === "favorites" &&
+                  "bg-indigo-50 font-bold text-indigo-800",
+                "text-gray-900"
+              )}
+              onClick={() => onSectionClick("favorites")}
+            >
+              Favorites
+            </button>
+          )}
         </div>
       </div>
       <div className="font-semibold text-gray-600">{numEpisodes} Total</div>
