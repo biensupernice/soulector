@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import Player from "./Player";
 import { ShuffleButton } from "../components/ShuffleButton";
 import EpisodeListSpinner from "./EpisodeList/EpisodeListSpinner";
@@ -7,7 +7,10 @@ import { useTracksScreenContainer } from "./TracksScreenContainer";
 import { EpisodeListError } from "./EpisodeList/EpisodeListError";
 import { useFavorites } from "./FavoritesStore";
 import classNames from "classnames";
-import { useEpisodes, useFilterEpisodes } from "./TracksStore";
+import { ITrack, useEpisodes, useFilterEpisodes } from "./TracksStore";
+import { EpisodeListHeader } from "./EpisodeListHeader";
+import { useTrackOptionsStore } from "./TrackOptionsModal";
+import { Track } from "../components/Track";
 
 type Props = {
   searchText: string;
@@ -23,59 +26,86 @@ function TracksScreen({ searchText }: Props) {
   const { currentTrackId, onTrackClick, onRandomClick } =
     useTracksScreenContainer();
 
-  const { isFavorite } = useFavorites();
+  const { isFavorite, addFavorite, removeFavorite } = useFavorites();
+  const setContextMenuTrack = useTrackOptionsStore((state) => state.setTrack);
 
-  const filteredTracks = useFilterEpisodes(
-    React.useCallback(
-      (episodes) => {
-        if (activeSection === "favorites") {
-          return episodes.filter((episode) => isFavorite(episode._id));
-        }
+  const favorites = useMemo(() => {
+    if (episodes) {
+      return episodes.filter((episode) => isFavorite(episode._id));
+    }
 
-        if (!searchText) {
-          return episodes;
-        }
+    return [];
+  }, [episodes, activeSection]);
 
-        return episodes.filter((episode) => {
-          return episode.name
-            .toLocaleLowerCase()
-            .includes(searchText.toLocaleLowerCase());
-        });
-      },
-      [activeSection, searchText, isFavorite]
-    )
-  );
+  const filteredTracks = useMemo(() => {
+    if (episodes) {
+      if (activeSection === "favorites") {
+        return favorites;
+      }
+
+      if (!searchText) {
+        return episodes;
+      }
+
+      return episodes.filter((episode) =>
+        episode.name
+          .toLocaleLowerCase()
+          .includes(searchText.toLocaleLowerCase())
+      );
+    }
+
+    return [];
+  }, [episodes, favorites, activeSection, searchText, isFavorite]);
+
+  function onFavoriteClick(episode: ITrack) {
+    if (isFavorite(episode._id)) {
+      removeFavorite(episode._id);
+    } else {
+      addFavorite(episode._id);
+    }
+  }
 
   const shouldShowSuffleButton = !searchText && episodes;
 
   if (episodes) {
     return (
-      <div className="flex-col flex-2 mt-14 h-full overflow-hidden pt-safe-top md-safe-bottom relative">
+      <div className="flex-2 md-safe-bottom relative mt-14 h-full flex-col overflow-hidden pt-safe-top">
         <div
           className={classNames(
-            "h-full py-2 overflow-scroll relative pb-safe-bottom",
+            "relative h-full overflow-scroll py-2 pb-safe-bottom",
             currentTrackId && "mb-24"
           )}
         >
-          <EpisodeList
-            activeSection={activeSection}
-            onSectionClick={(section) => setActiveSection(section)}
-            filterText={searchText}
-            episodes={filteredTracks}
-            currentEpisodeId={currentTrackId}
-            onEpisodeClick={onTrackClick}
-            onRandomClick={onRandomClick}
-            focusedEpisodeId={currentTrackId}
-          />
+          <EpisodeList focusedEpisodeId={currentTrackId}>
+            <>
+              <EpisodeListHeader
+                filterText={searchText}
+                numEpisodes={filteredTracks.length}
+                activeSection={activeSection}
+                onSectionClick={(section) => setActiveSection(section)}
+              />
+              {filteredTracks.map((episode) => (
+                <Track
+                  key={episode._id}
+                  onClick={() => onTrackClick(episode._id)}
+                  track={episode}
+                  playing={episode._id === currentTrackId}
+                  favorite={isFavorite(episode._id)}
+                  onOptionsClick={() => setContextMenuTrack(episode)}
+                  onFavoriteClick={() => onFavoriteClick(episode)}
+                />
+              ))}
+            </>
+          </EpisodeList>
         </div>
-        <div className="fixed w-full right-0 bottom-0 pb-safe-bottom z-20 bg-white">
+        <div className="fixed right-0 bottom-0 z-20 w-full bg-white pb-safe-bottom">
           {shouldShowSuffleButton && (
-            <div className="absolute bottom-full w-full flex justify-end pr-4 mb-2 md:mb-4">
+            <div className="absolute bottom-full mb-2 flex w-full justify-end pr-4 md:mb-4">
               <ShuffleButton onClick={onRandomClick} />
             </div>
           )}
           {currentTrackId && (
-            <div className="w-full bg-white md-safe-bottom">
+            <div className="md-safe-bottom w-full bg-white">
               <Player />
             </div>
           )}
@@ -85,7 +115,7 @@ function TracksScreen({ searchText }: Props) {
   }
   if (error) {
     return (
-      <div className="h-full overflow-hidden pt-safe-top mt-14 mb-safe-bottom">
+      <div className="mt-14 mb-safe-bottom h-full overflow-hidden pt-safe-top">
         <EpisodeListError />
         <code>{error.message}</code>
       </div>
@@ -93,7 +123,7 @@ function TracksScreen({ searchText }: Props) {
   }
 
   return (
-    <div className="h-screen overflow-hidden pt-safe-top mb-safe-bottom">
+    <div className="mb-safe-bottom h-screen overflow-hidden pt-safe-top">
       <EpisodeListSpinner />
     </div>
   );
