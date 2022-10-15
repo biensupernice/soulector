@@ -9,6 +9,8 @@ import shallow from "zustand/shallow";
 import Head from "next/head";
 import { useEpisode } from "../TracksStore";
 import { PlayerControls } from "./PlayerControls";
+import { SoundCloudPlayer } from "@/client/components/SoundCloudPlayer";
+import { useMedia } from "@/client/infra/useMedia";
 
 function Player() {
   const playerSelectors = (state: PlayerStore) => ({
@@ -30,6 +32,8 @@ function Player() {
     rewind: state.rewind,
     trackDuration: state.trackDuration,
     setTrackDuration: state.setTrackDuration,
+    loadingStatus: state.loadingStatus,
+    setLoadingStatus: state.setLoadingStatus,
   });
 
   const {
@@ -50,10 +54,24 @@ function Player() {
     rewind,
     trackDuration,
     setTrackDuration,
+    loadingStatus,
+    setLoadingStatus,
   } = usePlayerStore(playerSelectors, shallow);
+
+  function onPlayerReady(trackDuration: number) {
+    setLoadingStatus("loaded");
+    setTrackDuration(trackDuration);
+  }
 
   const currentTrack = useEpisode(currentTrackId);
   const showPlayer = currentTrack;
+
+  function onAudioProgress(progress: number) {
+    setProgress(progress);
+  }
+
+  const isMed = useMedia("(min-width: 768px)");
+  const showEmbed = !isMed;
 
   return (
     <React.Fragment>
@@ -69,6 +87,18 @@ function Player() {
               </div>
             )}
             {currentTrack.source === "SOUNDCLOUD" && (
+              <SoundCloudPlayer
+                key={currentTrack._id}
+                onReady={onPlayerReady}
+                showNative={showEmbed}
+                track={currentTrack}
+                position={cuePosition}
+                playing={playing}
+                volume={volume}
+                onPlayProgressChange={onAudioProgress}
+              />
+            )}
+            {currentTrack.source === "SOUNDCLOUD" && !showEmbed && (
               <PlayerControls
                 volume={volume}
                 onVolumeChange={setVolume}
@@ -80,13 +110,11 @@ function Player() {
                 onMute={mute}
                 onUnmute={unmute}
                 progress={progress}
-                onProgressChange={setProgress}
-                cuePosition={cuePosition}
                 onCuePositionChange={setCuePosition}
                 onForward={forward}
                 onRewind={rewind}
                 trackDuration={trackDuration}
-                setTrackDuration={setTrackDuration}
+                loading={loadingStatus === "loading"}
               />
             )}
           </div>

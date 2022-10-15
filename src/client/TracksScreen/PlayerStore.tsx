@@ -1,7 +1,7 @@
 import create from "zustand";
 import { clamp } from "../helpers";
 
-type PlayerStatus = "idle" | "playing";
+type PlayerLoadingStatus = "loading" | "loaded" | "error";
 
 export type PlayerStore = {
   playing: boolean;
@@ -25,6 +25,8 @@ export type PlayerStore = {
   rewind: (secs: number) => void;
   lastVol: number;
   setTrackDuration: (duration: number) => void;
+  loadingStatus: PlayerLoadingStatus;
+  setLoadingStatus: (status: PlayerLoadingStatus) => void;
 };
 
 export const usePlayerStore = create<PlayerStore>((set, get) => ({
@@ -35,10 +37,14 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   progress: 0,
   trackDuration: 0,
   cuePosition: 0,
+  loadingStatus: "loading",
+  setLoadingStatus: (status) => set({ loadingStatus: status }),
   play(trackId: string) {
     set({
       playing: true,
       currentTrackId: trackId,
+      progress: 0,
+      cuePosition: 0,
     });
   },
   pause() {
