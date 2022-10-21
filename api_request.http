@@ -6,3 +6,66 @@ POST http://localhost:3000/api/episodes HTTP/1.1
 ### Sync Tracks
 
 POST http://localhost:3000/api/internal/sync-episodes HTTP/1.1
+
+### Get episodes
+
+GET http://localhost:3000/api/trpc/episodes.all HTTP/1.1
+
+### Sync Episodes
+GET http://localhost:3000/api/trpc/internal.episodesSync
+
+### Get Stream URLS
+GET http://localhost:3000/api/trpc/episode.getStreamUrl?input=%7B%22episodeId%22%3A%22624632f8ccc079804723e07b%22%7D HTTP/1.1
+
+
+### Get soundcloud api token
+# @name gatAccessToken
+POST http://api.soundcloud.com/oauth2/token?client_id={{SOUNDCLOUD_CLIENT_ID}}&client_secret={{SOUNDCLOUD_CLIENT_SECRET}}&grant_type=client_credentials HTTP/1.1
+
+
+### Get soundcloud tracks
+
+@SOUNDCLOUD_API_TOKEN = {{gatAccessToken.response.body.access_token}}
+
+# @name getPlaylistDetails
+GET http://api.soundcloud.com/playlists/8025093 HTTP/1.1
+Authorization: OAuth {{SOUNDCLOUD_API_TOKEN}}
+
+
+### Get single track details
+GET http://api.soundcloud.com/tracks/159482763 HTTP/1.1
+Authorization: OAuth {{SOUNDCLOUD_API_TOKEN}}
+
+### Get Stream Url
+GET https://api.soundcloud.com/tracks/159482763/streams
+Authorization: OAuth {{SOUNDCLOUD_API_TOKEN}}
+
+### Dwnload Track
+GET https://api.soundcloud.com/tracks/159482763/download
+Authorization: OAuth {{SOUNDCLOUD_API_TOKEN}}
+
+
+
+# Sync Episodes TRPC 
+# {
+#   "id": null,
+#   "result": {
+#     "type": "data",
+#     "data": {
+#       "msg": "Successfully Fetched New Tracks",
+#       "retrievedTracks": [
+#         "Soulection Radio Show #542 (Live from 1015 Folsom, San Francisco)",
+#         "Soulection Radio Show #541",
+#         "Soulection Radio Show #540",
+#         "Soulection Radio Show #539",
+#         "Soulection Radio Show #538 ft. Budgie (A Lover's Special)",
+#         "Soulection Radio Show #537",
+#         "Soulection Radio Show #536",
+#         "Soulection Radio Show #535",
+#         "Soulection Radio Show #534",
+#         "Soulection Radio Show #533 (Rich Medina Takeover)",
+#         "Soulection Radio Show #532 (Andre Power Takeover)"
+#       ]
+#     }
+#   }
+# }
