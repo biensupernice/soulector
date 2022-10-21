@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { EmbedPlayer } from "../../components/EmbedPlayer";
 import {
   usePlayerStore,
@@ -7,7 +7,7 @@ import {
 } from "../PlayerStore";
 import shallow from "zustand/shallow";
 import Head from "next/head";
-import { useEpisode } from "../TracksStore";
+import { useEpisode, useEpisodeStreamUrls } from "../TracksStore";
 import { PlayerControls } from "./PlayerControls";
 import { SoundCloudPlayer } from "@/client/components/SoundCloudPlayer";
 import { useMedia } from "@/client/infra/useMedia";
@@ -58,16 +58,21 @@ function Player() {
     setLoadingStatus,
   } = usePlayerStore(playerSelectors, shallow);
 
-  function onPlayerReady(trackDuration: number) {
+  function onSoundCloudPlayerReady(trackDuration: number) {
     setLoadingStatus("loaded");
     setTrackDuration(trackDuration);
   }
 
   const currentTrack = useEpisode(currentTrackId);
+  const streamUrls = useEpisodeStreamUrls(currentTrackId);
   const showPlayer = currentTrack;
 
-  function onAudioProgress(progress: number) {
+  function onSoundCloudAudioProgress(progress: number) {
     setProgress(progress);
+  }
+
+  function onAudioPlayerReady(duration: number) {
+    console.log("onAudioPlayerReady", duration, playing);
   }
 
   const isMed = useMedia("(min-width: 768px)");
@@ -87,16 +92,25 @@ function Player() {
               </div>
             )}
             {currentTrack.source === "SOUNDCLOUD" && (
-              <SoundCloudPlayer
-                key={currentTrack._id}
-                onReady={onPlayerReady}
-                showNative={showEmbed}
-                track={currentTrack}
-                position={cuePosition}
-                playing={playing}
-                volume={volume}
-                onPlayProgressChange={onAudioProgress}
-              />
+              <>
+                {/* <SoundCloudPlayer
+                  key={currentTrack._id}
+                  onReady={onSoundCloudPlayerReady}
+                  showNative={showEmbed}
+                  track={currentTrack}
+                  position={cuePosition}
+                  playing={playing}
+                  volume={volume}
+                  onPlayProgressChange={onSoundCloudAudioProgress}
+                /> */}
+
+                {streamUrls && streamUrls.data ? (
+                  <AudioPlayer
+                    onReady={onAudioPlayerReady}
+                    mp3StreamUrl={streamUrls.data.http_mp3_128_url}
+                  />
+                ) : null}
+              </>
             )}
             {currentTrack.source === "SOUNDCLOUD" && !showEmbed && (
               <PlayerControls
@@ -121,6 +135,57 @@ function Player() {
         </React.Fragment>
       )}
     </React.Fragment>
+  );
+}
+
+interface AudioPlayerProps {
+  mp3StreamUrl: string;
+  onReady: (trackDuration: number) => void;
+}
+export function AudioPlayer({ mp3StreamUrl, onReady }: AudioPlayerProps) {
+  const ref = useRef<HTMLAudioElement>(null);
+
+  async function onCanPlayThrough() {
+    const durationSecs = ref.current?.duration ?? 0;
+    const durationMillis = durationSecs * 1000;
+    console.log("onCanPlay", durationSecs);
+    onReady;
+
+    onReady(durationMillis);
+    // ref.current
+    //   ?.play()
+    //   .then()
+    //   .catch((err) => console.error(`onCanPlay ${err}`));
+  }
+
+  function onPlay() {
+    ref.current?.play();
+  }
+
+  useEffect(() => {
+    console.log("effect", ref.current, mp3StreamUrl);
+    if (ref.current) {
+      ref.current.src = mp3StreamUrl;
+      ref.current.load();
+    }
+
+    return () => {
+      ref.current?.pause();
+    };
+  }, [mp3StreamUrl]);
+
+  return (
+    <>
+      <audio
+        // key={mp3StreamUrl}
+        ref={ref}
+        // src={mp3StreamUrl}
+        controls
+        onCanPlayThrough={onCanPlayThrough}
+        autoPlay
+      ></audio>
+      <button onClick={onPlay}>Play</button>
+    </>
   );
 }
 

@@ -23,10 +23,43 @@ export function useEpisode(id: string | undefined) {
   return queryRes?.[0] || null;
 }
 
-type FilterFunction = (episodes: ITrack[]) => ITrack[];
+export function useEpisodeStreamUrls(episodeId: string | undefined) {
+  // if (!episodeId) {
+  //   return null;
+  // }
 
-export function useFilterEpisodes(filterFunction: FilterFunction) {
-  const { data } = useEpisodes();
+  return trpc.useQuery(
+    [
+      "episode.getFakeStreamUrl",
+      {
+        episodeId: episodeId!,
+      },
+    ],
+    {
+      refetchOnWindowFocus: false,
+      staleTime: Infinity,
+      enabled: Boolean(episodeId),
+    }
+  );
+}
 
-  return filterFunction(data || []);
+// idk
+export function useFetchEpisodeStreamUrls(episodeId: string) {
+  const { client } = trpc.useContext();
+
+  const { refetch } = trpc.useQuery(
+    [
+      "episode.getFakeStreamUrl",
+      {
+        episodeId: episodeId,
+      },
+    ],
+    {
+      refetchOnWindowFocus: false,
+      staleTime: Infinity,
+      enabled: false,
+    }
+  );
+
+  return refetch;
 }

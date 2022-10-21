@@ -7,7 +7,7 @@ import { useTracksScreenContainer } from "./TracksScreenContainer";
 import { EpisodeListError } from "./EpisodeList/EpisodeListError";
 import { useFavorites } from "./FavoritesStore";
 import classNames from "classnames";
-import { ITrack, useEpisodes, useFilterEpisodes } from "./TracksStore";
+import { ITrack, useEpisodes } from "./TracksStore";
 import { EpisodeListHeader } from "./EpisodeListHeader";
 import { useTrackOptionsStore } from "./TrackOptionsModal";
 import { Track } from "../components/Track";

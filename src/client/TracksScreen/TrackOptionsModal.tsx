@@ -34,17 +34,17 @@ export function TrackOptionsModal() {
     >
       <div className="mb-safe-bottom w-full">
         {track ? (
-          <div className="flex flex-col space-y-2 w-full">
-            <div className="flex items-center space-x-4 w-full p-3">
-              <div className="flex-shrink-0 h-24 w-24 rounded-lg overflow-hidden relative">
+          <div className="flex w-full flex-col space-y-2">
+            <div className="flex w-full items-center space-x-4 p-3">
+              <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg">
                 <img
-                  className="w-full h-full bg-gray-200"
+                  className="h-full w-full bg-gray-200"
                   src={track.picture_large}
                   alt={track.name}
                 />
               </div>
               <div className="ml-2 flex-col space-y-1">
-                <div className={cx("font-bold leading-tight text-lg")}>
+                <div className={cx("text-lg font-bold leading-tight")}>
                   {track.name}
                 </div>
                 <div className="text-base text-gray-700">
@@ -61,7 +61,7 @@ export function TrackOptionsModal() {
               {!isPlaying ? (
                 <button
                   className={cx(
-                    "w-full font-medium flex space-x-4 px-4 py-4 items-center",
+                    "flex w-full items-center space-x-4 px-4 py-4 font-medium",
                     "active:bg-slate-200",
                     "focus:outline-none"
                   )}
@@ -70,13 +70,13 @@ export function TrackOptionsModal() {
                     onClose();
                   }}
                 >
-                  <IconPlay className="w-5 h-5" />
+                  <IconPlay className="h-5 w-5" />
                   <span>Play Episode</span>
                 </button>
               ) : null}
               <button
                 className={cx(
-                  "w-full font-medium flex space-x-4 px-4 py-4 items-center",
+                  "flex w-full items-center space-x-4 px-4 py-4 font-medium",
                   "active:bg-slate-200",
                   "focus:outline-none"
                 )}
@@ -93,12 +93,12 @@ export function TrackOptionsModal() {
               >
                 {isFavorited ? (
                   <>
-                    <HeartFilled className="stroke-current w-5 h-5 text-gray-500" />
+                    <HeartFilled className="h-5 w-5 stroke-current text-gray-500" />
                     <div>Remove from Favorites</div>
                   </>
                 ) : (
                   <>
-                    <HeartOutline className="stroke-current w-5 h-5 text-gray-500" />
+                    <HeartOutline className="h-5 w-5 stroke-current text-gray-500" />
                     <div>Add to Favorites</div>
                   </>
                 )}
@@ -109,7 +109,7 @@ export function TrackOptionsModal() {
                   rel="noopener noreferrer"
                   href={track.url}
                   className={cx(
-                    "w-full font-medium flex space-x-4 px-4 py-4 just items-center",
+                    "just flex w-full items-center space-x-4 px-4 py-4 font-medium",
                     "active:bg-slate-200",
                     "focus:outline-none"
                   )}
@@ -118,7 +118,7 @@ export function TrackOptionsModal() {
                     e.stopPropagation();
                   }}
                 >
-                  <IconSoundcloud className="stroke-current w-5 h-5" />
+                  <IconSoundcloud className="h-5 w-5 stroke-current" />
                   <div>Open in SoundCloud</div>
                 </a>
               ) : null}
@@ -138,6 +138,6 @@ interface TrackOptionsStore {
 export const useTrackOptionsStore = create<TrackOptionsStore>((set, get) => ({
   open: false,
   track: null,
-  onClose: () => set({ open: false }),
+  onClose: () => set({ open: false, track: null }),
   setTrack: (track: ITrack) => set({ open: true, track }),
 }));
