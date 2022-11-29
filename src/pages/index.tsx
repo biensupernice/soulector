@@ -32,13 +32,13 @@ export default function Home() {
         <TracksScreen searchText={searchText} />
       </div>
       <TrackOptionsModal />
-      {process.env.NODE_ENV !== "production" && (
+      {/* {process.env.NODE_ENV !== "production" && (
         <ReactQueryDevtools
           position={"top-left"}
           panelProps={{ style: { top: 0, bottom: "auto" } }}
           initialIsOpen={false}
         />
-      )}
+      )} */}
     </>
   );
 }

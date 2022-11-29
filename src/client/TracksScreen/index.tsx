@@ -1,16 +1,31 @@
-import React, { useMemo } from "react";
-import Player from "./Player";
+import React, { useEffect, useMemo } from "react";
+import Player, { USE_NEW_PLAYER } from "./Player";
 import { ShuffleButton } from "../components/ShuffleButton";
 import EpisodeListSpinner from "./EpisodeList/EpisodeListSpinner";
 import { EpisodeList } from "./EpisodeList";
 import { useTracksScreenContainer } from "./TracksScreenContainer";
 import { EpisodeListError } from "./EpisodeList/EpisodeListError";
-import { useFavorites } from "./FavoritesStore";
+import {
+  useFavorites,
+  useFavoritesCount,
+  useIsFavoriteFast,
+} from "./FavoritesStore";
 import classNames from "classnames";
-import { ITrack, useEpisodes } from "./TracksStore";
+import { ITrack, useEpisode, useEpisodes, useGetEpisode } from "./TracksStore";
 import { EpisodeListHeader } from "./EpisodeListHeader";
 import { useTrackOptionsStore } from "./TrackOptionsModal";
 import { Track } from "../components/Track";
+import { AudioPlayer } from "../components/AudioPlayer";
+import {
+  StreamUrls,
+  usePlayerActions,
+  usePlayerCuePosition,
+  usePlayerCurrentTrackId,
+  usePlayerLoadingStatus,
+  usePlayerPlaying,
+  usePlayerVolume,
+} from "./PlayerStore";
+import { formatDate } from "../helpers";
 
 type Props = {
   searchText: string;
@@ -23,19 +38,27 @@ function TracksScreen({ searchText }: Props) {
 
   const { data: episodes, error } = useEpisodes();
 
-  const { currentTrackId, onTrackClick, onRandomClick } =
-    useTracksScreenContainer();
+  const {
+    currentTrackId,
+    onTrackClick,
+    onRandomClick,
+    currentTrackStreamUrls,
+    playing,
+    volume,
+  } = useTracksScreenContainer();
 
-  const { isFavorite, addFavorite, removeFavorite } = useFavorites();
+  const { addFavorite, removeFavorite } = useFavorites();
   const setContextMenuTrack = useTrackOptionsStore((state) => state.setTrack);
+  const favoritesCount = useFavoritesCount();
+  const isFavoriteFast = useIsFavoriteFast();
 
   const favorites = useMemo(() => {
     if (episodes) {
-      return episodes.filter((episode) => isFavorite(episode._id));
+      return episodes.filter((episode) => isFavoriteFast(episode._id));
     }
 
     return [];
-  }, [episodes, activeSection]);
+  }, [episodes, favoritesCount]);
 
   const filteredTracks = useMemo(() => {
     if (episodes) {
@@ -55,10 +78,10 @@ function TracksScreen({ searchText }: Props) {
     }
 
     return [];
-  }, [episodes, favorites, activeSection, searchText, isFavorite]);
+  }, [episodes, favorites, activeSection, searchText]);
 
   function onFavoriteClick(episode: ITrack) {
-    if (isFavorite(episode._id)) {
+    if (isFavoriteFast(episode._id)) {
       removeFavorite(episode._id);
     } else {
       addFavorite(episode._id);
@@ -90,7 +113,7 @@ function TracksScreen({ searchText }: Props) {
                   onClick={() => onTrackClick(episode._id)}
                   track={episode}
                   playing={episode._id === currentTrackId}
-                  favorite={isFavorite(episode._id)}
+                  favorite={isFavoriteFast(episode._id)}
                   onOptionsClick={() => setContextMenuTrack(episode)}
                   onFavoriteClick={() => onFavoriteClick(episode)}
                 />
@@ -104,10 +127,12 @@ function TracksScreen({ searchText }: Props) {
               <ShuffleButton onClick={onRandomClick} />
             </div>
           )}
-          {currentTrackId && (
-            <div className="md-safe-bottom w-full bg-white">
-              <Player />
-            </div>
+          {currentTrackId && <Player currentTrackId={currentTrackId} />}
+          {USE_NEW_PLAYER && currentTrackId && currentTrackStreamUrls && (
+            <EpisodeAudioPlayer
+              currentTrackId={currentTrackId}
+              currentTrackStreamUrls={currentTrackStreamUrls}
+            />
           )}
         </div>
       </div>
@@ -130,3 +155,100 @@ function TracksScreen({ searchText }: Props) {
 }
 
 export default TracksScreen;
+
+export interface EpisodeAudioPlayerProps {
+  currentTrackId: string;
+  currentTrackStreamUrls: StreamUrls;
+}
+export function EpisodeAudioPlayer({
+  currentTrackId,
+  currentTrackStreamUrls,
+}: EpisodeAudioPlayerProps) {
+  const episode = useGetEpisode(currentTrackId);
+  const playing = usePlayerPlaying();
+  const volume = usePlayerVolume();
+  const playerActions = usePlayerActions();
+  const cuePosition = usePlayerCuePosition();
+  const playerLoadingStatus = usePlayerLoadingStatus();
+
+  function onPlayProgressChange(progress: number) {
+    playerActions.setProgress(progress);
+  }
+
+  function onPlayerReady(audioDuration: number) {
+    playerActions.setLoadingStatus("loaded");
+    playerActions.setTrackDuration(audioDuration);
+  }
+
+  useEffect(() => {
+    if (playerLoadingStatus === "loaded") {
+      setNavigatorMediaMetadata(episode);
+    }
+  }, [episode, playerLoadingStatus]);
+
+  function onPause() {
+    playerActions.pause();
+    console.log("onPause");
+  }
+
+  function onPlay() {
+    playerActions.resume();
+    setNavigatorMediaMetadata(episode);
+    console.log("onPlay");
+  }
+
+  return (
+    <AudioPlayer
+      playing={playing}
+      onReady={onPlayerReady}
+      mp3StreamUrl={currentTrackStreamUrls.http_mp3_128_url}
+      onPlayProgressChange={onPlayProgressChange}
+      onPause={onPause}
+      onPlay={onPlay}
+      volume={volume}
+      cuePosition={cuePosition}
+    />
+  );
+}
+
+function setNavigatorMediaMetadata(episode: ReturnType<typeof useGetEpisode>) {
+  if ("mediaSession" in navigator) {
+    console.log("mediaSession", episode, navigator.mediaSession);
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: episode.name,
+      artist: `Soulection on ${formatDate(episode.created_time)}`,
+      artwork: [
+        {
+          src: episode.picture_large,
+          sizes: "96x96",
+          type: "image/jpg",
+        },
+        {
+          src: episode.picture_large,
+          sizes: "128x128",
+          type: "image/jpg",
+        },
+        {
+          src: episode.picture_large,
+          sizes: "192x192",
+          type: "image/jpg",
+        },
+        {
+          src: episode.picture_large,
+          sizes: "256x256",
+          type: "image/jpg",
+        },
+        {
+          src: episode.picture_large,
+          sizes: "384x384",
+          type: "image/jpg",
+        },
+        {
+          src: episode.picture_large,
+          sizes: "512x512",
+          type: "image/jpg",
+        },
+      ],
+    });
+  }
+}

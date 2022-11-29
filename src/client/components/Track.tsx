@@ -8,6 +8,7 @@ import {
   IconSpeaker,
 } from "./Icons";
 import { ITrack } from "../TracksScreen/TracksStore";
+import { usePlayEpisodeMutation } from "../TracksScreen/TracksScreenContainer";
 
 export type TrackProps = {
   track: ITrack;
@@ -44,19 +45,12 @@ export function Track(props: TrackProps) {
           <div className="flex w-full items-center">
             <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg">
               <img
+                loading={"lazy"}
                 className="h-full w-full bg-gray-200"
                 src={track.picture_large}
                 alt={track.name}
               />
-              {playing && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="absolute inset-0 bg-indigo-600 opacity-75" />
-                  <div className="relative rounded-full bg-white p-1 leading-none text-indigo-600 hover:shadow-sm">
-                    <IconSpeaker className="relative block h-6 w-6 fill-current" />
-                    {/* <PauseIcon className="fill-current w-6 h-6" /> */}
-                  </div>
-                </div>
-              )}
+              {playing && <AlbumArtOverlay />}
             </div>
             <div className="ml-2 md:flex md:flex-col-reverse">
               <div className="text-sm text-gray-700 md:text-base">
@@ -113,6 +107,30 @@ export function Track(props: TrackProps) {
         >
           <IconDotsHorizontal className="h-5 w-5 stroke-current " />
         </button>
+      </div>
+    </div>
+  );
+}
+
+function AlbumArtOverlay() {
+  const { isLoading } = usePlayEpisodeMutation();
+
+  return (
+    <div className="absolute inset-0 flex items-center justify-center">
+      <div className="absolute inset-0 bg-indigo-600 opacity-75" />
+      <div className="relative rounded-full bg-white p-1 leading-none text-indigo-600 hover:shadow-sm">
+        {isLoading ? (
+          <svg
+            viewBox="0 0 20 20"
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-8 w-8 animate-ping p-1"
+          >
+            <circle cx="10" cy="10" r="9" fill="currentColor" />
+          </svg>
+        ) : (
+          <IconSpeaker className="relative block h-6 w-6 fill-current" />
+        )}
+        {/* <PauseIcon className="fill-current w-6 h-6" /> */}
       </div>
     </div>
   );
