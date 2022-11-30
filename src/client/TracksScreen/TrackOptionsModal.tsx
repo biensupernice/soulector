@@ -9,21 +9,28 @@ import {
   IconPlay,
   IconSoundcloud,
 } from "@/client/components/Icons";
-import { useFavorites } from "@/client/TracksScreen/FavoritesStore";
-import { usePlayerStore } from "@/client/TracksScreen/PlayerStore";
+import {
+  useFavorites,
+  useIsFavoriteFast,
+} from "@/client/TracksScreen/FavoritesStore";
+import {
+  usePlayerActions,
+  usePlayerCurrentTrackId,
+} from "@/client/TracksScreen/PlayerStore";
 
 export function TrackOptionsModal() {
   const open = useTrackOptionsStore((state) => state.open);
   const track = useTrackOptionsStore((state) => state.track);
   const onClose = useTrackOptionsStore((state) => state.onClose);
 
-  const currentTrackId = usePlayerStore((state) => state.currentTrackId);
-  const play = usePlayerStore((state) => state.play);
+  const currentTrackId = usePlayerCurrentTrackId();
+  const playerActions = usePlayerActions();
 
-  const { isFavorite, addFavorite, removeFavorite } = useFavorites();
+  const { addFavorite, removeFavorite } = useFavorites();
+  const isFavoriteFast = useIsFavoriteFast();
 
   const isPlaying = currentTrackId === track?._id ?? false;
-  const isFavorited = isFavorite(track?._id ?? "");
+  const isFavorited = isFavoriteFast(track?._id ?? "");
 
   return (
     <BottomSheet
@@ -66,7 +73,7 @@ export function TrackOptionsModal() {
                     "focus:outline-none"
                   )}
                   onClick={() => {
-                    play(track._id);
+                    playerActions.play(track._id);
                     onClose();
                   }}
                 >

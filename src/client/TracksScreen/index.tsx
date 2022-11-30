@@ -11,7 +11,7 @@ import {
   useIsFavoriteFast,
 } from "./FavoritesStore";
 import classNames from "classnames";
-import { ITrack, useEpisode, useEpisodes, useGetEpisode } from "./TracksStore";
+import { ITrack, useEpisodes, useGetEpisode } from "./TracksStore";
 import { EpisodeListHeader } from "./EpisodeListHeader";
 import { useTrackOptionsStore } from "./TrackOptionsModal";
 import { Track } from "../components/Track";
@@ -20,7 +20,6 @@ import {
   StreamUrls,
   usePlayerActions,
   usePlayerCuePosition,
-  usePlayerCurrentTrackId,
   usePlayerLoadingStatus,
   usePlayerPlaying,
   usePlayerVolume,
