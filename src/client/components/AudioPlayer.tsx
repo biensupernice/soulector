@@ -25,7 +25,6 @@ export function AudioPlayer({
   async function onCanPlayThrough() {
     const durationSecs = ref.current?.duration ?? 0;
     const durationMillis = durationSecs * 1000;
-    console.log("onCanPlay", durationSecs);
 
     onReady(durationMillis);
 
@@ -42,7 +41,6 @@ export function AudioPlayer({
   }
 
   useEffect(() => {
-    console.log("mp3StreamUrl effect", ref.current, mp3StreamUrl);
     if (ref.current && mp3StreamUrl) {
       ref.current.src = mp3StreamUrl;
       ref.current.load();
@@ -56,9 +54,6 @@ export function AudioPlayer({
   useEffect(() => {
     if (ref.current) {
       const cuePosMillis = cuePosition ?? 0;
-      console.log("currentTime", ref.current.currentTime);
-      console.log("cuePosition", cuePosition);
-      console.log("cuePosMillis", cuePosMillis);
       ref.current.currentTime = cuePosMillis / 1000;
     }
   }, [cuePosition]);

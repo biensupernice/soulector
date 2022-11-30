@@ -187,13 +187,11 @@ export function EpisodeAudioPlayer({
 
   function onPause() {
     playerActions.pause();
-    console.log("onPause");
   }
 
   function onPlay() {
     playerActions.resume();
     setNavigatorMediaMetadata(episode);
-    console.log("onPlay");
   }
 
   return (
@@ -212,7 +210,6 @@ export function EpisodeAudioPlayer({
 
 function setNavigatorMediaMetadata(episode: ReturnType<typeof useGetEpisode>) {
   if ("mediaSession" in navigator) {
-    console.log("mediaSession", episode, navigator.mediaSession);
     navigator.mediaSession.metadata = new MediaMetadata({
       title: episode.name,
       artist: `Soulection on ${formatDate(episode.created_time)}`,
