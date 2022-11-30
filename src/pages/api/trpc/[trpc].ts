@@ -64,6 +64,27 @@ const appRouter = trpc
 
       return streamUrls;
     },
+  })
+  .query("episode.getFakeStreamUrl", {
+    input: z.object({
+      episodeId: z.string(),
+    }),
+    async resolve({ input }) {
+      const { episodeId } = input;
+
+      const timeStr = new Date().getTime();
+
+      console.log({ episodeId });
+
+      const fakeEpisodeUrls = {
+        http_mp3_128_url: `/_test/iL2cZd7Gy8Ol.128.mp3?rand=${timeStr}`,
+        hls_mp3_128_url: "/_test/iL2cZd7Gy8Ol.128.mp3",
+        hls_opus_64_url: "/_test/iL2cZd7Gy8Ol.128.mp3",
+        preview_mp3_128_url: "/_test/iL2cZd7Gy8Ol.128.mp3",
+      };
+
+      return fakeEpisodeUrls;
+    },
   });
 
 export type AppRouter = typeof appRouter;

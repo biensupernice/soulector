@@ -9,24 +9,19 @@ export function useEpisodes() {
 }
 
 export function useEpisode(id: string | undefined) {
+  const { getQueryData } = trpc.useContext();
+
   if (!id) {
     return null;
   }
+  const eps = getQueryData(["episodes.all"]) ?? [];
 
-  const { data: queryRes } = trpc.useQuery(["episodes.all"], {
-    refetchOnWindowFocus: false,
-    select: (episodes) => {
-      return episodes.filter((t) => t._id === id);
-    },
-  });
-
-  return queryRes?.[0] || null;
+  return eps.filter((e) => e._id === id)?.[0] || null;
 }
 
-type FilterFunction = (episodes: ITrack[]) => ITrack[];
+export function useGetEpisode(id: string) {
+  const { getQueryData } = trpc.useContext();
 
-export function useFilterEpisodes(filterFunction: FilterFunction) {
-  const { data } = useEpisodes();
-
-  return filterFunction(data || []);
+  const eps = getQueryData(["episodes.all"]) ?? [];
+  return eps.filter((e) => e._id === id)[0];
 }

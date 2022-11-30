@@ -1,4 +1,10 @@
-import { PlayerStore, usePlayerStore } from "./TracksScreen/PlayerStore";
+import {
+  PlayerStore,
+  usePlayerActions,
+  usePlayerPlaying,
+  usePlayerStore,
+  usePlayerTrackDuration,
+} from "./TracksScreen/PlayerStore";
 import shallow from "zustand/shallow";
 import { useEffect, useMemo } from "react";
 import {
@@ -21,56 +27,33 @@ export type KeyboarActionsMap = {
 };
 
 export function useShortcutHandlers() {
-  const playerSelectors = (state: PlayerStore) => ({
-    playing: state.playing,
-    resume: state.resume,
-    pause: state.pause,
-    volumeUp: state.volumeUp,
-    volumeDown: state.volumeDown,
-    toggleMute: state.toggleMute,
-    forward: state.forward,
-    rewind: state.rewind,
-    trackDuration: state.trackDuration,
-    setCuePosition: state.setCuePosition,
-  });
-
-  const {
-    playing,
-    resume,
-    pause,
-    volumeUp,
-    volumeDown,
-    toggleMute,
-    forward,
-    rewind,
-    trackDuration,
-    setCuePosition,
-  } = usePlayerStore(playerSelectors, shallow);
-
+  const playerActions = usePlayerActions();
+  const playing = usePlayerPlaying();
+  const trackDuration = usePlayerTrackDuration();
   const openSearch = useNavbarStore((state) => state.openSearch);
 
   const togglePlay = useMemo(() => {
-    return playing ? pause : resume;
-  }, [playing, pause, resume]);
+    return playing ? playerActions.pause : playerActions.resume;
+  }, [playing, playerActions]);
 
   const keyboardActions: KeyboarActionsMap = {
     VOLUME_UP: {
       keyTest: (event: globalThis.KeyboardEvent) => {
         return event.key === KEYS.ARROW_UP && event.shiftKey;
       },
-      perform: volumeUp,
+      perform: playerActions.volumeUp,
     },
     VOLUME_DOWN: {
       keyTest: (event: globalThis.KeyboardEvent) => {
         return event.key === KEYS.ARROW_DOWN && event.shiftKey;
       },
-      perform: volumeDown,
+      perform: playerActions.volumeDown,
     },
     TOGGLE_MUTE: {
       keyTest: (event: globalThis.KeyboardEvent) => {
         return event.keyCode === KEYS.M_KEY_CODE;
       },
-      perform: toggleMute,
+      perform: playerActions.toggleMute,
     },
     TOGGLE_PLAY: {
       keyTest: (event: globalThis.KeyboardEvent) => {
@@ -82,13 +65,13 @@ export function useShortcutHandlers() {
       keyTest: (event: globalThis.KeyboardEvent) => {
         return event.key === KEYS.ARROW_RIGHT;
       },
-      perform: () => forward(30),
+      perform: () => playerActions.forward(30),
     },
     REWIND_THIRTY: {
       keyTest: (event: globalThis.KeyboardEvent) => {
         return event.key === KEYS.ARROW_LEFT;
       },
-      perform: () => rewind(30),
+      perform: () => playerActions.rewind(30),
     },
     OPEN_SEARCH: {
       keyTest: (event: globalThis.KeyboardEvent) => {
@@ -101,7 +84,7 @@ export function useShortcutHandlers() {
         return event.key === KEYS.ZERO_KEY;
       },
       perform: () => {
-        setCuePosition(0);
+        playerActions.setCuePosition(0);
       },
     },
     TEN_PERCENT: {
@@ -109,7 +92,7 @@ export function useShortcutHandlers() {
         return event.key === KEYS.ONE_KEY;
       },
       perform: () => {
-        setCuePosition(trackDuration * 0.1);
+        playerActions.setCuePosition(trackDuration * 0.1);
       },
     },
     TWENTY_PERCENT: {
@@ -117,7 +100,7 @@ export function useShortcutHandlers() {
         return event.key === KEYS.TWO_KEY;
       },
       perform: () => {
-        setCuePosition(trackDuration * 0.2);
+        playerActions.setCuePosition(trackDuration * 0.2);
       },
     },
     THIRTY_PERCENT: {
@@ -125,7 +108,7 @@ export function useShortcutHandlers() {
         return event.key === KEYS.THREE_KEY;
       },
       perform: () => {
-        setCuePosition(trackDuration * 0.3);
+        playerActions.setCuePosition(trackDuration * 0.3);
       },
     },
     FOURTY_PERCENT: {
@@ -133,7 +116,7 @@ export function useShortcutHandlers() {
         return event.key === KEYS.FOUR_KEY;
       },
       perform: () => {
-        setCuePosition(trackDuration * 0.4);
+        playerActions.setCuePosition(trackDuration * 0.4);
       },
     },
     FIFTY_PERCENT: {
@@ -141,7 +124,7 @@ export function useShortcutHandlers() {
         return event.key === KEYS.FIVE_KEY;
       },
       perform: () => {
-        setCuePosition(trackDuration * 0.5);
+        playerActions.setCuePosition(trackDuration * 0.5);
       },
     },
     SIXTY_PERCENT: {
@@ -149,7 +132,7 @@ export function useShortcutHandlers() {
         return event.key === KEYS.SIX_KEY;
       },
       perform: () => {
-        setCuePosition(trackDuration * 0.6);
+        playerActions.setCuePosition(trackDuration * 0.6);
       },
     },
     SEVENTY_PERCENT: {
@@ -157,7 +140,7 @@ export function useShortcutHandlers() {
         return event.key === KEYS.SEVEN_KEY;
       },
       perform: () => {
-        setCuePosition(trackDuration * 0.7);
+        playerActions.setCuePosition(trackDuration * 0.7);
       },
     },
     EIGHTY_PERCENT: {
@@ -165,7 +148,7 @@ export function useShortcutHandlers() {
         return event.key === KEYS.EIGHT_KEY;
       },
       perform: () => {
-        setCuePosition(trackDuration * 0.8);
+        playerActions.setCuePosition(trackDuration * 0.8);
       },
     },
     NINETY_PERCENT: {
@@ -173,7 +156,7 @@ export function useShortcutHandlers() {
         return event.key === KEYS.NINE_KEY;
       },
       perform: () => {
-        setCuePosition(trackDuration * 0.9);
+        playerActions.setCuePosition(trackDuration * 0.9);
       },
     },
   };
