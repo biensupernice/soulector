@@ -21,7 +21,7 @@ export default function Home() {
         <div className="h-15 fixed top-0 z-10 w-full bg-white pt-safe-top">
           <motion.div
             style={{ opacity }}
-            className="pointer-events-none absolute inset-0 z-0 border border-b-gray-200 shadow-sm"
+            className="pointer-events-none absolute inset-0 z-0 border-b border-b-gray-200 shadow-sm"
           />
           <Navbar
             searchText={searchText}
