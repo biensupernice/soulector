@@ -61,11 +61,12 @@ export function Track(props: TrackProps) {
                 </span>
               </div>
               <div
-                className={cx("font-bold leading-tight", "md:text-lg", {
+                className={cx("flex items-start space-x-[4px]", "md:text-lg", {
                   "text-indigo-600": playing,
                 })}
               >
-                {track.name}
+                {playing && <PlayingAnimation />}
+                <span className="font-bold leading-tight">{track.name}</span>
               </div>
             </div>
           </div>
@@ -108,6 +109,18 @@ export function Track(props: TrackProps) {
           <IconDotsHorizontal className="h-5 w-5 stroke-current " />
         </button>
       </div>
+    </div>
+  );
+}
+
+function PlayingAnimation() {
+  return (
+    <div className="grid h-[16px] md:h-[17px] w-[8px] md:w-[14px] grid-cols-3 md:grid-cols-5 items-end gap-px pt-1 md:pt-0">
+      <div className="current-track-animation h-5/6 origin-bottom bg-indigo-600"></div>
+      <div className="current-track-animation h-full origin-bottom bg-indigo-600 [animation-delay:-70ms] [animation-duration:420ms_!important]"></div>
+      <div className="current-track-animation-1 h-full origin-bottom bg-indigo-600 [animation-delay:-200ms] [animation-duration:580ms_!important]"></div>
+      <div className="hidden md:block current-track-animation h-4/5 origin-bottom bg-indigo-600 [animation-delay:100ms]"></div>
+      <div className="hidden md:block current-track-animation-1 h-3/4 origin-bottom bg-indigo-600 [animation-delay:-70ms] [animation-duration:420ms_!important]"></div>
     </div>
   );
 }
