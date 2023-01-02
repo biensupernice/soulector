@@ -65,7 +65,7 @@ export function Track(props: TrackProps) {
                   "text-indigo-600": playing,
                 })}
               >
-                {playing && <div className="shrink-0"><PlayingAnimation /><div>}
+                {playing && <div className="shrink-0"><PlayingAnimation /></div>}
                 <div className="font-bold leading-tight">{track.name}</div>
               </div>
             </div>
