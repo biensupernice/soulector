@@ -115,7 +115,7 @@ export function Track(props: TrackProps) {
 
 function PlayingAnimation() {
   return (
-    <div className="grid h-[16px] md:h-[17px] w-[8px] md:w-[14px] grid-cols-3 md:grid-cols-5 items-end gap-px pt-1 md:pt-0">
+    <div className="grid h-[16px] md:h-[17px] w-[11px] md:w-[14px] grid-cols-3 md:grid-cols-5 items-end gap-px pt-1 md:pt-0">
       <div className="current-track-animation h-5/6 origin-bottom bg-indigo-600"></div>
       <div className="current-track-animation h-full origin-bottom bg-indigo-600 [animation-delay:-70ms] [animation-duration:420ms_!important]"></div>
       <div className="current-track-animation-1 h-full origin-bottom bg-indigo-600 [animation-delay:-200ms] [animation-duration:580ms_!important]"></div>
