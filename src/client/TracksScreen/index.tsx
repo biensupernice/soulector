@@ -111,7 +111,7 @@ function TracksScreen({ searchText }: Props) {
                   key={episode._id}
                   onClick={() => onTrackClick(episode._id)}
                   track={episode}
-                  playing={episode._id === currentTrackId}
+                  selected={episode._id === currentTrackId}
                   favorite={isFavoriteFast(episode._id)}
                   onOptionsClick={() => setContextMenuTrack(episode)}
                   onFavoriteClick={() => onFavoriteClick(episode)}
