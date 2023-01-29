@@ -9,10 +9,11 @@ import {
 } from "./Icons";
 import { ITrack } from "../TracksScreen/TracksStore";
 import { usePlayEpisodeMutation } from "../TracksScreen/TracksScreenContainer";
+import { usePlayerPlaying } from "../TracksScreen/PlayerStore";
 
 export type TrackProps = {
   track: ITrack;
-  playing?: boolean;
+  selected?: boolean;
   favorite?: boolean;
   onFavoriteClick?: () => void;
   onOptionsClick?: () => void;
@@ -21,7 +22,7 @@ export type TrackProps = {
 export function Track(props: TrackProps) {
   const {
     track,
-    playing = false,
+    selected: selected = false,
     onClick,
     favorite = false,
     onFavoriteClick = () => {},
@@ -50,7 +51,7 @@ export function Track(props: TrackProps) {
                 src={track.picture_large}
                 alt={track.name}
               />
-              {playing && <AlbumArtOverlay />}
+              {selected && <AlbumArtOverlay />}
             </div>
             <div className="ml-2 md:flex md:flex-col-reverse">
               <div className="text-sm text-gray-700 md:text-base">
@@ -62,10 +63,14 @@ export function Track(props: TrackProps) {
               </div>
               <div
                 className={cx("flex items-start space-x-[4px]", "md:text-lg", {
-                  "text-indigo-600": playing,
+                  "text-indigo-600": selected,
                 })}
               >
-                {playing && <div className="shrink-0"><PlayingAnimation /></div>}
+                {selected && (
+                  <div className="shrink-0">
+                    <PlayingAnimation />
+                  </div>
+                )}
                 <div className="font-bold leading-tight">{track.name}</div>
               </div>
             </div>
@@ -114,13 +119,27 @@ export function Track(props: TrackProps) {
 }
 
 function PlayingAnimation() {
+  const isPlaying = usePlayerPlaying();
+
   return (
-    <div className="grid h-[16px] md:h-[17px] w-[11px] md:w-[14px] grid-cols-3 md:grid-cols-5 items-end gap-px pt-1 md:pt-0">
-      <div className="current-track-animation h-5/6 origin-bottom bg-indigo-600"></div>
-      <div className="current-track-animation h-full origin-bottom bg-indigo-600 [animation-delay:-70ms] [animation-duration:420ms_!important]"></div>
-      <div className="current-track-animation-1 h-full origin-bottom bg-indigo-600 [animation-delay:-200ms] [animation-duration:580ms_!important]"></div>
-      <div className="hidden md:block current-track-animation h-4/5 origin-bottom bg-indigo-600 [animation-delay:100ms]"></div>
-      <div className="hidden md:block current-track-animation-1 h-3/4 origin-bottom bg-indigo-600 [animation-delay:-70ms] [animation-duration:420ms_!important]"></div>
+    <div className="grid h-[16px] w-[11px] grid-cols-3 items-end gap-px pt-1 md:h-[17px] md:w-[14px] md:grid-cols-5 md:pt-0">
+      {isPlaying ? (
+        <>
+          <div className="current-track-animation h-5/6 origin-bottom bg-indigo-600"></div>
+          <div className="current-track-animation h-full origin-bottom bg-indigo-600 [animation-delay:-70ms] [animation-duration:420ms_!important]"></div>
+          <div className="current-track-animation-1 h-full origin-bottom bg-indigo-600 [animation-delay:-200ms] [animation-duration:580ms_!important]"></div>
+          <div className="current-track-animation hidden h-4/5 origin-bottom bg-indigo-600 [animation-delay:100ms] md:block"></div>
+          <div className="current-track-animation-1 hidden h-3/4 origin-bottom bg-indigo-600 [animation-delay:-70ms] [animation-duration:420ms_!important] md:block"></div>
+        </>
+      ) : (
+        <>
+          <div className="h-1/6 origin-bottom bg-indigo-600"></div>
+          <div className="h-1/6 origin-bottom bg-indigo-600 [animation-delay:-70ms] [animation-duration:420ms_!important]"></div>
+          <div className="h-1/6 origin-bottom bg-indigo-600 [animation-delay:-200ms] [animation-duration:580ms_!important]"></div>
+          <div className="hidden h-1/6 origin-bottom bg-indigo-600 [animation-delay:100ms] md:block"></div>
+          <div className="hidden h-1/6 origin-bottom bg-indigo-600 [animation-delay:-70ms] [animation-duration:420ms_!important] md:block"></div>
+        </>
+      )}
     </div>
   );
 }
