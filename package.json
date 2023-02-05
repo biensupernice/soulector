@@ -29,6 +29,7 @@
     "react-aria": "^3.19.0",
     "react-dom": "18.2.0",
     "react-ga": "^3.3.0",
+    "react-modal-sheet": "1.8.1",
     "react-query": "^3.39.2",
     "react-spring-bottom-sheet": "^3.4.0",
     "react-stately": "^3.17.0",

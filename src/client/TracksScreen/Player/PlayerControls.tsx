@@ -221,3 +221,133 @@ export function PlayerControls({
     </div>
   );
 }
+
+export function MobilePlayerControls({
+  track,
+  trackDuration,
+  volume,
+  onVolumeChange,
+  muted,
+  onMute,
+  playing,
+  onPause,
+  onResume,
+  onUnmute,
+  progress,
+  onCuePositionChange,
+  onForward,
+  onRewind,
+  loading,
+}: PlayerControlsProps) {
+  const [seeking, setSeeking] = useState(false);
+  const [seekPosition, setSeekPosition] = useState(progress);
+
+  const scrubberProgress = seeking ? seekPosition : progress;
+
+  return (
+    <div className="flex h-full flex-col items-center space-y-3 pb-4">
+      <div className="flex w-full max-w-3xl flex-col">
+        <div className="flex flex-col items-center justify-center">
+          <div className="relative mx-3 flex w-full max-w-xl flex-1 flex-col justify-center">
+            <Slider
+              showThumb
+              aria-label="progress"
+              minValue={0}
+              maxValue={trackDuration}
+              value={scrubberProgress}
+              onChange={(val) => {
+                setSeeking(true);
+                const newVal = Array.isArray(val) ? val[0] : val;
+                setSeekPosition(newVal);
+              }}
+              onChangeEnd={(val) => {
+                const newVal = Array.isArray(val) ? val[0] : val;
+                setSeeking(false);
+                onCuePositionChange(newVal);
+              }}
+            />
+          </div>
+          <div className="flex w-full justify-between">
+            <div className="text-right text-xs">
+              {formatTime(Math.ceil(scrubberProgress))}
+            </div>
+            <div className="text-left text-xs">
+              {formatTime(Math.ceil(trackDuration))}
+            </div>
+          </div>
+        </div>
+        <div />
+      </div>
+      <div className="flex items-center justify-center space-x-6">
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          title="Rewind 30 seconds"
+          onClick={() => onRewind(30)}
+          className={cx(
+            "rounded-full bg-transparent p-2 text-gray-700",
+            "transition-all duration-200 ease-in-out",
+            "hover:text-gray-900",
+            "focus:bg-gray-200 focus:outline-none"
+          )}
+        >
+          <IconBackThirty className="h-12 w-12 fill-current" />
+        </motion.button>
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          transition={{ type: "spring" }}
+          disabled={loading}
+          onClick={() => (playing ? onPause() : onResume())}
+          className={cx(
+            "rounded-full border bg-indigo-600 p-4 leading-none text-white shadow-md",
+            "transition-all duration-200 ease-in-out",
+            "hover:bg-indigo-700 hover:shadow-lg",
+            "focus:bg-indigo-700 focus:outline-none",
+            loading && "cursor-not-allowed disabled:cursor-not-allowed"
+          )}
+        >
+          {loading ? (
+            <svg
+              viewBox="0 0 20 20"
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-12 w-12 animate-ping p-1"
+            >
+              <circle cx="10" cy="10" r="9" fill="currentColor" />
+            </svg>
+          ) : playing ? (
+            <motion.div
+              key="pause"
+              initial={{ scale: 0.6, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="inline-block h-12 w-12"
+            >
+              <IconPause className="inline-block h-12 w-12 fill-current" />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="play"
+              initial={{ scale: 0.6, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="inline-block h-12 w-12"
+            >
+              <IconPlay className="inline-block h-12 w-12 fill-current" />
+            </motion.div>
+          )}
+        </motion.button>
+
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          title="Forward 30 seconds"
+          onClick={() => onForward(30)}
+          className={cx(
+            "rounded-full bg-transparent p-2 text-gray-700",
+            "transition-all duration-200 ease-in-out",
+            "hover:text-gray-900",
+            "focus:bg-gray-200 focus:outline-none"
+          )}
+        >
+          <IconSkipThirty className="h-12 w-12 fill-current" />
+        </motion.button>
+      </div>
+    </div>
+  );
+}
