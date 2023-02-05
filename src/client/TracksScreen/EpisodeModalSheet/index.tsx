@@ -64,7 +64,7 @@ export function EpisodeModalSheet({
           <div className="relative flex h-full w-full flex-col items-center justify-start space-y-3 overflow-auto pb-8">
             <div className="w-full flex-col space-y-3 px-6">
               <img
-                className="min-h-40 min-w-40 w-full max-w-sm rounded-lg object-fill"
+                className="min-h-40 min-w-40 mx-auto w-full max-w-sm rounded-lg object-fill"
                 src={episode.picture_large}
                 alt={episode.name}
               />
