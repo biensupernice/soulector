@@ -16,6 +16,7 @@ export interface SliderProps
   extends Omit<AriaSliderProps<number | number[]>, "numberFormatter"> {
   onMouseDown?(): void;
   onMouseUp?(): void;
+  showThumb?: boolean;
 }
 
 export function Slider(props: SliderProps) {
@@ -59,7 +60,12 @@ export function Slider(props: SliderProps) {
         )}
       >
         <div className="relative top-1/2 h-[5px] w-full -translate-y-1/2 rounded-full bg-gray-300">
-          <Thumb index={0} state={state} trackRef={trackRef} />
+          <Thumb
+            index={0}
+            state={state}
+            trackRef={trackRef}
+            visible={props.showThumb}
+          />
         </div>
       </div>
     </div>
@@ -70,9 +76,10 @@ interface ThumbProps {
   index: number;
   trackRef: RefObject<Element>;
   state: SliderState;
+  visible?: boolean;
 }
 function Thumb(props: ThumbProps) {
-  let { state, trackRef, index } = props;
+  let { state, trackRef, index, visible = false } = props;
   let inputRef = React.useRef(null);
   let { thumbProps, inputProps, isDragging } = useSliderThumb(
     {
@@ -90,7 +97,7 @@ function Thumb(props: ThumbProps) {
         {...thumbProps}
         className={cx(
           "absolute top-0 block h-full rounded-full bg-gray-500 group-hover:bg-indigo-600",
-          isFocusVisible && "!bg-indigo-600"
+          (isFocusVisible || visible) && "!bg-indigo-600"
         )}
         style={{
           width: `${state.getThumbPercent(0) * 100}%`,
@@ -102,7 +109,8 @@ function Thumb(props: ThumbProps) {
           "top-1/2 h-[12px] w-[12px] rounded-full border border-gray-500 bg-indigo-100 opacity-0 group-hover:opacity-100",
           isDragging &&
             "shadow-[0_0_0_1px_rgba(255,255,255)_inset,1px_1px_4px_1px_rgba(0,0,0,0.3)_inset]",
-          isFocusVisible && "ring-3 opacity-100 ring ring-offset-1"
+          isFocusVisible && "ring-3 opacity-100 ring ring-offset-1",
+          visible && "opacity-100"
         )}
       >
         <VisuallyHidden>

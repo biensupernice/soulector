@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Player, { USE_NEW_PLAYER } from "./Player";
 import { ShuffleButton } from "../components/ShuffleButton";
 import EpisodeListSpinner from "./EpisodeList/EpisodeListSpinner";
@@ -25,6 +25,12 @@ import {
   usePlayerVolume,
 } from "./PlayerStore";
 import { formatDate } from "../helpers";
+import { useMedia } from "../infra/useMedia";
+import {
+  EpisodeModalSheet,
+  useEpisodeModalSheetActions,
+  useEpisodeModalSheetStore,
+} from "./EpisodeModalSheet";
 
 type Props = {
   searchText: string;
@@ -34,6 +40,9 @@ function TracksScreen({ searchText }: Props) {
   const [activeSection, setActiveSection] = React.useState<"all" | "favorites">(
     "all"
   );
+
+  const isEpisodeModalSheetOpen = useEpisodeModalSheetStore((s) => s.isOpen);
+  const episodeModalSheetActions = useEpisodeModalSheetActions();
 
   const { data: episodes, error } = useEpisodes();
 
@@ -87,6 +96,8 @@ function TracksScreen({ searchText }: Props) {
     }
   }
 
+  const isWideScreen = useMedia("(min-width: 768px)");
+
   const shouldShowSuffleButton = !searchText && episodes;
 
   if (episodes) {
@@ -134,6 +145,13 @@ function TracksScreen({ searchText }: Props) {
             />
           )}
         </div>
+        {currentTrackId && !isWideScreen && (
+          <EpisodeModalSheet
+            episodeId={currentTrackId}
+            showTrackModal={isEpisodeModalSheetOpen}
+            onCloseModal={() => episodeModalSheetActions.close()}
+          ></EpisodeModalSheet>
+        )}
       </div>
     );
   }

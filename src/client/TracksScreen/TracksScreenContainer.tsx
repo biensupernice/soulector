@@ -4,6 +4,7 @@ import ReactGA from "react-ga";
 import { usePlayerActions, usePlayerStore } from "./PlayerStore";
 import { useEpisodes } from "./TracksStore";
 import { useCustomMutation } from "../infra/useCustomMutation";
+import { useEpisodeModalSheetActions } from "./EpisodeModalSheet";
 
 export function useTracksScreenContainer() {
   const currentTrackId = usePlayerStore((state) => state.currentTrackId);
@@ -18,6 +19,7 @@ export function useTracksScreenContainer() {
   const { data: episodes } = useEpisodes();
 
   const { mutate } = usePlayEpisodeMutation();
+  const episodeModalSheetActions = useEpisodeModalSheetActions();
 
   async function onTrackClick(episodeId: string) {
     if (episodes) {
@@ -28,6 +30,7 @@ export function useTracksScreenContainer() {
         label: episode && episode.name ? episode.name : episodeId,
       });
 
+      episodeModalSheetActions.open();
       playerActions.loadTrack(episodeId);
 
       mutate(episodeId, {
@@ -47,6 +50,7 @@ export function useTracksScreenContainer() {
     let episode = sample(episodes);
     if (episode) {
       playerActions.loadTrack(episode._id);
+      episodeModalSheetActions.open();
       mutate(episode._id, {
         onSuccess(data) {
           playerActions.setCurrentTrackStreamUrls(data);
