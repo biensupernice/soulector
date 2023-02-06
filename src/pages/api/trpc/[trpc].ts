@@ -29,6 +29,24 @@ const appRouter = trpc
       };
     },
   })
+  .query("collectives.all", {
+    async resolve({ ctx }) {
+      return {
+        collectives: [
+          {
+            id: "coll|soulection-radio",
+            name: "Soulection Radio",
+            handle: "soulection",
+          },
+          {
+            id: "coll|sasha-marie-radio",
+            name: "Sasha Marie Radio",
+            handle: "sasha-marie",
+          },
+        ],
+      };
+    },
+  })
   .query("episodes.all", {
     async resolve({ ctx }) {
       const trackCollection = ctx.db.collection<ITrack>("tracksOld");
@@ -40,6 +58,24 @@ const appRouter = trpc
         .toArray();
 
       return allTracks;
+    },
+  })
+  .query("episodes.list", {
+    input: z.optional(
+      z.object({
+        page_token: z.optional(z.string()),
+        filter: z.optional(
+          z.object({
+            collective: z.optional(z.string()),
+          })
+        ),
+      })
+    ),
+    async resolve({ input, ctx }) {
+      const page_token = input?.page_token;
+      const collective = input?.filter?.collective;
+
+      return collective;
     },
   })
   .query("episode.getStreamUrl", {
