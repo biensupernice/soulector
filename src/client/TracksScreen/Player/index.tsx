@@ -18,7 +18,7 @@ import { useMedia } from "@/client/infra/useMedia";
 import { useEpisodeModalSheetActions } from "../EpisodeModalSheet";
 import classNames from "classnames";
 
-export const USE_NEW_PLAYER = true;
+export const USE_NEW_PLAYER = false;
 
 export interface PlayerProps {
   currentTrackId: string;
