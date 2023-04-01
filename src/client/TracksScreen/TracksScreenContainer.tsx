@@ -35,7 +35,9 @@ export function useTracksScreenContainer() {
 
       mutate(episodeId, {
         onSuccess(data) {
-          playerActions.setCurrentTrackStreamUrls(data);
+          if (data) {
+            playerActions.setCurrentTrackStreamUrls(data);
+          }
         },
       });
     }
@@ -53,7 +55,9 @@ export function useTracksScreenContainer() {
       episodeModalSheetActions.open();
       mutate(episode._id, {
         onSuccess(data) {
-          playerActions.setCurrentTrackStreamUrls(data);
+          if (data) {
+            playerActions.setCurrentTrackStreamUrls(data);
+          }
         },
       });
     }
@@ -76,7 +80,7 @@ export function usePlayEpisodeMutation() {
     async (episodeId: string) => {
       const query = await fetchQuery(
         [
-          "episode.getFakeStreamUrl",
+          "episode.getStreamUrl",
           {
             episodeId: episodeId,
           },
