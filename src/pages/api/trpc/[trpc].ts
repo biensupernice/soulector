@@ -1,6 +1,8 @@
 import { Context, createContext } from "@/server/context";
 import { createSoundCloudApiClient } from "@/server/crosscutting/soundCloudApiClient";
+import { syncEpisodesFromSoundCloud } from "@/server/episodes/syncEpisodesFromSoundCloud";
 import * as trpc from "@trpc/server";
+import { TRPCError } from "@trpc/server";
 import * as trpcNext from "@trpc/server/adapters/next";
 import { ObjectId } from "mongodb";
 import { z } from "zod";
@@ -27,6 +29,21 @@ const appRouter = trpc
         msg: "Successfully Fetched New Tracks",
         retrievedTracks: retrieved,
       };
+    },
+  })
+  .query("internal.episodesSyncNew", {
+    async resolve({ ctx }) {
+      let syncRes = await syncEpisodesFromSoundCloud(ctx.episodesRepo);
+
+      if (!syncRes.ok) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: syncRes.reason.message,
+          cause: syncRes.reason,
+        });
+      }
+
+      return syncRes.value;
     },
   })
   .query("collectives.all", {
@@ -63,17 +80,17 @@ const appRouter = trpc
   .query("episodes.list", {
     input: z.optional(
       z.object({
-        page_token: z.optional(z.string()),
+        // TODO
+        // page_token: z.optional(z.string()),
         filter: z.optional(
           z.object({
-            collective: z.optional(z.string()),
+            collective: z.optional(z.enum(["soulection", "sasha-marie-radio"])),
           })
         ),
       })
     ),
     async resolve({ input, ctx }) {
-      const page_token = input?.page_token;
-      const collective = input?.filter?.collective;
+      const collective = input?.filter?.collective ?? "soulection";
 
       return collective;
     },

@@ -11,8 +11,12 @@ POST http://localhost:3000/api/internal/sync-episodes HTTP/1.1
 
 GET http://localhost:3000/api/trpc/episodes.all HTTP/1.1
 
-### Sync Episodes
+### Sync Episodes Old
 GET http://localhost:3000/api/trpc/internal.episodesSync
+
+
+### Sync Episodes New
+GET http://localhost:3000/api/trpc/internal.episodesSyncNew
 
 ### Get Stream URLS
 GET http://localhost:3000/api/trpc/episode.getStreamUrl?input=%7B%22episodeId%22%3A%22624632f8ccc079804723e07b%22%7D HTTP/1.1

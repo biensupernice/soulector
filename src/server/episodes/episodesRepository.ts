@@ -1,5 +1,6 @@
+import { result, Result } from "@expo/results";
 import { Collection, Db } from "mongodb";
-import { IEpisode } from "../domain/Episode";
+import type { Episode } from "./Episode";
 
 export interface IDbEntity {
   _id: string;
@@ -23,7 +24,7 @@ export class EpisodesRepo {
     this.collection = this.db.collection<DbEpisode>("episodes");
   }
 
-  async getAllEpisodes(): Promise<IEpisode[]> {
+  async getAllEpisodes(): Promise<Episode[]> {
     const cursor = this.collection
       .find()
       .sort({ release_date: -1 })
@@ -61,7 +62,7 @@ export class EpisodesRepo {
     return episodes;
   }
 
-  async getLatestEpisode(): Promise<IEpisode | null> {
+  async getLatestEpisode(): Promise<Episode | null> {
     const cursor = this.collection
       .find({})
       .sort({ release_date: -1 })
@@ -77,7 +78,7 @@ export class EpisodesRepo {
     return null;
   }
 
-  async saveEpisode(episode: IEpisode): Promise<void> {
+  async saveEpisode(episode: Episode): Promise<void> {
     const dbEp = toDbEpisode(episode);
 
     await this.collection.updateOne(
@@ -87,10 +88,20 @@ export class EpisodesRepo {
     );
   }
 
-  async insertMany(episodes: IEpisode[]): Promise<boolean> {
+  async insertMany(episodes: Episode[]): Promise<Result<any>> {
     const dbEps = episodes.map(toDbEpisode);
     const insertRes = await this.collection.insertMany(dbEps);
-    return dbEps.length === insertRes.insertedCount;
+
+    if (dbEps.length !== insertRes.insertedCount) {
+      return result(
+        new Error(
+          `Couldn't insert all episodes. Inserted ${insertRes.insertedCount} of ${dbEps.length}`
+        )
+      );
+    }
+
+    console.log("insertRes", insertRes);
+    return result(insertRes.insertedIds);
   }
 }
 
@@ -98,7 +109,7 @@ export function createEpisodesRepo(db: Db) {
   return new EpisodesRepo(db);
 }
 
-function fromDbEpisode(dbEp: DbEpisode): IEpisode {
+function fromDbEpisode(dbEp: DbEpisode): Episode {
   return {
     id: dbEp._id,
     name: dbEp.name,
@@ -112,7 +123,7 @@ function fromDbEpisode(dbEp: DbEpisode): IEpisode {
   };
 }
 
-function toDbEpisode(ep: IEpisode): DbEpisode {
+function toDbEpisode(ep: Episode): DbEpisode {
   return {
     _id: ep.id,
     source: ep.source,
