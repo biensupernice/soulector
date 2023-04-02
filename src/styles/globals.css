@@ -95,6 +95,13 @@ body {
   animation-delay: -400ms;
 }
 
+@layer components {
+  .full-height-sheet .react-modal-sheet-container {
+    height: calc(100% - env(safe-area-inset-top))  !important;
+    border-radius: 0 !important;
+  }
+}
+
 @keyframes animateTrackVizHeight {
   0% {
     transform: scaleY(.4);
