@@ -36,10 +36,6 @@ export function AudioPlayer({
     }
   }
 
-  function onPressPlay() {
-    ref.current?.play();
-  }
-
   useEffect(() => {
     if (ref.current && mp3StreamUrl) {
       ref.current.src = mp3StreamUrl;
@@ -77,7 +73,7 @@ export function AudioPlayer({
   return (
     <>
       <audio
-        // key={mp3StreamUrl}
+        className="block h-px scale-y-0"
         ref={ref}
         onPlay={onPlay}
         onTimeUpdate={() => {
@@ -87,12 +83,11 @@ export function AudioPlayer({
           }
         }}
         onPause={onPause}
-        controls
+        // controls
         onCanPlayThrough={onCanPlayThrough}
         // src={mp3StreamUrl}
         // autoPlay
       ></audio>
-      <button onClick={onPressPlay}>Play</button>
     </>
   );
 }
