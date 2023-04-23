@@ -54,7 +54,7 @@ export function EpisodeModalSheet({
 
   return (
     <Sheet
-      className="full-height-sheet mx-auto w-full max-w-md"
+      className="full-height-sheet mx-auto w-full max-w-lg"
       isOpen={showTrackModal}
       onClose={onCloseModal}
     >

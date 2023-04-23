@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useDeferredValue, useEffect, useMemo, useState } from "react";
 import Player, { USE_NEW_PLAYER } from "./Player";
 import { ShuffleButton } from "../components/ShuffleButton";
 import EpisodeListSpinner from "./EpisodeList/EpisodeListSpinner";
@@ -31,6 +31,7 @@ import {
   useEpisodeModalSheetActions,
   useEpisodeModalSheetStore,
 } from "./EpisodeModalSheet";
+import { motion } from "framer-motion";
 
 type Props = {
   searchText: string;
@@ -68,25 +69,27 @@ function TracksScreen({ searchText }: Props) {
     return [];
   }, [episodes, favoritesCount]);
 
+  const deferredSearchText = useDeferredValue(searchText);
+  const defferedActiveSection = useDeferredValue(activeSection);
+
   const filteredTracks = useMemo(() => {
     if (episodes) {
-      if (activeSection === "favorites") {
-        return favorites;
-      }
-
-      if (!searchText) {
+      if (!deferredSearchText.trim()) {
         return episodes;
       }
 
       return episodes.filter((episode) =>
         episode.name
           .toLocaleLowerCase()
-          .includes(searchText.toLocaleLowerCase())
+          .includes(deferredSearchText.toLocaleLowerCase())
       );
     }
 
     return [];
-  }, [episodes, favorites, activeSection, searchText]);
+  }, [episodes, deferredSearchText]);
+
+  const activeTracks =
+    defferedActiveSection === "favorites" ? favorites : filteredTracks;
 
   function onFavoriteClick(episode: ITrack) {
     if (isFavoriteFast(episode._id)) {
@@ -113,21 +116,49 @@ function TracksScreen({ searchText }: Props) {
             <>
               <EpisodeListHeader
                 filterText={searchText}
-                numEpisodes={filteredTracks.length}
+                numEpisodes={activeTracks.length}
                 activeSection={activeSection}
                 onSectionClick={(section) => setActiveSection(section)}
               />
-              {filteredTracks.map((episode) => (
-                <Track
-                  key={episode._id}
-                  onClick={() => onTrackClick(episode._id)}
-                  track={episode}
-                  selected={episode._id === currentTrackId}
-                  favorite={isFavoriteFast(episode._id)}
-                  onOptionsClick={() => setContextMenuTrack(episode)}
-                  onFavoriteClick={() => onFavoriteClick(episode)}
-                />
-              ))}
+              {defferedActiveSection === "favorites" ? (
+                <motion.div
+                  key="favorites"
+                  initial={{ opacity: 0.5 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0.5 }}
+                >
+                  {favorites.map((episode) => (
+                    <Track
+                      key={episode._id}
+                      onClick={() => onTrackClick(episode._id)}
+                      track={episode}
+                      selected={episode._id === currentTrackId}
+                      favorite={isFavoriteFast(episode._id)}
+                      onOptionsClick={() => setContextMenuTrack(episode)}
+                      onFavoriteClick={() => onFavoriteClick(episode)}
+                    />
+                  ))}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="filtered"
+                  initial={{ opacity: 0.5 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0.5 }}
+                >
+                  {filteredTracks.map((episode) => (
+                    <Track
+                      key={episode._id}
+                      onClick={() => onTrackClick(episode._id)}
+                      track={episode}
+                      selected={episode._id === currentTrackId}
+                      favorite={isFavoriteFast(episode._id)}
+                      onOptionsClick={() => setContextMenuTrack(episode)}
+                      onFavoriteClick={() => onFavoriteClick(episode)}
+                    />
+                  ))}
+                </motion.div>
+              )}
             </>
           </EpisodeList>
         </div>

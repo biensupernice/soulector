@@ -18,7 +18,7 @@ export default function Home() {
   return (
     <>
       <div className="h-full w-full text-gray-900">
-        <div className="h-15 fixed top-0 z-10 w-full bg-white pt-safe-top">
+        <div className="h-15 fixed top-0 z-20 w-full bg-white pt-safe-top">
           <motion.div
             style={{ opacity }}
             className="pointer-events-none absolute inset-0 z-0 border-b border-b-gray-200"
