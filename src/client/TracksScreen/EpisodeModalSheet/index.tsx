@@ -43,15 +43,13 @@ export const useEpisodeModalSheetActions = () =>
 interface EpisodeModalSheetProps {
   showTrackModal: boolean;
   onCloseModal: () => void;
-  episodeId: string;
+  episodeId?: string;
 }
 export function EpisodeModalSheet({
   showTrackModal,
   onCloseModal,
   episodeId,
 }: EpisodeModalSheetProps) {
-  const episode = useGetEpisode(episodeId);
-
   return (
     <Sheet
       className="full-height-sheet mx-auto w-full max-w-lg"
@@ -61,44 +59,51 @@ export function EpisodeModalSheet({
       <Sheet.Container>
         <Sheet.Header />
         <Sheet.Content>
-          <div className="relative flex h-full w-full flex-col items-center justify-start space-y-3 overflow-auto pb-8">
-            <div className="w-full flex-col space-y-3 px-6">
-              <img
-                className="min-h-40 min-w-40 mx-auto w-full max-w-sm rounded-lg object-fill"
-                src={episode.picture_large}
-                alt={episode.name}
-              />
-              <div className="flex w-full flex-col text-center">
-                <div className="font-bold">{episode.name}</div>
-                <div className="text-sm text-gray-500">
-                  {formatDate(episode.created_time)}
-                </div>
-              </div>
-            </div>
-            <div className="w-full px-6">
-              <EpisodeSheetPlayer episodeId={episodeId} />
-            </div>
-            <div className="grid grid-cols-2 gap-x-2 px-6">
-              <a
-                href={episode.url}
-                className="flex w-full items-center justify-center space-x-1 rounded-md bg-zinc-200 bg-opacity-50 py-1 px-3 text-xs font-semibold text-indigo-600"
-              >
-                <span
-                  className={classNames("inline-block rounded-full p-1")}
-                  title="Open in SoundCloud"
-                >
-                  <IconSoundcloud className="h-4 w-4 fill-current" />
-                </span>
-                <span>Open in SoundCloud</span>
-              </a>
-              <EpisodeSheetFavoriteToggle episodeId={episodeId} />
-            </div>
-          </div>
+          {episodeId ? <EpisodeSheetContent episodeId={episodeId} /> : null}
         </Sheet.Content>
       </Sheet.Container>
 
       <Sheet.Backdrop />
     </Sheet>
+  );
+}
+
+function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
+  const episode = useGetEpisode(episodeId);
+  return (
+    <div className="relative flex h-full w-full flex-col items-center justify-start space-y-3 overflow-auto pb-8">
+      <div className="w-full flex-col space-y-3 px-6">
+        <img
+          className="min-h-40 min-w-40 mx-auto w-full max-w-sm rounded-lg object-fill"
+          src={episode.picture_large}
+          alt={episode.name}
+        />
+        <div className="flex w-full flex-col text-center">
+          <div className="font-bold">{episode.name}</div>
+          <div className="text-sm text-gray-500">
+            {formatDate(episode.created_time)}
+          </div>
+        </div>
+      </div>
+      <div className="w-full px-6">
+        <EpisodeSheetPlayer episodeId={episodeId} />
+      </div>
+      <div className="grid grid-cols-2 gap-x-2 px-6">
+        <a
+          href={episode.url}
+          className="flex w-full items-center justify-center space-x-1 rounded-md bg-zinc-200 bg-opacity-50 py-1 px-3 text-xs font-semibold text-indigo-600"
+        >
+          <span
+            className={classNames("inline-block rounded-full p-1")}
+            title="Open in SoundCloud"
+          >
+            <IconSoundcloud className="h-4 w-4 fill-current" />
+          </span>
+          <span>Open in SoundCloud</span>
+        </a>
+        <EpisodeSheetFavoriteToggle episodeId={episodeId} />
+      </div>
+    </div>
   );
 }
 

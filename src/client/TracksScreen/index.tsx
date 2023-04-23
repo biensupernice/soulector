@@ -176,7 +176,7 @@ function TracksScreen({ searchText }: Props) {
             />
           )}
         </div>
-        {currentTrackId && !isWideScreen && (
+        {!isWideScreen && (
           <EpisodeModalSheet
             episodeId={currentTrackId}
             showTrackModal={isEpisodeModalSheetOpen}
