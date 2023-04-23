@@ -97,8 +97,9 @@ body {
 
 @layer components {
   .full-height-sheet .react-modal-sheet-container {
-    height: calc(100% - env(safe-area-inset-top))  !important;
-    border-radius: 0 !important;
+    height: 100%  !important;
+    padding-top: env(safe-area-inset-top) !important;
+    /* border-radius: 0 !important; */
   }
 }
 
