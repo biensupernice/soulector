@@ -3,17 +3,17 @@ import cx from "classnames";
 import { motion } from "framer-motion";
 
 export type EpisodeListHeaderProps = {
-  numEpisodes: number;
   filterText?: string;
   activeSection?: "all" | "favorites";
   onSectionClick?: (section: "all" | "favorites") => void;
+  rightContent?: React.ReactNode;
 };
 
 export function EpisodeListHeader({
-  numEpisodes,
   filterText,
   activeSection = "all",
   onSectionClick = () => {},
+  rightContent,
 }: EpisodeListHeaderProps) {
   return (
     <div className="item-center mt-4 mb-2 flex px-4">
@@ -59,7 +59,7 @@ export function EpisodeListHeader({
           )}
         </div>
       </div>
-      <div className="font-semibold text-gray-600">{numEpisodes} Total</div>
+      <div>{rightContent}</div>
     </div>
   );
 }

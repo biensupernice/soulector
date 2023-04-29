@@ -115,8 +115,12 @@ function TracksScreen({ searchText }: Props) {
           <EpisodeList focusedEpisodeId={currentTrackId}>
             <>
               <EpisodeListHeader
+                rightContent={
+                  <div className="font-semibold text-gray-600">
+                    {activeTracks.length} Total
+                  </div>
+                }
                 filterText={searchText}
-                numEpisodes={activeTracks.length}
                 activeSection={activeSection}
                 onSectionClick={(section) => setActiveSection(section)}
               />
