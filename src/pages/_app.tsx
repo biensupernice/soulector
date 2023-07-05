@@ -1,31 +1,13 @@
 import { AppProps } from "next/dist/shared/lib/router/router";
-import ReactGA from "react-ga";
 import "../styles/globals.css";
 import { loggerLink } from "@trpc/client/links/loggerLink";
 import { httpBatchLink } from "@trpc/client/links/httpBatchLink";
-import { useRouter } from "next/router";
-import { useEffect } from "react";
 import Head from "next/head";
 import { withTRPC } from "@trpc/next";
 import { AppRouter } from "./api/trpc/[trpc]";
+import { GoogleAnalytics } from "nextjs-google-analytics";
 
 function MyApp({ Component, pageProps }: AppProps) {
-  const router = useRouter();
-
-  useEffect(() => {
-    ReactGA.initialize("UA-175428550-1");
-  }, []);
-
-  useEffect(() => {
-    const handleRouteChange = (url: string) => {
-      ReactGA.pageview(url);
-    };
-    router.events.on("routeChangeComplete", handleRouteChange);
-    return () => {
-      router.events.off("routeChangeComplete", handleRouteChange);
-    };
-  }, [router.events]);
-
   return (
     <>
       <Head>
@@ -185,6 +167,7 @@ function MyApp({ Component, pageProps }: AppProps) {
         <link rel="icon" href="/favicon.ico" />
         <meta name="theme-color" content="#FFFFFF" />
       </Head>
+      <GoogleAnalytics gaMeasurementId="G-L570W5HKLD" trackPageViews />
       <Component {...pageProps} />
     </>
   );
