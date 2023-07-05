@@ -1,6 +1,6 @@
 import { trpc } from "@/utils/trpc";
 import { sample } from "lodash-es";
-import ReactGA from "react-ga";
+import { event } from "nextjs-google-analytics";
 import { usePlayerActions, usePlayerStore } from "./PlayerStore";
 import { useEpisodes } from "./TracksStore";
 import { useCustomMutation } from "../infra/useCustomMutation";
@@ -24,9 +24,8 @@ export function useTracksScreenContainer() {
   async function onTrackClick(episodeId: string) {
     if (episodes) {
       const episode = episodes.find((e) => e._id === episodeId);
-      ReactGA.event({
+      event("Track Click", {
         category: "User",
-        action: "Track Click",
         label: episode && episode.name ? episode.name : episodeId,
       });
 
@@ -44,9 +43,8 @@ export function useTracksScreenContainer() {
   }
 
   function onRandomClick() {
-    ReactGA.event({
+    event("Play Random", {
       category: "Action",
-      action: "Play Random",
     });
 
     let episode = sample(episodes);
