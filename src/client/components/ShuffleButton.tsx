@@ -11,7 +11,7 @@ export function ShuffleButton({ onClick, className }: Props) {
     <button
       onClick={() => onClick()}
       className={cx(
-        "bg-indigo-600 hover:bg-indigo-700 text-white font-semibold",
+        "bg-accent hover:bg-accent/90 text-white font-semibold transition-all",
         "py-3 px-12",
         "rounded-full",
         "shadow-md",

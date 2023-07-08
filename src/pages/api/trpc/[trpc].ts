@@ -5,6 +5,11 @@ import * as trpcNext from "@trpc/server/adapters/next";
 import { ObjectId } from "mongodb";
 import { z } from "zod";
 import { getSoundCloudTracks } from "../internal/sync-episodes";
+import path from "path";
+import axios from "axios";
+import fs from "fs";
+import { asyncResult } from "@expo/results";
+import Vibrant from "node-vibrant";
 
 export type ITrack = {
   _id: string;
@@ -16,6 +21,26 @@ export type ITrack = {
   url: string;
   picture_large: string;
 };
+
+async function downloadImageFromUrl(
+  url: string,
+  name: string,
+  basePath = "/tmp/"
+) {
+  try {
+    const response = await axios.get(url, {
+      responseType: "arraybuffer",
+    });
+    const fileName = path.basename(name);
+    const filePath = path.join(basePath, fileName);
+
+    fs.writeFileSync(filePath, response.data);
+
+    return { fileName, filePath };
+  } catch (error) {
+    throw new Error(`Failed to download image from URL: ${name}`);
+  }
+}
 
 const appRouter = trpc
   .router<Context>()
@@ -63,6 +88,61 @@ const appRouter = trpc
       const streamUrls = await scClient.getStreamUrls(scTrackId);
 
       return streamUrls;
+    },
+  })
+  .query("episode.getAccentColor", {
+    input: z.object({
+      episodeId: z.string().optional(),
+    }),
+    async resolve({ input, ctx }) {
+      const { episodeId } = input;
+
+      const defaultAccentColor = {
+        rgb: [0, 0, 0],
+        bodyTexColor: "black",
+        titleTextColor: "black",
+      };
+
+      if (!episodeId) {
+        return defaultAccentColor;
+      }
+
+      const trackCollection = ctx.db.collection<ITrack>("tracksOld");
+      const episode = await trackCollection.findOne({
+        _id: new ObjectId(episodeId),
+      });
+
+      if (!episode) {
+        return defaultAccentColor;
+      }
+
+      const albumArtUrl = episode.picture_large;
+      const downloadAlbumArtResult = await asyncResult(
+        downloadImageFromUrl(albumArtUrl, episode.url, "/tmp")
+      );
+
+      if (!downloadAlbumArtResult.ok) {
+        console.error(downloadAlbumArtResult.reason);
+        throw downloadAlbumArtResult.reason;
+      }
+
+      const { filePath } = downloadAlbumArtResult.value;
+      const palette = await Vibrant.from(filePath).getPalette();
+
+      const swatch =
+        palette.DarkVibrant || palette.Vibrant || palette.DarkMuted;
+
+      if (!swatch) {
+        return defaultAccentColor;
+      }
+
+      const darkVibrantResult = {
+        rgb: swatch.rgb,
+        bodyTexColor: swatch.getBodyTextColor(),
+        titleTextColor: swatch.getTitleTextColor(),
+      };
+
+      return darkVibrantResult;
     },
   })
   .query("episode.getFakeStreamUrl", {

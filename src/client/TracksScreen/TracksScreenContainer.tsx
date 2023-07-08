@@ -5,6 +5,7 @@ import { usePlayerActions, usePlayerStore } from "./PlayerStore";
 import { useEpisodes } from "./TracksStore";
 import { useCustomMutation } from "../infra/useCustomMutation";
 import { useEpisodeModalSheetActions } from "./EpisodeModalSheet";
+import { useEffect } from "react";
 
 export function useTracksScreenContainer() {
   const currentTrackId = usePlayerStore((state) => state.currentTrackId);
@@ -69,6 +70,24 @@ export function useTracksScreenContainer() {
     onRandomClick,
     currentTrackStreamUrls,
   };
+}
+
+export function useEpisodeAlbumArtColors() {
+  const currentTrackId = usePlayerStore((state) => state.currentTrackId);
+
+  const { data } = trpc.useQuery([
+    "episode.getAccentColor",
+    { episodeId: currentTrackId },
+  ]);
+
+  useEffect(() => {
+    if (data) {
+      document.documentElement.style.setProperty(
+        "--accent",
+        data.rgb.join(" ")
+      );
+    }
+  }, [data]);
 }
 
 export function usePlayEpisodeMutation() {

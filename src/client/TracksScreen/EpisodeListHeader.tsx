@@ -22,7 +22,7 @@ export function EpisodeListHeader({
           <button
             className={cx(
               "relative inline-flex rounded-full bg-gray-100 px-3 py-1",
-              activeSection === "all" && "font-bold text-indigo-800",
+              activeSection === "all" && "font-bold text-accent",
               "text-gray-900"
             )}
             onClick={() => onSectionClick("all")}
@@ -30,7 +30,7 @@ export function EpisodeListHeader({
             {activeSection === "all" && (
               <motion.span
                 layoutId="backlight"
-                className="absolute inset-0 z-10 rounded bg-indigo-50 mix-blend-multiply"
+                className="absolute inset-0 z-10 rounded bg-accent/10 mix-blend-multiply"
                 style={{ borderRadius: 9999 }}
                 transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
               />
@@ -41,7 +41,7 @@ export function EpisodeListHeader({
             <button
               className={cx(
                 "relative inline-flex rounded-full bg-gray-100 px-3 py-1",
-                activeSection === "favorites" && "font-bold text-indigo-800",
+                activeSection === "favorites" && "font-bold text-accent",
                 "text-gray-900"
               )}
               onClick={() => onSectionClick("favorites")}
@@ -49,7 +49,7 @@ export function EpisodeListHeader({
               {activeSection === "favorites" && (
                 <motion.span
                   layoutId="backlight"
-                  className="absolute inset-0 z-10 rounded bg-indigo-50 mix-blend-multiply"
+                  className="absolute inset-0 z-10 rounded bg-accent/20 mix-blend-multiply"
                   style={{ borderRadius: 9999 }}
                   transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                 />
