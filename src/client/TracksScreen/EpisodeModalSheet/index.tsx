@@ -57,7 +57,7 @@ export function EpisodeModalSheet({
       onClose={onCloseModal}
     >
       <Sheet.Container>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-white/5"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-gray-700/30 to-white/5"></div>
         <Sheet.Header />
         <Sheet.Content>
           {episodeId ? <EpisodeSheetContent episodeId={episodeId} /> : null}
