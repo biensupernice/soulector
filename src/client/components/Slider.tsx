@@ -17,6 +17,7 @@ export interface SliderProps
   onMouseDown?(): void;
   onMouseUp?(): void;
   showThumb?: boolean;
+  variant?: "default" | "flat";
 }
 
 export function Slider(props: SliderProps) {
@@ -28,6 +29,8 @@ export function Slider(props: SliderProps) {
     state,
     trackRef
   );
+
+  const variant = props.variant ?? "default";
 
   const horizontal = state.orientation === "horizontal";
   const vertical = state.orientation === "vertical";
@@ -59,12 +62,19 @@ export function Slider(props: SliderProps) {
           state.isDisabled && "opacity-40"
         )}
       >
-        <div className="relative top-1/2 h-[5px] w-full -translate-y-1/2 rounded-full bg-gray-300">
+        <div
+          className={cx(
+            "relative top-1/2 h-[5px] w-full -translate-y-1/2 rounded-full",
+            variant === "default" && "bg-gray-300",
+            variant === "flat" && "bg-white/50"
+          )}
+        >
           <Thumb
             index={0}
             state={state}
             trackRef={trackRef}
             visible={props.showThumb}
+            variant={props.variant}
           />
         </div>
       </div>
@@ -77,6 +87,7 @@ interface ThumbProps {
   trackRef: RefObject<Element>;
   state: SliderState;
   visible?: boolean;
+  variant?: "default" | "flat";
 }
 function Thumb(props: ThumbProps) {
   let { state, trackRef, index, visible = false } = props;
@@ -89,6 +100,7 @@ function Thumb(props: ThumbProps) {
     },
     state
   );
+  const variant = props.variant ?? "default";
 
   let { focusProps, isFocusVisible } = useFocusRing();
   return (
@@ -97,7 +109,10 @@ function Thumb(props: ThumbProps) {
         {...thumbProps}
         className={cx(
           "absolute top-0 block h-full rounded-full bg-gray-500 group-hover:bg-accent",
-          (isFocusVisible || visible) && "!bg-accent"
+          variant === "default" && "group-hover:bg-accent",
+          variant === "flat" && "group-hover:bg-white",
+          (isFocusVisible || visible) && variant === "default" && "!bg-accent",
+          (isFocusVisible || visible) && variant === "flat" && "!bg-white"
         )}
         style={{
           width: `${state.getThumbPercent(0) * 100}%`,
@@ -106,8 +121,11 @@ function Thumb(props: ThumbProps) {
       <div
         {...thumbProps}
         className={cx(
-          "top-1/2 h-[12px] w-[12px] rounded-full border border-gray-500 bg-indigo-100 opacity-0 group-hover:opacity-100",
+          "top-1/2 h-[12px] w-[12px] rounded-full opacity-0 group-hover:opacity-100",
+          variant === "default" && "border border-gray-500 bg-indigo-100",
+          variant === "flat" && "bg-white",
           isDragging &&
+            variant === "default" &&
             "shadow-[0_0_0_1px_rgba(255,255,255)_inset,1px_1px_4px_1px_rgba(0,0,0,0.3)_inset]",
           isFocusVisible && "ring-3 opacity-100 ring ring-offset-1",
           visible && "opacity-100"
