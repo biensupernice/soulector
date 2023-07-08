@@ -26,6 +26,7 @@ export function MobilePlayerControls({
         <div className="flex flex-col items-center justify-center">
           <div className="relative mx-3 flex w-full max-w-xl flex-1 flex-col justify-center">
             <Slider
+              variant="flat"
               showThumb
               aria-label="progress"
               minValue={0}
@@ -40,13 +41,14 @@ export function MobilePlayerControls({
                 const newVal = Array.isArray(val) ? val[0] : val;
                 setSeeking(false);
                 onCuePositionChange(newVal);
-              }} />
+              }}
+            />
           </div>
           <div className="flex w-full justify-between">
-            <div className="text-right text-xs">
+            <div className="text-right text-xs text-white">
               {formatTime(Math.ceil(scrubberProgress))}
             </div>
-            <div className="text-left text-xs">
+            <div className="text-left text-xs text-white">
               {formatTime(Math.ceil(trackDuration))}
             </div>
           </div>
@@ -59,10 +61,10 @@ export function MobilePlayerControls({
           title="Rewind 30 seconds"
           onClick={() => onRewind(30)}
           className={cx(
-            "rounded-full bg-transparent p-2 text-gray-700",
+            "rounded-full bg-transparent p-2 text-white",
             "transition-all duration-200 ease-in-out",
-            "hover:text-gray-900",
-            "focus:bg-gray-200 focus:outline-none"
+            "hover:text-white/80",
+            "text-white/80 focus:outline-none"
           )}
         >
           <IconBackThirty className="h-12 w-12 fill-current" />
@@ -73,10 +75,10 @@ export function MobilePlayerControls({
           disabled={loading}
           onClick={() => (playing ? onPause() : onResume())}
           className={cx(
-            "rounded-full border bg-accent p-4 leading-none text-white shadow-md",
+            "rounded-full border bg-white p-4 leading-none text-accent shadow-md",
             "transition-all duration-200 ease-in-out",
-            "hover:bg-accent/90 hover:shadow-lg",
-            "focus:bg-accent/90 focus:outline-none",
+            "hover:white/90 hover:shadow-lg",
+            "focus:white/90 focus:outline-none",
             loading && "cursor-not-allowed disabled:cursor-not-allowed"
           )}
         >
@@ -114,10 +116,10 @@ export function MobilePlayerControls({
           title="Forward 30 seconds"
           onClick={() => onForward(30)}
           className={cx(
-            "rounded-full bg-transparent p-2 text-gray-700",
+            "rounded-full bg-transparent p-2 text-white",
             "transition-all duration-200 ease-in-out",
-            "hover:text-gray-900",
-            "focus:bg-gray-200 focus:outline-none"
+            "hover:text-white/80",
+            "focus:bg-white/80 focus:outline-none"
           )}
         >
           <IconSkipThirty className="h-12 w-12 fill-current" />
