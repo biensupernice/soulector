@@ -63,7 +63,7 @@ export function Track(props: TrackProps) {
               </div>
               <div
                 className={cx("flex items-start space-x-[4px]", "md:text-lg", {
-                  "text-indigo-600": selected,
+                  "text-accent": selected,
                 })}
               >
                 {selected && (
@@ -84,7 +84,7 @@ export function Track(props: TrackProps) {
               "hover:bg-gray-200",
               "focus:outline-none",
               "opacity-0 group-hover:opacity-100",
-              favorite && "text-indigo-600 opacity-100"
+              favorite && "text-accent opacity-100"
             )}
             title={favorite ? "Remove from favorites" : "Add to favorites"}
             onClick={(e) => {
@@ -125,19 +125,19 @@ function PlayingAnimation() {
     <div className="grid h-[16px] w-[11px] grid-cols-3 items-end gap-px pt-1 md:h-[17px] md:w-[14px] md:grid-cols-5 md:pt-0">
       {isPlaying ? (
         <>
-          <div className="current-track-animation h-5/6 origin-bottom bg-indigo-600"></div>
-          <div className="current-track-animation h-full origin-bottom bg-indigo-600 [animation-delay:-70ms] [animation-duration:420ms_!important]"></div>
-          <div className="current-track-animation-1 h-full origin-bottom bg-indigo-600 [animation-delay:-200ms] [animation-duration:580ms_!important]"></div>
-          <div className="current-track-animation hidden h-4/5 origin-bottom bg-indigo-600 [animation-delay:100ms] md:block"></div>
-          <div className="current-track-animation-1 hidden h-3/4 origin-bottom bg-indigo-600 [animation-delay:-70ms] [animation-duration:420ms_!important] md:block"></div>
+          <div className="current-track-animation h-5/6 origin-bottom bg-accent transition-colors"></div>
+          <div className="current-track-animation h-full origin-bottom bg-accent transition-colors [animation-delay:-70ms] [animation-duration:420ms_!important]"></div>
+          <div className="current-track-animation-1 h-full origin-bottom bg-accent transition-colors [animation-delay:-200ms] [animation-duration:580ms_!important]"></div>
+          <div className="current-track-animation hidden h-4/5 origin-bottom bg-accent transition-colors [animation-delay:100ms] md:block"></div>
+          <div className="current-track-animation-1 hidden h-3/4 origin-bottom bg-accent transition-colors [animation-delay:-70ms] [animation-duration:420ms_!important] md:block"></div>
         </>
       ) : (
         <>
-          <div className="h-1/6 origin-bottom bg-indigo-600"></div>
-          <div className="h-1/6 origin-bottom bg-indigo-600 [animation-delay:-70ms] [animation-duration:420ms_!important]"></div>
-          <div className="h-1/6 origin-bottom bg-indigo-600 [animation-delay:-200ms] [animation-duration:580ms_!important]"></div>
-          <div className="hidden h-1/6 origin-bottom bg-indigo-600 [animation-delay:100ms] md:block"></div>
-          <div className="hidden h-1/6 origin-bottom bg-indigo-600 [animation-delay:-70ms] [animation-duration:420ms_!important] md:block"></div>
+          <div className="h-1/6 origin-bottom bg-accent transition-colors"></div>
+          <div className="h-1/6 origin-bottom bg-accent transition-colors [animation-delay:-70ms] [animation-duration:420ms_!important]"></div>
+          <div className="h-1/6 origin-bottom bg-accent transition-colors [animation-delay:-200ms] [animation-duration:580ms_!important]"></div>
+          <div className="hidden h-1/6 origin-bottom bg-accent transition-colors [animation-delay:100ms] md:block"></div>
+          <div className="hidden h-1/6 origin-bottom bg-accent transition-colors [animation-delay:-70ms] [animation-duration:420ms_!important] md:block"></div>
         </>
       )}
     </div>
@@ -149,8 +149,8 @@ function AlbumArtOverlay() {
 
   return (
     <div className="absolute inset-0 flex items-center justify-center">
-      <div className="absolute inset-0 bg-indigo-600 opacity-75" />
-      <div className="relative rounded-full bg-white p-1 leading-none text-indigo-600 hover:shadow-sm">
+      <div className="absolute inset-0 bg-accent opacity-75" />
+      <div className="relative rounded-full bg-white p-1 leading-none text-accent hover:shadow-sm">
         {isLoading ? (
           <svg
             viewBox="0 0 20 20"

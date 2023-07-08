@@ -96,8 +96,8 @@ function Thumb(props: ThumbProps) {
       <div
         {...thumbProps}
         className={cx(
-          "absolute top-0 block h-full rounded-full bg-gray-500 group-hover:bg-indigo-600",
-          (isFocusVisible || visible) && "!bg-indigo-600"
+          "absolute top-0 block h-full rounded-full bg-gray-500 group-hover:bg-accent",
+          (isFocusVisible || visible) && "!bg-accent"
         )}
         style={{
           width: `${state.getThumbPercent(0) * 100}%`,

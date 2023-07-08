@@ -9,6 +9,9 @@ module.exports = {
       ],
     },
     extend: {
+      colors: {
+        accent: 'rgb(var(--accent) / <alpha-value>)',
+      },
       spacing: {
         "safe-top": "env(safe-area-inset-top)",
         "safe-bottom": "env(safe-area-inset-bottom)",

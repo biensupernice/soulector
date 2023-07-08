@@ -4,6 +4,7 @@ import { IconSearch } from "../../components/Icons";
 import NavbarSearch from "./NavbarSearch";
 import cx from "classnames";
 import create from "zustand";
+import { useEpisodeAlbumArtColors } from "../TracksScreenContainer";
 
 export type NavbarStore = {
   searchOpen: boolean;
@@ -46,15 +47,17 @@ export default function Navbar({
     }
   }, [searchOpen, onSearchClose]);
 
+  useEpisodeAlbumArtColors();
+
   return (
-    <div className="px-4 py-3 flex items-center w-full">
+    <div className="flex w-full items-center px-4 py-3">
       <React.Fragment>
         <div
           className={cx("flex", "items-center", searchOpen && "hidden sm:flex")}
         >
           <Logo />
         </div>
-        <div className="flex items-center ml:auto sm:ml-6 w-full justify-end">
+        <div className="ml:auto flex w-full items-center justify-end sm:ml-6">
           {searchOpen ? (
             <NavbarSearch
               searchText={searchText}
@@ -76,10 +79,10 @@ type SearchButtonProps = {
 function SearchButton({ onClick }: SearchButtonProps) {
   return (
     <button
-      className="p-2 hover:bg-gray-200 rounded-full focus:outline-none"
+      className="rounded-full p-2 hover:bg-gray-200 focus:outline-none"
       onClick={() => onClick()}
     >
-      <IconSearch className="fill-current w-6 h-6"></IconSearch>
+      <IconSearch className="h-6 w-6 fill-current"></IconSearch>
     </button>
   );
 }

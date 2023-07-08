@@ -12,7 +12,8 @@ import {
 } from "../PlayerStore";
 import Head from "next/head";
 import { useGetEpisode } from "../TracksStore";
-import { MiniPlayerControls, PlayerControls } from "./PlayerControls";
+import { PlayerControls } from "./PlayerControls";
+import { MiniPlayerControls } from "./MiniPlayerControls";
 import { SoundCloudPlayer } from "@/client/components/SoundCloudPlayer";
 import { useMedia } from "@/client/infra/useMedia";
 import { useEpisodeModalSheetActions } from "../EpisodeModalSheet";

@@ -6,7 +6,7 @@ import {
 import { formatDate } from "@/client/helpers";
 import classNames from "classnames";
 import { useFavorites, useIsFavoriteFast } from "../FavoritesStore";
-import { MobilePlayerControls } from "../Player/PlayerControls";
+import { MobilePlayerControls } from "../Player/MobilePlayerControls";
 import {
   usePlayerPlaying,
   usePlayerVolume,
@@ -91,7 +91,7 @@ function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
       <div className="grid grid-cols-2 gap-x-2 px-6">
         <a
           href={episode.url}
-          className="flex w-full items-center justify-center space-x-1 rounded-md bg-zinc-200 bg-opacity-50 py-1 px-3 text-xs font-semibold text-indigo-600"
+          className="flex w-full items-center justify-center space-x-1 rounded-md bg-zinc-200 bg-opacity-50 py-1 px-3 text-xs font-semibold text-accent"
         >
           <span
             className={classNames("inline-block rounded-full p-1")}
@@ -127,16 +127,16 @@ export function EpisodeSheetFavoriteToggle({
           addFavorite(episodeId);
         }
       }}
-      className="flex w-full items-center justify-center space-x-2 rounded-md bg-zinc-200 bg-opacity-50 py-1 px-3 text-xs font-semibold text-indigo-600"
+      className="flex w-full items-center justify-center space-x-2 rounded-md bg-zinc-200 bg-opacity-50 py-1 px-3 text-xs font-semibold text-accent"
     >
       {isFavorited ? (
         <>
-          <HeartFilled className="h-3 w-3 fill-current text-indigo-500" />
+          <HeartFilled className="h-3 w-3 fill-current text-accent" />
           <div>Remove Favorite</div>
         </>
       ) : (
         <>
-          <HeartOutline className="h-3 w-3 stroke-current text-indigo-500" />
+          <HeartOutline className="h-3 w-3 stroke-current text-accent" />
           <div>Add Favorite</div>
         </>
       )}

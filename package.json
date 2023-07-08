@@ -27,6 +27,7 @@
     "mongodb": "^4.2.2",
     "next": "^13.4.8",
     "nextjs-google-analytics": "^2.3.3",
+    "node-vibrant": "^3.2.1-alpha.1",
     "react": "^18.2.0",
     "react-aria": "^3.19.0",
     "react-dom": "^18.2.0",
