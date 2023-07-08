@@ -3,7 +3,10 @@ import Player, { USE_NEW_PLAYER } from "./Player";
 import { ShuffleButton } from "../components/ShuffleButton";
 import EpisodeListSpinner from "./EpisodeList/EpisodeListSpinner";
 import { EpisodeList } from "./EpisodeList";
-import { useTracksScreenContainer } from "./TracksScreenContainer";
+import {
+  useTracksScreenContainer,
+} from "./TracksScreenContainer";
+import { useEpisodeAlbumArtColors } from "./useEpisodeAlbumArtColors";
 import { EpisodeListError } from "./EpisodeList/EpisodeListError";
 import {
   useFavorites,
@@ -61,6 +64,9 @@ function TracksScreen({ searchText }: Props) {
   const favoritesCount = useFavoritesCount();
   const isFavoriteFast = useIsFavoriteFast();
 
+  useEpisodeAlbumArtColors();
+
+
   const favorites = useMemo(() => {
     if (episodes) {
       return episodes.filter((episode) => isFavoriteFast(episode._id));
@@ -102,6 +108,7 @@ function TracksScreen({ searchText }: Props) {
   const isWideScreen = useMedia("(min-width: 768px)");
 
   const shouldShowSuffleButton = !searchText && episodes;
+
 
   if (episodes) {
     return (

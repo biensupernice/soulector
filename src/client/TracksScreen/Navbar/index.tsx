@@ -4,7 +4,6 @@ import { IconSearch } from "../../components/Icons";
 import NavbarSearch from "./NavbarSearch";
 import cx from "classnames";
 import create from "zustand";
-import { useEpisodeAlbumArtColors } from "../TracksScreenContainer";
 
 export type NavbarStore = {
   searchOpen: boolean;
@@ -46,8 +45,6 @@ export default function Navbar({
       onSearchClose();
     }
   }, [searchOpen, onSearchClose]);
-
-  useEpisodeAlbumArtColors();
 
   return (
     <div className="flex w-full items-center px-4 py-3">

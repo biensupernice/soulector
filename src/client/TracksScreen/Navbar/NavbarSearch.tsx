@@ -29,10 +29,10 @@ export default function NavbarSearch({
 
   return (
     <React.Fragment>
-      <div className="mx-full md:max-w-xl w-full ml-auto">
-        <div className="flex flex-grow items-center relative">
-          <div className="text-gray-500 absolute pl-4">
-            <IconSearch className="fill-current w-6 h-6"></IconSearch>
+      <div className="mx-full ml-auto w-full md:max-w-xl">
+        <div className="relative flex flex-grow items-center">
+          <div className="absolute pl-4 text-gray-500">
+            <IconSearch className="h-6 w-6 fill-current"></IconSearch>
           </div>
           <input
             ref={searchRef}
@@ -40,15 +40,15 @@ export default function NavbarSearch({
             value={searchText}
             onChange={(e) => onSearchChange(e.target.value)}
             type="text"
-            className="w-full py-2 pl-12 rounded-lg bg-gray-100 text-gray-900 outline-none active:bg-gray-200 active:border-gray-400"
+            className="w-full rounded-lg bg-gray-100 py-2 pl-12 text-gray-900 outline-none active:border-gray-400 active:bg-gray-200"
             placeholder="Search for episodes..."
           ></input>
-          <div className="flex items-center ml-auto absolute right-0 mr-3">
+          <div className="absolute right-0 ml-auto mr-3 flex items-center">
             <button
-              className="p-2 text-gray-700 hover:bg-gray-300 hover:text-gray-600 hover:shadow-sm rounded-lg focus:outline-none"
+              className="rounded-lg p-2 text-gray-700 hover:bg-gray-300 hover:text-gray-600 hover:shadow-sm focus:outline-none"
               onClick={() => onCloseClick()}
             >
-              <IconTimes className="fill-current w-3 h-3"></IconTimes>
+              <IconTimes className="h-3 w-3 fill-current"></IconTimes>
             </button>
           </div>
         </div>

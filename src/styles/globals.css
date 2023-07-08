@@ -107,8 +107,7 @@ body {
     height: 100%  !important;
     padding-top: env(safe-area-inset-top) !important;
 
-    @apply !bg-accent
-    /* border-radius: 0 !important; */
+    @apply !bg-accent transition-colors
   }
 }
 
