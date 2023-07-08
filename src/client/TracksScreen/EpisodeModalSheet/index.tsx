@@ -72,27 +72,29 @@ export function EpisodeModalSheet({
 function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
   const episode = useGetEpisode(episodeId);
   return (
-    <div className="relative flex h-full w-full flex-col items-center justify-start space-y-3 overflow-auto pb-8">
-      <div className="w-full flex-col space-y-3 px-6">
-        <img
-          className="min-h-40 min-w-40 mx-auto w-full max-w-sm rounded-lg object-fill"
-          src={episode.picture_large}
-          alt={episode.name}
-        />
-        <div className="flex w-full flex-col text-center">
-          <div className="font-bold text-white">{episode.name}</div>
-          <div className="text-sm text-white/80">
-            {formatDate(episode.created_time)}
+    <div className="relative flex h-full w-full flex-col items-center justify-between space-y-3 overflow-auto pb-8">
+      <div className="flex-col space-y-8">
+        <div className="w-full flex-col space-y-3 px-6">
+          <img
+            className="min-h-40 min-w-40 mx-auto w-full max-w-sm rounded-lg object-fill"
+            src={episode.picture_large}
+            alt={episode.name}
+          />
+          <div className="flex w-full flex-col text-center">
+            <div className="font-bold text-white">{episode.name}</div>
+            <div className="text-sm text-white/80">
+              {formatDate(episode.created_time)}
+            </div>
           </div>
         </div>
+        <div className="w-full px-6">
+          <EpisodeSheetPlayer episodeId={episodeId} />
+        </div>
       </div>
-      <div className="w-full px-6">
-        <EpisodeSheetPlayer episodeId={episodeId} />
-      </div>
-      <div className="grid grid-cols-2 gap-x-2 w-full px-6">
+      <div className="grid w-full grid-cols-2 gap-x-2 px-6">
         <a
           href={episode.url}
-          className="inline-flex w-full flex-1 items-center justify-center space-x-1 rounded-md border-2 border-white bg-transparent py-1 px-2 text-xs text-center font-semibold text-white"
+          className="inline-flex w-full flex-1 items-center justify-center space-x-1 rounded-md border-2 border-white bg-transparent py-1 px-2 text-center text-xs font-semibold text-white"
         >
           <span
             className={classNames("inline-block rounded-full p-1")}
