@@ -175,7 +175,7 @@ function TracksScreen({ searchText }: Props) {
         </div>
         <div className="fixed right-0 bottom-0 z-20 w-full bg-white pb-safe-bottom">
           {shouldShowSuffleButton && (
-            <div className="absolute bottom-full mb-2 flex w-full justify-end pr-4 md:mb-4">
+            <div className="absolute bottom-full mb-2 flex right-0 justify-end pr-3 md:mb-4">
               <ShuffleButton onClick={onRandomClick} />
             </div>
           )}
