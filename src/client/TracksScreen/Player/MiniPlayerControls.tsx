@@ -77,7 +77,7 @@ export function MiniPlayerControls({
             disabled={loading}
             onClick={() => (playing ? onPause() : onResume())}
             className={cx(
-              "rounded-fullp-1 leading-none text-accent rounded-full",
+              "rounded-fullp-1 rounded-full leading-none text-accent",
               "transition-all duration-200 ease-in-out",
               "hover:text-accent",
               "focus:bg-gray-200 focus:outline-none",

@@ -4,16 +4,29 @@ import {
   IconPause,
   IconPlay,
   IconBackThirty,
-  IconSkipThirty
+  IconSkipThirty,
 } from "../../components/Icons";
 import cx from "classnames";
 import { Slider } from "@/client/components/Slider";
 import { motion } from "framer-motion";
 import { PlayerControlsProps } from "./PlayerControls";
 
-
 export function MobilePlayerControls({
-  track, trackDuration, volume, onVolumeChange, muted, onMute, playing, onPause, onResume, onUnmute, progress, onCuePositionChange, onForward, onRewind, loading,
+  track,
+  trackDuration,
+  volume,
+  onVolumeChange,
+  muted,
+  onMute,
+  playing,
+  onPause,
+  onResume,
+  onUnmute,
+  progress,
+  onCuePositionChange,
+  onForward,
+  onRewind,
+  loading,
 }: PlayerControlsProps) {
   const [seeking, setSeeking] = useState(false);
   const [seekPosition, setSeekPosition] = useState(progress);
@@ -64,7 +77,7 @@ export function MobilePlayerControls({
             "rounded-full bg-transparent p-2 text-white",
             "transition-all duration-200 ease-in-out",
             "hover:text-white/80",
-            "text-white/80 focus:outline-none"
+            "focus:bg-white/80 focus:outline-none"
           )}
         >
           <IconBackThirty className="h-12 w-12 fill-current" />

@@ -49,7 +49,7 @@ export function EpisodeListHeader({
               {activeSection === "favorites" && (
                 <motion.span
                   layoutId="backlight"
-                  className="absolute inset-0 z-10 rounded bg-accent/20 mix-blend-multiply"
+                  className="absolute inset-0 z-10 rounded bg-accent/10 mix-blend-multiply"
                   style={{ borderRadius: 9999 }}
                   transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                 />

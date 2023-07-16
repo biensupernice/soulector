@@ -1,11 +1,9 @@
-import React, { useDeferredValue, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import Player, { USE_NEW_PLAYER } from "./Player";
 import { ShuffleButton } from "../components/ShuffleButton";
 import EpisodeListSpinner from "./EpisodeList/EpisodeListSpinner";
 import { EpisodeList } from "./EpisodeList";
-import {
-  useTracksScreenContainer,
-} from "./TracksScreenContainer";
+import { useTracksScreenContainer } from "./TracksScreenContainer";
 import { useEpisodeAlbumArtColors } from "./useEpisodeAlbumArtColors";
 import { EpisodeListError } from "./EpisodeList/EpisodeListError";
 import {
@@ -34,7 +32,6 @@ import {
   useEpisodeModalSheetActions,
   useEpisodeModalSheetStore,
 } from "./EpisodeModalSheet";
-import { motion } from "framer-motion";
 
 type Props = {
   searchText: string;
@@ -55,8 +52,6 @@ function TracksScreen({ searchText }: Props) {
     onTrackClick,
     onRandomClick,
     currentTrackStreamUrls,
-    playing,
-    volume,
   } = useTracksScreenContainer();
 
   const { addFavorite, removeFavorite } = useFavorites();
@@ -66,7 +61,6 @@ function TracksScreen({ searchText }: Props) {
 
   useEpisodeAlbumArtColors();
 
-
   const favorites = useMemo(() => {
     if (episodes) {
       return episodes.filter((episode) => isFavoriteFast(episode._id));
@@ -75,27 +69,22 @@ function TracksScreen({ searchText }: Props) {
     return [];
   }, [episodes, favoritesCount]);
 
-  const deferredSearchText = useDeferredValue(searchText);
-  const defferedActiveSection = useDeferredValue(activeSection);
-
   const filteredTracks = useMemo(() => {
     if (episodes) {
-      if (!deferredSearchText.trim()) {
+      if (!searchText.trim()) {
         return episodes;
       }
 
+      const lowerCaseSearch = searchText.toLowerCase();
       return episodes.filter((episode) =>
-        episode.name
-          .toLocaleLowerCase()
-          .includes(deferredSearchText.toLocaleLowerCase())
+        episode.name.toLowerCase().includes(lowerCaseSearch)
       );
     }
 
     return [];
-  }, [episodes, deferredSearchText]);
+  }, [episodes, searchText]);
 
-  const activeTracks =
-    defferedActiveSection === "favorites" ? favorites : filteredTracks;
+  const activeTracks = activeSection === "all" ? filteredTracks : favorites;
 
   function onFavoriteClick(episode: ITrack) {
     if (isFavoriteFast(episode._id)) {
@@ -108,7 +97,6 @@ function TracksScreen({ searchText }: Props) {
   const isWideScreen = useMedia("(min-width: 768px)");
 
   const shouldShowSuffleButton = !searchText && episodes;
-
 
   if (episodes) {
     return (
@@ -131,13 +119,8 @@ function TracksScreen({ searchText }: Props) {
                 activeSection={activeSection}
                 onSectionClick={(section) => setActiveSection(section)}
               />
-              {defferedActiveSection === "favorites" ? (
-                <motion.div
-                  key="favorites"
-                  initial={{ opacity: 0.5 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0.5 }}
-                >
+              {activeSection === "favorites" ? (
+                <div>
                   {favorites.map((episode) => (
                     <Track
                       key={episode._id}
@@ -149,14 +132,9 @@ function TracksScreen({ searchText }: Props) {
                       onFavoriteClick={() => onFavoriteClick(episode)}
                     />
                   ))}
-                </motion.div>
+                </div>
               ) : (
-                <motion.div
-                  key="filtered"
-                  initial={{ opacity: 0.5 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0.5 }}
-                >
+                <div>
                   {filteredTracks.map((episode) => (
                     <Track
                       key={episode._id}
@@ -168,14 +146,14 @@ function TracksScreen({ searchText }: Props) {
                       onFavoriteClick={() => onFavoriteClick(episode)}
                     />
                   ))}
-                </motion.div>
+                </div>
               )}
             </>
           </EpisodeList>
         </div>
         <div className="fixed right-0 bottom-0 z-20 w-full bg-white pb-safe-bottom">
           {shouldShowSuffleButton && (
-            <div className="absolute bottom-full mb-2 flex right-0 justify-end pr-3 md:mb-4">
+            <div className="absolute bottom-full right-0 mb-2 flex justify-end pr-3 md:mb-4">
               <ShuffleButton onClick={onRandomClick} />
             </div>
           )}
