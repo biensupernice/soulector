@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState, useTransition } from "react";
 import Player, { USE_NEW_PLAYER } from "./Player";
 import { ShuffleButton } from "../components/ShuffleButton";
 import EpisodeListSpinner from "./EpisodeList/EpisodeListSpinner";
@@ -38,9 +38,13 @@ type Props = {
 };
 
 function TracksScreen({ searchText }: Props) {
-  const [activeSection, setActiveSection] = React.useState<"all" | "favorites">(
+  const [selectedSection, setSelectedSection] = useState<"all" | "favorites">(
     "all"
   );
+  const [activeSection, setActiveSection] = useState<"all" | "favorites">(
+    "all"
+  );
+  const [isPending, startTransition] = useTransition();
 
   const isEpisodeModalSheetOpen = useEpisodeModalSheetStore((s) => s.isOpen);
   const episodeModalSheetActions = useEpisodeModalSheetActions();
@@ -98,6 +102,13 @@ function TracksScreen({ searchText }: Props) {
 
   const shouldShowSuffleButton = !searchText && episodes;
 
+  function onSectionClick(section: "all" | "favorites") {
+    setSelectedSection(section);
+    startTransition(() => {
+      setActiveSection(section);
+    });
+  }
+
   if (episodes) {
     return (
       <div className="flex-2 md-safe-bottom relative mt-14 h-full flex-col overflow-hidden pt-safe-top">
@@ -116,8 +127,8 @@ function TracksScreen({ searchText }: Props) {
                   </div>
                 }
                 filterText={searchText}
-                activeSection={activeSection}
-                onSectionClick={(section) => setActiveSection(section)}
+                activeSection={selectedSection}
+                onSectionClick={onSectionClick}
               />
               {activeSection === "favorites" ? (
                 <div>

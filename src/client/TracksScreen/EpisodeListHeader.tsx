@@ -19,7 +19,7 @@ export function EpisodeListHeader({
     <div className="item-center mt-4 mb-2 flex px-4">
       <div className="mr-auto font-semibold">
         <div className="-mx-2 space-x-1 md:space-x-4">
-          <button
+          <motion.button
             className={cx(
               "relative inline-flex rounded-full bg-gray-100 px-3 py-1",
               activeSection === "all" && "font-bold text-accent",
@@ -36,9 +36,9 @@ export function EpisodeListHeader({
               />
             )}
             {filterText ? `Episodes matching "${filterText}"` : "All Episodes"}
-          </button>
+          </motion.button>
           {filterText ? null : (
-            <button
+            <motion.button
               className={cx(
                 "relative inline-flex rounded-full bg-gray-100 px-3 py-1",
                 activeSection === "favorites" && "font-bold text-accent",
@@ -55,7 +55,7 @@ export function EpisodeListHeader({
                 />
               )}
               Favorites
-            </button>
+            </motion.button>
           )}
         </div>
       </div>
