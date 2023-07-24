@@ -13,8 +13,8 @@ module.exports = {
         accent: 'rgb(var(--accent) / <alpha-value>)',
       },
       spacing: {
-        "safe-top": "env(safe-area-inset-top)",
-        "safe-bottom": "env(safe-area-inset-bottom)",
+        "safe-top": "env(safe-area-inset-top, 20px)",
+        "safe-bottom": "env(safe-area-inset-bottom, 20px)",
         "safe-left": "env(safe-area-inset-left)",
         "safe-right": "env(safe-area-inset-right)",
       },
