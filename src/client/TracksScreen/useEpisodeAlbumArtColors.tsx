@@ -5,6 +5,10 @@ import { useEffect } from "react";
 export function useEpisodeAlbumArtColors() {
   const currentTrackId = usePlayerStore((state) => state.currentTrackId);
 
+  if (!currentTrackId) {
+    return;
+  }
+
   const { data } = trpc.useQuery(
     ["episode.getAccentColor", { episodeId: currentTrackId }],
     {
