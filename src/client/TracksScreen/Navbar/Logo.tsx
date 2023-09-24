@@ -3,9 +3,9 @@ import { Soulector } from "../../components/Icons";
 
 export default function Logo() {
   return (
-    <React.Fragment>
-      <Soulector className="w-8 h-8 mr-2" />
+    <div className="flex space-x-2 items-center">
+      <Soulector className="h-8 w-8" />
       <div className="text-2xl font-bold">Soulection</div>
-    </React.Fragment>
+    </div>
   );
 }

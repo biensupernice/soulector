@@ -1,6 +1,6 @@
 import Logo from "./Logo";
 import React, { useEffect } from "react";
-import { IconSearch } from "../../components/Icons";
+import { IconChevron, IconSearch } from "../../components/Icons";
 import NavbarSearch from "./NavbarSearch";
 import cx from "classnames";
 import create from "zustand";
@@ -47,14 +47,15 @@ export default function Navbar({
   }, [searchOpen, onSearchClose]);
 
   return (
-    <div className="flex w-full items-center px-4 py-3">
+    <div className="flex w-full items-center py-3">
       <React.Fragment>
-        <div
-          className={cx("flex", "items-center", searchOpen && "hidden sm:flex")}
-        >
-          <Logo />
+        <div className={cx("flex w-full px-2", searchOpen && "hidden sm:flex")}>
+          <button className="flex w-full sm:w-auto items-center justify-between space-x-4 rounded-full border border-white px-4 py-2 transition-colors hover:border hover:border-slate-200 hover:bg-gray-100 hover:shadow-sm active:shadow-sm">
+            <Logo />
+            <IconChevron className="inline-block h-5 w-5 stroke-current" />
+          </button>
         </div>
-        <div className="ml:auto flex w-full items-center justify-end sm:ml-6">
+        <div className="ml:auto hidden w-full  items-center justify-end px-4 sm:ml-6 sm:flex">
           {searchOpen ? (
             <NavbarSearch
               searchText={searchText}
