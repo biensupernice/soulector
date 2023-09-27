@@ -49,8 +49,8 @@ export default function Navbar({
   return (
     <div className="flex w-full items-center py-3">
       <React.Fragment>
-        <div className={cx("flex w-full px-2", searchOpen && "hidden sm:flex")}>
-          <button className="flex w-full sm:w-auto items-center justify-between space-x-4 rounded-full border border-white px-4 py-2 transition-colors hover:border hover:border-slate-200 hover:bg-gray-100 hover:shadow-sm active:shadow-sm">
+        <div className={cx("flex w-full sm:w-auto px-2")}>
+          <button className="flex w-full items-center justify-between space-x-4 rounded-full border border-white px-4 py-2 transition-colors hover:border hover:border-slate-200 hover:bg-gray-100 hover:shadow-sm active:shadow-sm sm:w-auto">
             <Logo />
             <IconChevron className="inline-block h-5 w-5 stroke-current" />
           </button>
