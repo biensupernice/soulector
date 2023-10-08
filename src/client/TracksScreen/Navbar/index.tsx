@@ -1,9 +1,20 @@
-import Logo from "./Logo";
+import { SashaMarieRadioLogo, SoulectionLogo } from "./Logos";
 import React, { useEffect } from "react";
-import { IconChevron, IconSearch } from "../../components/Icons";
+import { IconChevron, IconSearch, Soulector } from "../../components/Icons";
 import NavbarSearch from "./NavbarSearch";
 import cx from "classnames";
 import create from "zustand";
+import {
+  CollectiveSelect,
+  CollectiveSelectContent,
+  CollectiveSelectItem,
+  CollectiveSelectTrigger,
+  CollectiveSelectValue,
+} from "./CollectiveSelect";
+import { Arrow } from "@radix-ui/react-select";
+import EpisodeListSpinner from "../EpisodeList/EpisodeListSpinner";
+import { CardStackIcon } from "@radix-ui/react-icons";
+import { SelectSeparator } from "@/components/ui/select";
 
 export type NavbarStore = {
   searchOpen: boolean;
@@ -49,11 +60,30 @@ export default function Navbar({
   return (
     <div className="flex w-full items-center py-3">
       <React.Fragment>
-        <div className={cx("flex w-full sm:w-auto px-2")}>
-          <button className="flex w-full items-center justify-between space-x-4 rounded-full border border-white px-4 py-2 transition-colors hover:border hover:border-slate-200 hover:bg-gray-100 hover:shadow-sm active:shadow-sm sm:w-auto">
-            <Logo />
-            <IconChevron className="inline-block h-5 w-5 stroke-current" />
-          </button>
+        <div className="flex w-full flex-shrink-0 px-2 sm:w-auto">
+          <CollectiveSelect  defaultValue="soulection">
+            <CollectiveSelectTrigger className="w-full">
+              <CollectiveSelectValue />
+            </CollectiveSelectTrigger>
+            <CollectiveSelectContent sideOffset={-52} side="bottom">
+              <CollectiveSelectItem value="all">
+                <div className="flex items-center space-x-3">
+                  <CardStackIcon className="h-8 w-8" />
+                  {/* <IconChevron className="h-8 w-8 rotate-90 stroke-current" /> */}
+                  <div className="w-full text-2xl font-bold">
+                    All Collectives
+                  </div>
+                </div>
+              </CollectiveSelectItem>
+              <SelectSeparator className="bg-gray-200" />
+              <CollectiveSelectItem value="soulection">
+                <SoulectionLogo />
+              </CollectiveSelectItem>
+              <CollectiveSelectItem value="sasha-marie-radio">
+                <SashaMarieRadioLogo />
+              </CollectiveSelectItem>
+            </CollectiveSelectContent>
+          </CollectiveSelect>
         </div>
         <div className="ml:auto hidden w-full  items-center justify-end px-4 sm:ml-6 sm:flex">
           {searchOpen ? (

@@ -99,6 +99,7 @@ const appRouter = trpc
 
       const defaultAccentColor = {
         rgb: [0, 0, 0],
+        hsl: [0, 0, 0], // TODO Fix default from rgb 24 24 27
         bodyTexColor: "black",
         titleTextColor: "black",
       };
@@ -138,6 +139,7 @@ const appRouter = trpc
 
       const darkVibrantResult = {
         rgb: swatch.rgb,
+        hsl: [swatch.hsl[0], swatch.hsl[1], swatch.hsl[2]],
         bodyTexColor: swatch.getBodyTextColor(),
         titleTextColor: swatch.getTitleTextColor(),
       };
