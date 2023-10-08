@@ -37,17 +37,16 @@ export const useNavbarStore = create<NavbarStore>((set, get) => ({
   },
 }));
 
-type CollectiveSelectValues = "all" | "soulection" | "sasha-marie-radio";
 export type CollectiveSelectStore = {
-  selected: CollectiveSelectValues;
-  setSelected: (collective: CollectiveSelectValues) => void;
+  selected: "all" | "soulection" | "sasha-marie-radio";
+  setSelected: (collective: "all" | "soulection" | "sasha-marie-radio") => void;
 };
 
 export const useCollectiveSelectStore = create<CollectiveSelectStore>(
   (set, get) => ({
     selected: "soulection",
     setSelected(collective) {
-      console.log(collective)
+      console.log(collective);
       set({
         selected: collective,
       });

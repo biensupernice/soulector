@@ -4,7 +4,10 @@ import * as trpc from "@trpc/server";
 import * as trpcNext from "@trpc/server/adapters/next";
 import { ObjectId } from "mongodb";
 import { z } from "zod";
-import { getSoundCloudTracks } from "../internal/sync-episodes";
+import {
+  getSoundCloudTracks,
+  syncAllCollectives,
+} from "../internal/sync-episodes";
 import path from "path";
 import axios from "axios";
 import fs from "fs";
@@ -20,6 +23,7 @@ export type ITrack = {
   name: string;
   url: string;
   picture_large: string;
+  collective_slug: "soulection" | "sasha-marie-radio";
 };
 
 async function downloadImageFromUrl(
@@ -46,7 +50,7 @@ const appRouter = trpc
   .router<Context>()
   .query("internal.episodesSync", {
     async resolve({ ctx }) {
-      let retrieved = await getSoundCloudTracks(ctx.db);
+      let retrieved = await syncAllCollectives(ctx.db);
 
       return {
         msg: "Successfully Fetched New Tracks",
@@ -54,11 +58,34 @@ const appRouter = trpc
       };
     },
   })
-  .query("episodes.all", {
+  .query("internal.backfillCollectives", {
     async resolve({ ctx }) {
       const trackCollection = ctx.db.collection<ITrack>("tracksOld");
+
+      trackCollection.updateMany(
+        {},
+        {
+          $set: {
+            collective_slug: "soulection",
+          },
+        }
+      );
+    },
+  })
+  .query("episodes.all", {
+    input: z.optional(
+      z.object({
+        collective: z.enum(["all", "soulection", "sasha-marie-radio"]),
+      })
+    ),
+    async resolve({ ctx, input }) {
+      const collective = input?.collective ?? "soulection";
+
+      let filter = collective === "all" ? {} : { collective_slug: collective };
+
+      const trackCollection = ctx.db.collection<ITrack>("tracksOld");
       let allTracks = await trackCollection
-        .find({})
+        .find(filter)
         .sort({
           created_time: -1,
         })

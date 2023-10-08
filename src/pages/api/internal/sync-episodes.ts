@@ -4,35 +4,51 @@ import _ from "lodash";
 import { SoundCloudApiClient } from "@/server/crosscutting/soundCloudApiClient";
 import { createDbConnection } from "@/server/db";
 import { Db } from "mongodb";
+import { ITrack } from "../trpc/[trpc]";
 
 function createLargeSoundtrackThumbUrl(url: string) {
   const newUrl = url.replace("-large", "-t500x500");
   return newUrl;
 }
 
-export async function getSoundCloudTracks(db: Db) {
+const playlists = {
+  soulection: "8025093",
+  "sasha-marie-radio": "944232886",
+} as const;
+type PlaylistSlugs = keyof typeof playlists;
+
+export async function syncAllCollectives(db: Db) {
+  const slugs: PlaylistSlugs[] = ["soulection", "sasha-marie-radio"];
+  for (const s of slugs) {
+    await getSoundCloudTracks(db, s);
+  }
+}
+
+export async function getSoundCloudTracks(
+  db: Db,
+  collectiveSlug: "soulection" | "sasha-marie-radio" = "soulection"
+) {
   const soundCloudClient = new SoundCloudApiClient();
   await soundCloudClient.getToken();
 
   const trackDtos = await soundCloudClient
-    .getPlaylistInfo("8025093")
+    .getPlaylistInfo(playlists[collectiveSlug])
     .then((res) => res.tracks);
 
-  let mapped = trackDtos.map((track) => ({
+  let mapped: Omit<ITrack, "_id">[] = trackDtos.map((track) => ({
     source: "SOUNDCLOUD",
     duration: parseInt(`${track.duration / 1000}`, 10),
     created_time: new Date(track.created_at),
     key: track.id,
     name: track.title,
     url: track.permalink_url,
+    collective_slug: collectiveSlug,
     picture_large: createLargeSoundtrackThumbUrl(track.artwork_url),
   }));
 
-  type TrackType = typeof mapped[0];
-
   let incomingIds = mapped.map((it) => it.key);
 
-  const trackCollection = db.collection<TrackType>("tracksOld");
+  const trackCollection = db.collection<Omit<ITrack, "_id">>("tracksOld");
 
   let existing = await trackCollection
     .find({
