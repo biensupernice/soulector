@@ -15,6 +15,7 @@ import { Arrow } from "@radix-ui/react-select";
 import EpisodeListSpinner from "../EpisodeList/EpisodeListSpinner";
 import { CardStackIcon } from "@radix-ui/react-icons";
 import { SelectSeparator } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 export type NavbarStore = {
   searchOpen: boolean;
@@ -60,8 +61,13 @@ export default function Navbar({
   return (
     <div className="flex w-full items-center py-3">
       <React.Fragment>
-        <div className="flex w-full flex-shrink-0 px-2 sm:w-auto">
-          <CollectiveSelect  defaultValue="soulection">
+        <div
+          className={cn(
+            "flex w-full flex-shrink-0 px-2 sm:w-auto",
+            searchOpen && "hidden sm:flex"
+          )}
+        >
+          <CollectiveSelect defaultValue="soulection">
             <CollectiveSelectTrigger className="w-full">
               <CollectiveSelectValue />
             </CollectiveSelectTrigger>
@@ -85,7 +91,7 @@ export default function Navbar({
             </CollectiveSelectContent>
           </CollectiveSelect>
         </div>
-        <div className="ml:auto hidden w-full  items-center justify-end px-4 sm:ml-6 sm:flex">
+        <div className="ml:auto w-full items-center justify-end px-4 sm:ml-6 flex">
           {searchOpen ? (
             <NavbarSearch
               searchText={searchText}

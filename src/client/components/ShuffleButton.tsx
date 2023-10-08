@@ -12,7 +12,7 @@ export function ShuffleButton({ onClick, className }: Props) {
       onClick={() => onClick()}
       className={cx(
         "bg-accent hover:bg-accent/90 text-white font-semibold transition-all",
-        "py-3 px-12",
+        "py-3 px-5 md:px-12",
         "rounded-full",
         "shadow-md",
         "flex items-center",

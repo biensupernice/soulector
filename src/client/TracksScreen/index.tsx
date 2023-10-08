@@ -32,6 +32,9 @@ import {
   useEpisodeModalSheetActions,
   useEpisodeModalSheetStore,
 } from "./EpisodeModalSheet";
+import { IconSearch } from "../components/Icons";
+import { cn } from "@/lib/utils";
+import { useNavbarStore } from "./Navbar";
 
 type Props = {
   searchText: string;
@@ -72,6 +75,9 @@ function TracksScreen({ searchText }: Props) {
 
     return [];
   }, [episodes, favoritesCount]);
+
+  const searchOpen = useNavbarStore((state) => state.searchOpen);
+  const openSearch = useNavbarStore((state) => state.openSearch);
 
   const filteredTracks = useMemo(() => {
     if (episodes) {
@@ -163,11 +169,25 @@ function TracksScreen({ searchText }: Props) {
           </EpisodeList>
         </div>
         <div className="fixed right-0 bottom-0 z-20 w-full bg-white pb-safe-bottom">
-          {shouldShowSuffleButton && (
-            <div className="absolute bottom-full right-0 mb-2 flex justify-end pr-3 md:mb-4">
+          {shouldShowSuffleButton || searchOpen ? (
+            <div className="absolute bottom-full right-0 mb-2 flex flex-col items-end justify-end space-y-2 pr-3 md:mb-4">
+              <button
+                onClick={openSearch}
+                className={cn(
+                  "border border-accent/40 bg-white font-semibold text-accent transition-all hover:bg-gray-50 ",
+                  "items-center space-x-1 py-3 px-4",
+                  "rounded-full",
+                  "shadow-md",
+                  "hidden focus:outline-none",
+                  !searchOpen && "flex sm:hidden"
+                )}
+              >
+                <IconSearch className="h-5 w-5 fill-current" />
+                <div>Search</div>
+              </button>
               <ShuffleButton onClick={onRandomClick} />
             </div>
-          )}
+          ) : null}
           {currentTrackId && <Player currentTrackId={currentTrackId} />}
           {USE_NEW_PLAYER && currentTrackId && currentTrackStreamUrls && (
             <EpisodeAudioPlayer
