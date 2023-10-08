@@ -37,6 +37,24 @@ export const useNavbarStore = create<NavbarStore>((set, get) => ({
   },
 }));
 
+type CollectiveSelectValues = "all" | "soulection" | "sasha-marie-radio";
+export type CollectiveSelectStore = {
+  selected: CollectiveSelectValues;
+  setSelected: (collective: CollectiveSelectValues) => void;
+};
+
+export const useCollectiveSelectStore = create<CollectiveSelectStore>(
+  (set, get) => ({
+    selected: "soulection",
+    setSelected(collective) {
+      console.log(collective)
+      set({
+        selected: collective,
+      });
+    },
+  })
+);
+
 type Props = {
   searchText: string;
   onSearchClose: () => void;
@@ -48,9 +66,12 @@ export default function Navbar({
   onSearchChange,
   onSearchClose,
 }: Props) {
-  const searchOpen = useNavbarStore((state) => state.searchOpen);
-  const openSearch = useNavbarStore((state) => state.openSearch);
-  const closeSearch = useNavbarStore((state) => state.closeSearch);
+  const searchOpen = useNavbarStore((s) => s.searchOpen);
+  const openSearch = useNavbarStore((s) => s.openSearch);
+  const closeSearch = useNavbarStore((s) => s.closeSearch);
+
+  const selectedCollective = useCollectiveSelectStore((s) => s.selected);
+  const selectCollective = useCollectiveSelectStore((s) => s.setSelected);
 
   useEffect(() => {
     if (!searchOpen) {
@@ -67,7 +88,10 @@ export default function Navbar({
             searchOpen && "hidden sm:flex"
           )}
         >
-          <CollectiveSelect defaultValue="soulection">
+          <CollectiveSelect
+            onValueChange={(v: any) => selectCollective(v)}
+            defaultValue={selectedCollective}
+          >
             <CollectiveSelectTrigger className="w-full">
               <CollectiveSelectValue />
             </CollectiveSelectTrigger>
@@ -91,7 +115,7 @@ export default function Navbar({
             </CollectiveSelectContent>
           </CollectiveSelect>
         </div>
-        <div className="ml:auto w-full items-center justify-end px-4 sm:ml-6 flex">
+        <div className="ml:auto flex w-full items-center justify-end px-4 sm:ml-6">
           {searchOpen ? (
             <NavbarSearch
               searchText={searchText}
