@@ -174,7 +174,7 @@ function TracksScreen({ searchText }: Props) {
               <button
                 onClick={openSearch}
                 className={cn(
-                  "border border-accent/40 bg-white font-semibold text-accent transition-all hover:bg-gray-50 ",
+                  "border border-accent/30 bg-white font-semibold text-accent transition-all hover:bg-gray-50 ",
                   "items-center space-x-1 py-3 px-4",
                   "rounded-full",
                   "shadow-md",
