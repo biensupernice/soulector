@@ -11,8 +11,12 @@ POST http://localhost:3000/api/internal/sync-episodes HTTP/1.1
 
 GET http://localhost:3000/api/trpc/episodes.all HTTP/1.1
 
-### Sync Episodes
+### Sync Episodes Old
 GET http://localhost:3000/api/trpc/internal.episodesSync
+
+
+### Sync Episodes New
+GET http://localhost:3000/api/trpc/internal.episodesSyncNew
 
 ### Get Stream URLS
 GET http://localhost:3000/api/trpc/episode.getStreamUrl?input=%7B%22episodeId%22%3A%22624632f8ccc079804723e07b%22%7D HTTP/1.1
@@ -23,17 +27,20 @@ GET http://localhost:3000/api/trpc/episode.getStreamUrl?input=%7B%22episodeId%22
 POST http://api.soundcloud.com/oauth2/token?client_id={{SOUNDCLOUD_CLIENT_ID}}&client_secret={{SOUNDCLOUD_CLIENT_SECRET}}&grant_type=client_credentials HTTP/1.1
 
 
+### Backfill collective
+GET http://localhost:3000/api/trpc/internal.backfillCollectives
+
 ### Get soundcloud tracks
 
 @SOUNDCLOUD_API_TOKEN = {{gatAccessToken.response.body.access_token}}
 
 # @name getPlaylistDetails
-GET http://api.soundcloud.com/playlists/8025093 HTTP/1.1
+GET http://api.soundcloud.com/playlists/944232886 HTTP/1.1
 Authorization: OAuth {{SOUNDCLOUD_API_TOKEN}}
 
 
 ### Get single track details
-GET http://api.soundcloud.com/tracks/159482763 HTTP/1.1
+GET http://api.soundcloud.com/tracks/974975893 HTTP/1.1
 Authorization: OAuth {{SOUNDCLOUD_API_TOKEN}}
 
 ### Get Stream Url
@@ -41,8 +48,13 @@ GET https://api.soundcloud.com/tracks/159482763/streams
 Authorization: OAuth {{SOUNDCLOUD_API_TOKEN}}
 
 ### Dwnload Track
-GET https://api.soundcloud.com/tracks/159482763/download
+  GET https://api.soundcloud.com/tracks/159482763/download
 Authorization: OAuth {{SOUNDCLOUD_API_TOKEN}}
+
+
+# Test trackId ra.1212031753
+### Apple Music Get Track
+GET https://api.music.apple.com/v1/catalog/us/songs/ra.1212031753
 
 
 

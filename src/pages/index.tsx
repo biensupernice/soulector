@@ -18,16 +18,18 @@ export default function Home() {
   return (
     <>
       <div className="h-full w-full text-gray-900">
-        <div className="h-15 fixed top-0 z-20 w-full bg-white pt-safe-top">
+        <div className="h-15 fixed top-0 z-20 w-full bg-white">
           <motion.div
             style={{ opacity }}
             className="pointer-events-none absolute inset-0 z-0 border-b border-b-gray-200"
           />
-          <Navbar
-            searchText={searchText}
-            onSearchChange={setSearchText}
-            onSearchClose={() => setSearchText("")}
-          />
+          <div className="max-w-4xl mx-auto mt-safe-top">
+            <Navbar
+              searchText={searchText}
+              onSearchChange={setSearchText}
+              onSearchClose={() => setSearchText("")}
+            />
+          </div>
         </div>
         <TracksScreen searchText={searchText} />
       </div>

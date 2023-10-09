@@ -32,6 +32,9 @@ import {
   useEpisodeModalSheetActions,
   useEpisodeModalSheetStore,
 } from "./EpisodeModalSheet";
+import { IconSearch } from "../components/Icons";
+import { cn } from "@/lib/utils";
+import { useCollectiveSelectStore, useNavbarStore } from "./Navbar";
 
 type Props = {
   searchText: string;
@@ -62,31 +65,51 @@ function TracksScreen({ searchText }: Props) {
   const setContextMenuTrack = useTrackOptionsStore((state) => state.setTrack);
   const favoritesCount = useFavoritesCount();
   const isFavoriteFast = useIsFavoriteFast();
+  const selectedCollective = useCollectiveSelectStore((s) => s.selected);
 
   useEpisodeAlbumArtColors();
 
   const favorites = useMemo(() => {
     if (episodes) {
-      return episodes.filter((episode) => isFavoriteFast(episode._id));
+      let eps = episodes;
+
+      if (selectedCollective !== "all") {
+        eps = episodes.filter(
+          (ep) => ep.collective_slug === selectedCollective
+        );
+      }
+
+      return eps.filter((episode) => isFavoriteFast(episode._id));
     }
 
     return [];
-  }, [episodes, favoritesCount]);
+  }, [episodes, favoritesCount, selectedCollective]);
+
+  const searchOpen = useNavbarStore((state) => state.searchOpen);
+  const openSearch = useNavbarStore((state) => state.openSearch);
 
   const filteredTracks = useMemo(() => {
     if (episodes) {
+      let eps = episodes;
+
+      if (selectedCollective !== "all") {
+        eps = episodes.filter(
+          (ep) => ep.collective_slug === selectedCollective
+        );
+      }
+
       if (!searchText.trim()) {
-        return episodes;
+        return eps;
       }
 
       const lowerCaseSearch = searchText.toLowerCase();
-      return episodes.filter((episode) =>
+      return eps.filter((episode) =>
         episode.name.toLowerCase().includes(lowerCaseSearch)
       );
     }
 
     return [];
-  }, [episodes, searchText]);
+  }, [episodes, searchText, selectedCollective]);
 
   const activeTracks = activeSection === "all" ? filteredTracks : favorites;
 
@@ -162,12 +185,26 @@ function TracksScreen({ searchText }: Props) {
             </>
           </EpisodeList>
         </div>
-        <div className="fixed right-0 bottom-0 z-20 w-full bg-white pb-safe-bottom">
-          {shouldShowSuffleButton && (
-            <div className="absolute bottom-full right-0 mb-2 flex justify-end pr-3 md:mb-4">
+        <div className="fixed bottom-0 right-0 z-20 w-full bg-white pb-safe-bottom">
+          {shouldShowSuffleButton || searchOpen ? (
+            <div className="absolute bottom-full right-0 mb-2 flex flex-col items-end justify-end space-y-2 pr-3 md:mb-4">
+              <button
+                onClick={openSearch}
+                className={cn(
+                  "border border-accent/30 bg-white font-semibold text-accent transition-all hover:bg-gray-50 ",
+                  "items-center space-x-1 px-4 py-3",
+                  "rounded-full",
+                  "shadow-md",
+                  "hidden focus:outline-none",
+                  !searchOpen && "flex sm:hidden"
+                )}
+              >
+                <IconSearch className="h-5 w-5 fill-current" />
+                <div>Search</div>
+              </button>
               <ShuffleButton onClick={onRandomClick} />
             </div>
-          )}
+          ) : null}
           {currentTrackId && <Player currentTrackId={currentTrackId} />}
           {USE_NEW_PLAYER && currentTrackId && currentTrackStreamUrls && (
             <EpisodeAudioPlayer
@@ -188,7 +225,7 @@ function TracksScreen({ searchText }: Props) {
   }
   if (error) {
     return (
-      <div className="mt-14 mb-safe-bottom h-full overflow-hidden pt-safe-top">
+      <div className="mb-safe-bottom mt-14 h-full overflow-hidden pt-safe-top">
         <EpisodeListError />
         <code>{error.message}</code>
       </div>
@@ -259,9 +296,16 @@ export function EpisodeAudioPlayer({
 
 function setNavigatorMediaMetadata(episode: ReturnType<typeof useGetEpisode>) {
   if ("mediaSession" in navigator) {
+    const prefixMap = {
+      soulection: "Soulection on",
+      "sasha-marie-radio": "Sasha Marie on ",
+    };
+
     navigator.mediaSession.metadata = new MediaMetadata({
       title: episode.name,
-      artist: `Soulection on ${formatDate(episode.created_time)}`,
+      artist: `${prefixMap[episode.collective_slug]} ${formatDate(
+        episode.created_time
+      )}`,
       artwork: [
         {
           src: episode.picture_large,

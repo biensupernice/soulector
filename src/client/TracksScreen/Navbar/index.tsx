@@ -1,9 +1,21 @@
-import Logo from "./Logo";
+import { SashaMarieRadioLogo, SoulectionLogo } from "./Logos";
 import React, { useEffect } from "react";
-import { IconSearch } from "../../components/Icons";
+import { IconChevron, IconSearch, Soulector } from "../../components/Icons";
 import NavbarSearch from "./NavbarSearch";
 import cx from "classnames";
 import create from "zustand";
+import {
+  CollectiveSelect,
+  CollectiveSelectContent,
+  CollectiveSelectItem,
+  CollectiveSelectTrigger,
+  CollectiveSelectValue,
+} from "./CollectiveSelect";
+import { Arrow } from "@radix-ui/react-select";
+import EpisodeListSpinner from "../EpisodeList/EpisodeListSpinner";
+import { CardStackIcon } from "@radix-ui/react-icons";
+import { SelectSeparator } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 export type NavbarStore = {
   searchOpen: boolean;
@@ -25,6 +37,23 @@ export const useNavbarStore = create<NavbarStore>((set, get) => ({
   },
 }));
 
+export type CollectiveSelectStore = {
+  selected: "all" | "soulection" | "sasha-marie-radio";
+  setSelected: (collective: "all" | "soulection" | "sasha-marie-radio") => void;
+};
+
+export const useCollectiveSelectStore = create<CollectiveSelectStore>(
+  (set, get) => ({
+    selected: "soulection",
+    setSelected(collective) {
+      console.log(collective);
+      set({
+        selected: collective,
+      });
+    },
+  })
+);
+
 type Props = {
   searchText: string;
   onSearchClose: () => void;
@@ -36,9 +65,12 @@ export default function Navbar({
   onSearchChange,
   onSearchClose,
 }: Props) {
-  const searchOpen = useNavbarStore((state) => state.searchOpen);
-  const openSearch = useNavbarStore((state) => state.openSearch);
-  const closeSearch = useNavbarStore((state) => state.closeSearch);
+  const searchOpen = useNavbarStore((s) => s.searchOpen);
+  const openSearch = useNavbarStore((s) => s.openSearch);
+  const closeSearch = useNavbarStore((s) => s.closeSearch);
+
+  const selectedCollective = useCollectiveSelectStore((s) => s.selected);
+  const selectCollective = useCollectiveSelectStore((s) => s.setSelected);
 
   useEffect(() => {
     if (!searchOpen) {
@@ -47,14 +79,41 @@ export default function Navbar({
   }, [searchOpen, onSearchClose]);
 
   return (
-    <div className="flex w-full items-center px-4 py-3">
+    <div className="flex w-full items-center py-3">
       <React.Fragment>
         <div
-          className={cx("flex", "items-center", searchOpen && "hidden sm:flex")}
+          className={cn(
+            "flex w-full flex-shrink-0 px-2 sm:w-auto",
+            searchOpen && "hidden sm:flex"
+          )}
         >
-          <Logo />
+          <CollectiveSelect
+            onValueChange={(v: any) => selectCollective(v)}
+            defaultValue={selectedCollective}
+          >
+            <CollectiveSelectTrigger className="w-full">
+              <CollectiveSelectValue />
+            </CollectiveSelectTrigger>
+            <CollectiveSelectContent sideOffset={-52} side="bottom">
+              <CollectiveSelectItem value="all">
+                <div className="flex items-center space-x-3">
+                  <CardStackIcon className="h-8 w-8" />
+                  <div className="w-full text-2xl font-bold">
+                    All Collectives
+                  </div>
+                </div>
+              </CollectiveSelectItem>
+              <SelectSeparator className="bg-gray-200" />
+              <CollectiveSelectItem value="sasha-marie-radio">
+                <SashaMarieRadioLogo />
+              </CollectiveSelectItem>
+              <CollectiveSelectItem value="soulection">
+                <SoulectionLogo />
+              </CollectiveSelectItem>
+            </CollectiveSelectContent>
+          </CollectiveSelect>
         </div>
-        <div className="ml:auto flex w-full items-center justify-end sm:ml-6">
+        <div className="ml:auto flex w-full items-center justify-end px-4 sm:ml-6">
           {searchOpen ? (
             <NavbarSearch
               searchText={searchText}

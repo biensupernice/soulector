@@ -5,6 +5,7 @@ import { usePlayerActions, usePlayerStore } from "./PlayerStore";
 import { useEpisodes } from "./TracksStore";
 import { useCustomMutation } from "../infra/useCustomMutation";
 import { useEpisodeModalSheetActions } from "./EpisodeModalSheet";
+import { useCollectiveSelectStore } from "./Navbar";
 
 export function useTracksScreenContainer() {
   const currentTrackId = usePlayerStore((state) => state.currentTrackId);
@@ -13,6 +14,8 @@ export function useTracksScreenContainer() {
   const currentTrackStreamUrls = usePlayerStore(
     (state) => state.currentTrackStreamUrls
   );
+
+  const selectedCollective = useCollectiveSelectStore((s) => s.selected);
 
   const playerActions = usePlayerActions();
 
@@ -47,7 +50,12 @@ export function useTracksScreenContainer() {
       category: "Action",
     });
 
-    let episode = sample(episodes);
+    let eps = episodes;
+    if (selectedCollective !== "all") {
+      eps = episodes?.filter((e) => e.collective_slug === selectedCollective);
+    }
+
+    let episode = sample(eps);
     if (episode) {
       playerActions.loadTrack(episode._id);
       episodeModalSheetActions.open();
