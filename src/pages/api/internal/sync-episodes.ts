@@ -20,10 +20,10 @@ type PlaylistSlugs = keyof typeof playlists;
 export async function syncAllCollectives(db: Db) {
   const slugs: PlaylistSlugs[] = ["soulection", "sasha-marie-radio"];
 
-  const retrieved: string[] = [];
+  let retrieved: string[] = [];
   for (const s of slugs) {
     let a = await getSoundCloudTracks(db, s);
-    retrieved.concat(a);
+    retrieved = retrieved.concat(a);
   }
 
   return retrieved;
