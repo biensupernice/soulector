@@ -298,7 +298,7 @@ function setNavigatorMediaMetadata(episode: ReturnType<typeof useGetEpisode>) {
   if ("mediaSession" in navigator) {
     const prefixMap = {
       soulection: "Soulection on",
-      "sasha-marie-radio": "Sasha Marie on ",
+      "sasha-marie-radio": "Sasha Marie on",
     };
 
     navigator.mediaSession.metadata = new MediaMetadata({

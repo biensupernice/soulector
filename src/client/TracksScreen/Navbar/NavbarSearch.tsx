@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { IconSearch, IconTimes } from "../../components/Icons";
 import { KEYS } from "../../helpers";
+import { useCollectiveSelectStore } from ".";
 
 type Props = {
   searchText: string;
@@ -27,6 +28,15 @@ export default function NavbarSearch({
     }
   }
 
+  const selectedCollective = useCollectiveSelectStore((s) => s.selected);
+  const placeHolderOptions = {
+    all: "Search all episodes...",
+    soulection: "Search Soulection episodes...",
+    "sasha-marie-radio": "Search Sasha Marie Radio episodes...",
+  };
+
+  const placeHolder = placeHolderOptions[selectedCollective];
+
   return (
     <React.Fragment>
       <div className="mx-full ml-auto w-full md:max-w-xl">
@@ -41,7 +51,7 @@ export default function NavbarSearch({
             onChange={(e) => onSearchChange(e.target.value)}
             type="text"
             className="w-full rounded-lg bg-gray-100 py-2 pl-12 text-gray-900 outline-none active:border-gray-400 active:bg-gray-200"
-            placeholder="Search for episodes..."
+            placeholder={placeHolder}
           ></input>
           <div className="absolute right-0 ml-auto mr-3 flex items-center">
             <button
