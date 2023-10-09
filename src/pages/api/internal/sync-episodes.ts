@@ -24,6 +24,17 @@ export async function syncAllCollectives(db: Db) {
   }
 }
 
+interface DBTrack {
+  source: "SOUNDCLOUD" | "MIXCLOUD";
+  duration: number;
+  created_time: Date;
+  key: number;
+  name: string;
+  url: string;
+  picture_large: string;
+  collective_slug: "soulection" | "sasha-marie-radio";
+}
+
 export async function getSoundCloudTracks(
   db: Db,
   collectiveSlug: "soulection" | "sasha-marie-radio" = "soulection"
@@ -35,7 +46,7 @@ export async function getSoundCloudTracks(
     .getPlaylistInfo(playlists[collectiveSlug])
     .then((res) => res.tracks);
 
-  let mapped: Omit<ITrack, "_id">[] = trackDtos.map((track) => ({
+  let mapped: DBTrack[] = trackDtos.map((track) => ({
     source: "SOUNDCLOUD",
     duration: parseInt(`${track.duration / 1000}`, 10),
     created_time: new Date(track.created_at),
@@ -48,7 +59,7 @@ export async function getSoundCloudTracks(
 
   let incomingIds = mapped.map((it) => it.key);
 
-  const trackCollection = db.collection<Omit<ITrack, "_id">>("tracksOld");
+  const trackCollection = db.collection<DBTrack>("tracksOld");
 
   let existing = await trackCollection
     .find({
