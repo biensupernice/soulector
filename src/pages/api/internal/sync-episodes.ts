@@ -19,9 +19,14 @@ type PlaylistSlugs = keyof typeof playlists;
 
 export async function syncAllCollectives(db: Db) {
   const slugs: PlaylistSlugs[] = ["soulection", "sasha-marie-radio"];
+
+  const retrieved: string[] = [];
   for (const s of slugs) {
-    await getSoundCloudTracks(db, s);
+    let a = await getSoundCloudTracks(db, s);
+    retrieved.concat(a);
   }
+
+  return retrieved;
 }
 
 interface DBTrack {
@@ -74,6 +79,10 @@ export async function getSoundCloudTracks(
   let missingTracks = mapped.filter((it) => missingKeys.includes(it.key));
 
   console.log("missingTracks", missingTracks);
+
+  if (missingTracks.length === 0) {
+    return [];
+  }
 
   let insertRes = await trackCollection.insertMany(missingTracks);
   if (insertRes.insertedCount !== missingTracks.length) {
