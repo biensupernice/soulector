@@ -78,7 +78,7 @@ function TracksScreen({ searchText }: Props) {
           (ep) => ep.collective_slug === selectedCollective
         );
       }
-      
+
       return eps.filter((episode) => isFavoriteFast(episode._id));
     }
 
@@ -296,9 +296,16 @@ export function EpisodeAudioPlayer({
 
 function setNavigatorMediaMetadata(episode: ReturnType<typeof useGetEpisode>) {
   if ("mediaSession" in navigator) {
+    const prefixMap = {
+      soulection: "Soulection on",
+      "sasha-marie-radio": "Sasha Marie on ",
+    };
+
     navigator.mediaSession.metadata = new MediaMetadata({
       title: episode.name,
-      artist: `Soulection on ${formatDate(episode.created_time)}`,
+      artist: `${prefixMap[episode.collective_slug]} ${formatDate(
+        episode.created_time
+      )}`,
       artwork: [
         {
           src: episode.picture_large,

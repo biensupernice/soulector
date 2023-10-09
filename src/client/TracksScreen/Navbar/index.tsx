@@ -98,18 +98,17 @@ export default function Navbar({
               <CollectiveSelectItem value="all">
                 <div className="flex items-center space-x-3">
                   <CardStackIcon className="h-8 w-8" />
-                  {/* <IconChevron className="h-8 w-8 rotate-90 stroke-current" /> */}
                   <div className="w-full text-2xl font-bold">
                     All Collectives
                   </div>
                 </div>
               </CollectiveSelectItem>
               <SelectSeparator className="bg-gray-200" />
-              <CollectiveSelectItem value="soulection">
-                <SoulectionLogo />
-              </CollectiveSelectItem>
               <CollectiveSelectItem value="sasha-marie-radio">
                 <SashaMarieRadioLogo />
+              </CollectiveSelectItem>
+              <CollectiveSelectItem value="soulection">
+                <SoulectionLogo />
               </CollectiveSelectItem>
             </CollectiveSelectContent>
           </CollectiveSelect>
