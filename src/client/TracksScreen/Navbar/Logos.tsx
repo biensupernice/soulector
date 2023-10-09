@@ -5,8 +5,7 @@ export function SoulectionLogo() {
   return (
     <div className="flex items-center space-x-2">
       <Soulector className="h-8 w-8 fill-current" />
-      <SoulectionLogotype className="h-4 w-full fill-current pr-10" />
-      {/* <div className="text-2xl font-bold">Soulection</div> */}
+      <SoulectionLogotype className="h-4 w-52 fill-current pr-10" />
     </div>
   );
 }
@@ -14,7 +13,7 @@ export function SoulectionLogo() {
 export function SashaMarieRadioLogo() {
   return (
     <div className="flex items-center space-x-2">
-      <SashaMarioRadio className="h-7 w-full fill-current pr-10" />
+      <SashaMarioRadio className="h-7 w-60 pt-1 fill-current pr-10" />
     </div>
   );
 }
