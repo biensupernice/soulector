@@ -1,0 +1,15 @@
+name: Sync Episodes
+
+on:
+  schedule:
+    - cron: '0 2 * * 6' # Every Saturday at 3am
+
+jobs:
+  make-request:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Make HTTP Request
+      run: |
+        response=$(curl -s -X GET https://soulector.app/api/trpc/internal.episodesSync)
+        echo "Response: $response"
