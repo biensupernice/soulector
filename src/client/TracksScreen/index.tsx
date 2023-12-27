@@ -54,6 +54,14 @@ function TracksScreen({ searchText }: Props) {
 
   const { data: episodes, error } = useEpisodes();
 
+    const loadPersistedCollective = useCollectiveSelectStore(
+      (s) => s.loadPersisted
+    );
+
+    useEffect(() => {
+      loadPersistedCollective();
+    }, []);
+
   const {
     currentTrackId,
     onTrackClick,
