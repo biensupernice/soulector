@@ -40,16 +40,28 @@ export const useNavbarStore = create<NavbarStore>((set, get) => ({
 export type CollectiveSelectStore = {
   selected: "all" | "soulection" | "sasha-marie-radio";
   setSelected: (collective: "all" | "soulection" | "sasha-marie-radio") => void;
+  loadPersisted: () => void;
 };
 
 export const useCollectiveSelectStore = create<CollectiveSelectStore>(
   (set, get) => ({
     selected: "soulection",
     setSelected(collective) {
-      console.log(collective);
       set({
         selected: collective,
       });
+      localStorage.setItem("selectedCollective", collective);
+    },
+    loadPersisted: () => {
+      const persistedCollective = localStorage.getItem("selectedCollective");
+      if (persistedCollective) {
+        set({
+          selected: persistedCollective as
+            | "all"
+            | "soulection"
+            | "sasha-marie-radio",
+        });
+      }
     },
   })
 );
@@ -89,6 +101,7 @@ export default function Navbar({
         >
           <CollectiveSelect
             onValueChange={(v: any) => selectCollective(v)}
+            value={selectedCollective}
             defaultValue={selectedCollective}
           >
             <CollectiveSelectTrigger className="w-full">
