@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 export interface AudioPlayerProps {
   mp3StreamUrl: string | null;
@@ -10,6 +10,7 @@ export interface AudioPlayerProps {
   onPlay: () => void;
   cuePosition?: number;
 }
+
 export function AudioPlayer({
   mp3StreamUrl,
   onReady,
@@ -21,6 +22,7 @@ export function AudioPlayer({
   cuePosition,
 }: AudioPlayerProps) {
   const ref = useRef<HTMLAudioElement>(null);
+  const [shouldPlay, setShouldPlay] = useState(false);
 
   async function onCanPlayThrough() {
     const durationSecs = ref.current?.duration ?? 0;
@@ -28,10 +30,10 @@ export function AudioPlayer({
 
     onReady(durationMillis);
 
-    if (playing) {
+    if (shouldPlay) {
       ref.current
         ?.play()
-        .then()
+        .then(() => setShouldPlay(false))
         .catch((err) => console.error(`onCanPlay ${err}`));
     }
   }
@@ -40,6 +42,7 @@ export function AudioPlayer({
     if (ref.current && mp3StreamUrl) {
       ref.current.src = mp3StreamUrl;
       ref.current.load();
+      setShouldPlay(true);
     }
 
     return () => {
