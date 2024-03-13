@@ -3,9 +3,9 @@ import { inferQueryOutput, trpc } from "@/utils/trpc";
 export type ITrack = inferQueryOutput<"episodes.all">[number];
 
 export function useEpisodes() {
-  return trpc.useQuery(["episodes.all", { collective: "all" }], {
-    refetchOnWindowFocus: false,
-  });
+    return  trpc.proxy.episodes.all.useQuery({ collective: "all" }, {
+        refetchOnWindowFocus: false,
+    });
 }
 
 export function useEpisode(id: string | undefined) {

@@ -5,13 +5,13 @@ import { useEffect } from "react";
 export function useEpisodeAlbumArtColors() {
   const currentTrackId = usePlayerStore((state) => state.currentTrackId);
 
-  const { data } = trpc.useQuery(
-    ["episode.getAccentColor", { episodeId: currentTrackId }],
-    {
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      enabled: currentTrackId !== undefined,
-    }
+  const { data } = trpc.proxy.episode.getAccentColor.useQuery(
+    { episodeId: currentTrackId },
+      {
+          refetchOnWindowFocus: false,
+          refetchOnReconnect: false,
+          enabled: currentTrackId !== undefined,
+      }
   );
 
   useEffect(() => {

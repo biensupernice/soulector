@@ -194,7 +194,7 @@ const appRouter = trpc
 
       return fakeEpisodeUrls;
     },
-  });
+  }).interop();
 
 export type AppRouter = typeof appRouter;
 
