@@ -4,8 +4,8 @@ import { loggerLink } from "@trpc/client/links/loggerLink";
 import { httpBatchLink } from "@trpc/client/links/httpBatchLink";
 import Head from "next/head";
 import { withTRPC } from "@trpc/next";
-import { AppRouter } from "./api/trpc/[trpc]";
 import { GoogleAnalytics } from "nextjs-google-analytics";
+import { EpisodeRouter } from "@/server/router";
 
 function MyApp({ Component, pageProps }: AppProps) {
   return (
@@ -174,7 +174,7 @@ function MyApp({ Component, pageProps }: AppProps) {
 }
 
 function getBaseUrl() {
-  if (process.browser) {
+  if (typeof window !== "undefined") {
     return "";
   }
   // reference for vercel.com
@@ -186,7 +186,7 @@ function getBaseUrl() {
   return `http://localhost:${process.env.PORT ?? 3000}`;
 }
 
-export default withTRPC<AppRouter>({
+export default withTRPC<EpisodeRouter>({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   config() {
     /**
@@ -201,7 +201,8 @@ export default withTRPC<AppRouter>({
         // adds pretty logs to your console in development and logs errors in production
         loggerLink({
           enabled: (opts) =>
-            process.env.NODE_ENV === "development" ||
+            (process.env.NODE_ENV === "development" &&
+              typeof window !== "undefined") ||
             (opts.direction === "down" && opts.result instanceof Error),
         }),
         httpBatchLink({
