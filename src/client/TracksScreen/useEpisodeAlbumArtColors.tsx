@@ -5,13 +5,13 @@ import { useEffect } from "react";
 export function useEpisodeAlbumArtColors() {
   const currentTrackId = usePlayerStore((state) => state.currentTrackId);
 
-  const { data } = trpc.proxy.episode.getAccentColor.useQuery(
+  const { data } = trpc["episode.getAccentColor"].useQuery(
     { episodeId: currentTrackId },
-      {
-          refetchOnWindowFocus: false,
-          refetchOnReconnect: false,
-          enabled: currentTrackId !== undefined,
-      }
+    {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      enabled: currentTrackId !== undefined,
+    }
   );
 
   useEffect(() => {
@@ -19,7 +19,7 @@ export function useEpisodeAlbumArtColors() {
       const rgbString = data.rgb.join(" ");
 
       const [h, s, l] = data.hsl;
-      const hslString = `${h*360} ${s*100}% ${l*100}%`;
+      const hslString = `${h * 360} ${s * 100}% ${l * 100}%`;
 
       document.documentElement.style.setProperty("--accent", hslString);
     }

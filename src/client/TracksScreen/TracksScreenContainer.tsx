@@ -79,18 +79,22 @@ export function useTracksScreenContainer() {
   };
 }
 
+export const playEpisodeMutationKey = {
+  queryKey: ["playEpisode"],
+};
+
 export function usePlayEpisodeMutation() {
-  const { fetchQuery } = trpc.useContext();
+  const utils = trpc.useUtils();
+  const fetchStreamUrl = utils["episode.getStreamUrl"].fetch;
+  
   return useCustomMutation(
-    "playEpisode",
+    playEpisodeMutationKey.queryKey,
     async (episodeId: string) => {
-      const query = await fetchQuery(
-        [
-          "episode.getStreamUrl",
-          {
-            episodeId: episodeId,
-          },
-        ],
+      const query = await fetchStreamUrl(
+        {
+          episodeId: episodeId,
+        },
+
         {
           staleTime: Infinity,
         }
