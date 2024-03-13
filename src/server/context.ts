@@ -1,6 +1,6 @@
-import { getApp } from "@/server/application";
 import * as trpc from "@trpc/server";
 import * as trpcNext from "@trpc/server/adapters/next";
+import { createDbConnection } from "./db";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface CreateContextOptions {
@@ -12,7 +12,8 @@ interface CreateContextOptions {
  * This is useful for testing when we don't want to mock Next.js' request/response
  */
 export async function createContextInner(_opts: CreateContextOptions) {
-  return getApp();
+  const db = await createDbConnection();
+  return { db };
 }
 
 export type Context = trpc.inferAsyncReturnType<typeof createContextInner>;
