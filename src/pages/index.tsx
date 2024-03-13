@@ -5,7 +5,6 @@ import Navbar from "@/client/TracksScreen/Navbar";
 import "react-spring-bottom-sheet/dist/style.css";
 import { TrackOptionsModal } from "../client/TracksScreen/TrackOptionsModal";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { ReactQueryDevtools } from "react-query/devtools";
 
 export default function Home() {
   const [searchText, setSearchText] = useState("");
@@ -23,7 +22,7 @@ export default function Home() {
             style={{ opacity }}
             className="pointer-events-none absolute inset-0 z-0 border-b border-b-gray-200"
           />
-          <div className="max-w-4xl mx-auto mt-safe-top">
+          <div className="mx-auto mt-safe-top max-w-4xl">
             <Navbar
               searchText={searchText}
               onSearchChange={setSearchText}
@@ -34,13 +33,6 @@ export default function Home() {
         <TracksScreen searchText={searchText} />
       </div>
       <TrackOptionsModal />
-      {/* {process.env.NODE_ENV !== "production" && (
-        <ReactQueryDevtools
-          position={"top-left"}
-          panelProps={{ style: { top: 0, bottom: "auto" } }}
-          initialIsOpen={false}
-        />
-      )} */}
     </>
   );
 }
