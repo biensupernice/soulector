@@ -7,7 +7,7 @@ import {
   useMutation,
   useIsMutating,
   useQueryClient,
-} from "react-query";
+} from "@tanstack/react-query";
 
 export const useCustomMutation = <
   TData = unknown,

@@ -1,27 +1,35 @@
-import { inferQueryOutput, trpc } from "@/utils/trpc";
+import { EpisodeRouter } from "@/server/router";
+import { trpc } from "@/utils/trpc";
+import { inferRouterOutputs } from "@trpc/server";
 
-export type ITrack = inferQueryOutput<"episodes.all">[number];
+export type RouterOutput = inferRouterOutputs<EpisodeRouter>;
+export type ITrack = RouterOutput["episodes.all"][number];
 
 export function useEpisodes() {
-  return trpc.useQuery(["episodes.all", { collective: "all" }], {
-    refetchOnWindowFocus: false,
-  });
+  return trpc["episodes.all"].useQuery(
+    { collective: "all" },
+    {
+      refetchOnWindowFocus: false,
+    }
+  );
 }
 
 export function useEpisode(id: string | undefined) {
-  const { getQueryData } = trpc.useContext();
+  const utils = trpc.useUtils();
+  const getData = utils["episodes.all"].getData;
 
   if (!id) {
     return null;
   }
-  const eps = getQueryData(["episodes.all"]) ?? [];
+  const eps = getData() ?? [];
 
   return eps.filter((e) => e._id === id)?.[0] || null;
 }
 
 export function useGetEpisode(id: string) {
-  const { getQueryData } = trpc.useContext();
+  const utils = trpc.useUtils();
+  const getData = utils["episodes.all"].getData;
 
-  const eps = getQueryData(["episodes.all", { collective: "all" }]) ?? [];
+  const eps = getData({ collective: "all" }) ?? [];
   return eps.filter((e) => e._id === id)[0];
 }

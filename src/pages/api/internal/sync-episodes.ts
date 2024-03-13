@@ -4,7 +4,6 @@ import _ from "lodash";
 import { SoundCloudApiClient } from "@/server/crosscutting/soundCloudApiClient";
 import { createDbConnection } from "@/server/db";
 import { Db } from "mongodb";
-import { ITrack } from "../trpc/[trpc]";
 
 function createLargeSoundtrackThumbUrl(url: string) {
   const newUrl = url.replace("-large", "-t500x500");
