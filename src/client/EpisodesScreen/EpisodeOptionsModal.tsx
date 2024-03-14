@@ -1,6 +1,5 @@
 import { BottomSheet } from "react-spring-bottom-sheet";
 import create from "zustand";
-import { ITrack } from "@/client/TracksScreen/TracksStore";
 import { formatDate, formatTimeSecs } from "@/client/helpers";
 import cx from "classnames";
 import {
@@ -12,25 +11,27 @@ import {
 import {
   useFavorites,
   useIsFavoriteFast,
-} from "@/client/TracksScreen/FavoritesStore";
+} from "@/client/EpisodesScreen/FavoritesStore";
 import {
   usePlayerActions,
-  usePlayerCurrentTrackId,
-} from "@/client/TracksScreen/PlayerStore";
+  usePlayerCurrentEpisodeId,
+} from "@/client/EpisodesScreen/PlayerStore";
+import { EpisodeProjection } from "@/server/router";
+import { useEffect } from "react";
 
-export function TrackOptionsModal() {
-  const open = useTrackOptionsStore((state) => state.open);
-  const track = useTrackOptionsStore((state) => state.track);
-  const onClose = useTrackOptionsStore((state) => state.onClose);
+export function EpisodeOptionsModal() {
+  const open = useEpisodeOptionsStore((state) => state.open);
+  const episode = useEpisodeOptionsStore((state) => state.episode);
+  const onClose = useEpisodeOptionsStore((state) => state.onClose);
 
-  const currentTrackId = usePlayerCurrentTrackId();
+  const currentEpisodeId = usePlayerCurrentEpisodeId();
   const playerActions = usePlayerActions();
 
   const { addFavorite, removeFavorite } = useFavorites();
   const isFavoriteFast = useIsFavoriteFast();
 
-  const isPlaying = currentTrackId === track?._id ?? false;
-  const isFavorited = isFavoriteFast(track?._id ?? "");
+  const isPlaying = currentEpisodeId === episode?.id ?? false;
+  const isFavorited = isFavoriteFast(episode?.id ?? "");
 
   return (
     <BottomSheet
@@ -40,25 +41,25 @@ export function TrackOptionsModal() {
       snapPoints={({ minHeight }) => minHeight * 1.1}
     >
       <div className="mb-safe-bottom w-full">
-        {track ? (
+        {episode ? (
           <div className="flex w-full flex-col space-y-2">
             <div className="flex w-full items-center space-x-4 p-3">
               <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg">
                 <img
                   className="h-full w-full bg-gray-200"
-                  src={track.picture_large}
-                  alt={track.name}
+                  src={episode.artworkUrl}
+                  alt={episode.name}
                 />
               </div>
               <div className="ml-2 flex-col space-y-1">
                 <div className={cx("text-lg font-bold leading-tight")}>
-                  {track.name}
+                  {episode.name}
                 </div>
                 <div className="text-base text-gray-700">
-                  <span>{formatDate(track.created_time)}</span>
+                  <span>{formatDate(episode.releasedAt)}</span>
                   <span className="mx-1 inline-block">&bull;</span>
                   <span className="inline-block">
-                    {formatTimeSecs(track.duration)}
+                    {formatTimeSecs(episode.duration)}
                   </span>
                 </div>
               </div>
@@ -73,7 +74,7 @@ export function TrackOptionsModal() {
                     "focus:outline-none"
                   )}
                   onClick={() => {
-                    playerActions.play(track._id);
+                    playerActions.play(episode.id);
                     onClose();
                   }}
                 >
@@ -91,9 +92,9 @@ export function TrackOptionsModal() {
                 onClick={(e) => {
                   e.preventDefault();
                   if (isFavorited) {
-                    removeFavorite(track._id);
+                    removeFavorite(episode.id);
                   } else {
-                    addFavorite(track._id);
+                    addFavorite(episode.id);
                   }
                   onClose();
                 }}
@@ -110,11 +111,11 @@ export function TrackOptionsModal() {
                   </>
                 )}
               </button>
-              {track.source === "SOUNDCLOUD" ? (
+              {episode.source === "SOUNDCLOUD" ? (
                 <a
                   target="_blank"
                   rel="noopener noreferrer"
-                  href={track.url}
+                  href={episode.permalinkUrl}
                   className={cx(
                     "just flex w-full items-center space-x-4 px-4 py-4 font-medium",
                     "active:bg-slate-200",
@@ -136,15 +137,18 @@ export function TrackOptionsModal() {
     </BottomSheet>
   );
 }
-interface TrackOptionsStore {
+interface EpisodeOptionsStore {
   open: boolean;
-  track: ITrack | null;
+  episode: EpisodeProjection | null;
   onClose: () => void;
-  setTrack: (track: ITrack) => void;
+  setEpisode: (episode: EpisodeProjection) => void;
 }
-export const useTrackOptionsStore = create<TrackOptionsStore>((set, get) => ({
-  open: false,
-  track: null,
-  onClose: () => set({ open: false, track: null }),
-  setTrack: (track: ITrack) => set({ open: true, track }),
-}));
+export const useEpisodeOptionsStore = create<EpisodeOptionsStore>(
+  (set, get) => ({
+    open: false,
+    episode: null,
+    onClose: () => set({ open: false, episode: null }),
+    setEpisode: (episode: EpisodeProjection) =>
+      set({ open: true, episode: episode }),
+  })
+);

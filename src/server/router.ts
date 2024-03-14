@@ -1,7 +1,7 @@
 import { Context } from "@/server/context";
 import { createSoundCloudApiClient } from "@/server/crosscutting/soundCloudApiClient";
-import { ObjectId } from "mongodb";
-import { z } from "zod";
+import { ObjectId, WithId } from "mongodb";
+import { string, z } from "zod";
 import path from "path";
 import axios from "axios";
 import fs from "fs";
@@ -10,17 +10,32 @@ import Vibrant from "node-vibrant";
 import { initTRPC } from "@trpc/server";
 import { syncAllCollectives } from "@/pages/api/internal/sync-episodes";
 
-export type ITrack = {
-  _id: string;
+export type DBTrack = {
   source: "SOUNDCLOUD" | "MIXCLOUD";
   duration: number;
-  created_time: string;
+  created_time: Date;
   key: number;
   name: string;
   url: string;
   picture_large: string;
   collective_slug: "soulection" | "sasha-marie-radio";
 };
+
+export type EpisodeProjection = ReturnType<typeof episodeProjection>;
+export function episodeProjection(t: WithId<DBTrack>) {
+  return {
+    id: t._id.toString(),
+    source: t.source,
+    duration: t.duration,
+    releasedAt: t.created_time.toISOString(),
+    createadAt: t.created_time.toISOString(),
+    embedPlayerKey: t.key,
+    name: t.name,
+    permalinkUrl: t.url,
+    collectiveSlug: t.collective_slug,
+    artworkUrl: t.picture_large,
+  } as const;
+}
 
 async function downloadImageFromUrl(
   url: string,
@@ -58,7 +73,7 @@ export const episodeRouter = router({
     };
   }),
   "internal.backfillCollectives": publicProcedure.query(({ ctx }) => {
-    const trackCollection = ctx.db.collection<ITrack>("tracksOld");
+    const trackCollection = ctx.db.collection<DBTrack>("tracksOld");
 
     trackCollection.updateMany(
       {},
@@ -82,7 +97,7 @@ export const episodeRouter = router({
 
       let filter = collective === "all" ? {} : { collective_slug: collective };
 
-      const trackCollection = ctx.db.collection<ITrack>("tracksOld");
+      const trackCollection = ctx.db.collection<DBTrack>("tracksOld");
       let allTracks = await trackCollection
         .find(filter)
         .sort({
@@ -90,7 +105,7 @@ export const episodeRouter = router({
         })
         .toArray();
 
-      return allTracks;
+      return allTracks.map(episodeProjection);
     }),
   "episode.getStreamUrl": publicProcedure
     .input(
@@ -101,7 +116,7 @@ export const episodeRouter = router({
     .query(async ({ input, ctx }) => {
       const { episodeId } = input;
 
-      const trackCollection = ctx.db.collection<ITrack>("tracksOld");
+      const trackCollection = ctx.db.collection<DBTrack>("tracksOld");
       const episode = await trackCollection.findOne({
         _id: new ObjectId(episodeId),
       });
@@ -136,7 +151,7 @@ export const episodeRouter = router({
         return defaultAccentColor;
       }
 
-      const trackCollection = ctx.db.collection<ITrack>("tracksOld");
+      const trackCollection = ctx.db.collection<DBTrack>("tracksOld");
       const episode = await trackCollection.findOne({
         _id: new ObjectId(episodeId),
       });

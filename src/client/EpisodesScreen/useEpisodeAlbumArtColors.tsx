@@ -3,14 +3,14 @@ import { usePlayerStore } from "./PlayerStore";
 import { useEffect } from "react";
 
 export function useEpisodeAlbumArtColors() {
-  const currentTrackId = usePlayerStore((state) => state.currentTrackId);
+  const currentEpisodeId = usePlayerStore((state) => state.currentEpisodeId);
 
   const { data } = trpc["episode.getAccentColor"].useQuery(
-    { episodeId: currentTrackId },
+    { episodeId: currentEpisodeId },
     {
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
-      enabled: currentTrackId !== undefined,
+      enabled: currentEpisodeId !== undefined,
     }
   );
 

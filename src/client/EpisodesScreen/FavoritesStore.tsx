@@ -6,8 +6,8 @@ export type FavoritesStore = {
   favoritesIndex: Set<string>;
   isFavorite: (id: string) => boolean;
   isFavoriteFast: (id: string) => boolean;
-  addFavorite: (trackId: string) => void;
-  removeFavorite: (trackId: string) => void;
+  addFavorite: (episodeId: string) => void;
+  removeFavorite: (episodeId: string) => void;
   loadFavorites: () => void;
   persistFavorites: () => void;
 };
@@ -33,21 +33,21 @@ export const useFavoritesStore = create<FavoritesStore>((set, get) => ({
       }
     }
   },
-  addFavorite(trackId: string) {
+  addFavorite(episodeId: string) {
     set({
-      favorites: [...get().favorites, trackId],
+      favorites: [...get().favorites, episodeId],
     });
 
-    get().favoritesIndex.add(trackId);
+    get().favoritesIndex.add(episodeId);
 
     get().persistFavorites();
   },
-  removeFavorite(trackId: string) {
+  removeFavorite(episodeId: string) {
     set({
-      favorites: get().favorites.filter((id) => id !== trackId),
+      favorites: get().favorites.filter((id) => id !== episodeId),
     });
 
-    get().favoritesIndex.delete(trackId);
+    get().favoritesIndex.delete(episodeId);
 
     get().persistFavorites();
   },

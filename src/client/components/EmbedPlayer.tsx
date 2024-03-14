@@ -1,27 +1,27 @@
 import React from "react";
-import { ITrack } from "../TracksScreen/TracksStore";
+import { EpisodeProjection } from "@/server/router";
 
 type Props = {
-  track: ITrack;
+  episode: EpisodeProjection;
 };
 
 export function EmbedPlayer(props: Props) {
-  const { track } = props;
+  const { episode } = props;
 
-  return track.source === "SOUNDCLOUD" ? (
-    <SoundCloudWidgetPlayer track={track} />
+  return episode.source === "SOUNDCLOUD" ? (
+    <SoundCloudWidgetPlayer episode={episode} />
   ) : (
-    <MixCloudWidgetPlayer track={track} />
+    <MixCloudWidgetPlayer episode={episode} />
   );
 }
 
 export function SoundCloudWidgetPlayer(props: Props) {
-  const { track } = props;
-  const trackKey = track.key;
+  const { episode } = props;
+  const trackKey = episode.embedPlayerKey;
 
   return (
     <iframe
-      title={track.name}
+      title={episode.name}
       width="100%"
       height="100"
       scrolling="no"
@@ -33,15 +33,15 @@ export function SoundCloudWidgetPlayer(props: Props) {
 }
 
 export function MixCloudWidgetPlayer(props: Props) {
-  const { track } = props;
-  const trackKey = track.key || "";
+  const { episode } = props;
+  const trackKey = episode.embedPlayerKey || "";
 
   const encodedTrackKey = encodeURIComponent(trackKey);
 
   return (
     <iframe
-      key={track.key}
-      title={track.name}
+      key={episode.embedPlayerKey}
+      title={episode.name}
       width="100%"
       height="120"
       allow="autoplay"

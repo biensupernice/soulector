@@ -1,5 +1,5 @@
+import { EpisodeProjection } from "@/server/router";
 import React, { useState, useRef, useEffect } from "react";
-import { ITrack } from "../TracksScreen/TracksStore";
 
 type WidgetApiLoadingState = "loading" | "loaded";
 
@@ -40,12 +40,12 @@ export interface SoundCloudPlayerWidgetProps {
   playing?: boolean;
   position?: number;
   volume?: number;
-  onReady?: (trackDuration: number) => void;
+  onReady?: (audioDuration: number) => void;
   onPlayProgressChange?: (position: number) => void;
   onPause?: () => void;
   onPlay?: () => void;
   showNative?: boolean;
-  track: ITrack;
+  episode: EpisodeProjection;
 }
 
 export function SoundCloudPlayerWidget(props: SoundCloudPlayerWidgetProps) {
@@ -56,7 +56,7 @@ export function SoundCloudPlayerWidget(props: SoundCloudPlayerWidgetProps) {
   const {
     onPlayProgressChange,
     onReady,
-    track,
+    episode,
     volume = 80,
     showNative,
   } = props;
@@ -72,7 +72,7 @@ export function SoundCloudPlayerWidget(props: SoundCloudPlayerWidgetProps) {
   useEffect(() => {
     if (widgetRef.current && !ready) {
       widgetRef.current.bind(window.SC.Widget.Events.READY, () => {
-        // return track duration when ready
+        // return audio duration when ready
         widgetRef.current.getCurrentSound((currentSound: any) => {
           onReady && onReady(currentSound.full_duration);
           setReady(true);
@@ -87,7 +87,7 @@ export function SoundCloudPlayerWidget(props: SoundCloudPlayerWidgetProps) {
         widgetRef.current.unbind(window.SC.Widget.Events.SEEK);
       }
     };
-  }, [ready, onReady, track]);
+  }, [ready, onReady, episode]);
 
   // bind PlayProgress callback
   useEffect(() => {
@@ -105,19 +105,19 @@ export function SoundCloudPlayerWidget(props: SoundCloudPlayerWidgetProps) {
         widgetRef.current.unbind(window.SC.Widget.Events.PLAY_PROGRESS);
       }
     };
-  }, [ready, onPlayProgressChange, track]);
+  }, [ready, onPlayProgressChange, episode]);
 
   useEffect(() => {
     if (widgetRef.current && ready) {
       widgetRef.current.seekTo(props.position || 0);
     }
-  }, [props.position, track, ready]);
+  }, [props.position, episode, ready]);
 
   useEffect(() => {
     if (widgetRef.current && ready) {
       widgetRef.current.setVolume(volume);
     }
-  }, [volume, track, ready]);
+  }, [volume, episode, ready]);
 
   useEffect(() => {
     if (widgetRef.current && ready) {
@@ -127,19 +127,19 @@ export function SoundCloudPlayerWidget(props: SoundCloudPlayerWidgetProps) {
         widgetRef.current.pause();
       }
     }
-  }, [props.playing, track, ready]);
+  }, [props.playing, episode, ready]);
 
   return (
     <div style={{ transform: showNative ? "scale(1)" : "scale(0)" }}>
       <iframe
         ref={widgetIframeRef}
-        title={track.name}
+        title={episode.name}
         width={showNative ? "100%" : 2}
         height={showNative ? "100" : 2}
         scrolling="no"
         frameBorder="no"
         allow="autoplay"
-        src={`https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/${track.key}&color=6065E1&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&show_artwork=false&download=false`}
+        src={`https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/${episode.embedPlayerKey}&color=6065E1&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&show_artwork=false&download=false`}
       />
     </div>
   );

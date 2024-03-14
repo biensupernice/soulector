@@ -13,15 +13,15 @@ export type StreamUrls = {
 export type PlayerStore = {
   playing: boolean;
   volume: number;
-  currentTrackId?: string;
+  currentEpisodeId?: string;
   progress: number;
-  trackDuration: number;
+  episodeDuration: number;
   cuePosition: number;
   lastVol: number;
   loadingStatus: PlayerLoadingStatus;
-  currentTrackStreamUrls: StreamUrls | null;
+  currentEpisodeStreamUrls: StreamUrls | null;
   actions: {
-    play: (trackId: string) => void;
+    play: (episodeId: string) => void;
     pause: () => void;
     resume: () => void;
     setProgress: (progress: number) => void;
@@ -34,43 +34,43 @@ export type PlayerStore = {
     setCuePosition: (cuePos: number) => void;
     forward: (secs: number) => void;
     rewind: (secs: number) => void;
-    setTrackDuration: (duration: number) => void;
-    loadTrack: (trackId: string) => void;
+    setEpisodeDuration: (duration: number) => void;
+    loadEpisode: (episodeId: string) => void;
     setLoadingStatus: (status: PlayerLoadingStatus) => void;
-    setCurrentTrackStreamUrls: (urls: StreamUrls) => void;
+    setCurrentEpisodeStreamUrls: (urls: StreamUrls) => void;
   };
 };
 
 export const usePlayerStore = create<PlayerStore>((set, get) => ({
   playing: false,
-  currentTrackId: undefined,
+  currentEpisodeId: undefined,
   volume: 100,
   lastVol: 100,
   progress: 0,
-  trackDuration: 0,
+  episodeDuration: 0,
   cuePosition: 0,
   loadingStatus: "loading",
-  currentTrackStreamUrls: null,
+  currentEpisodeStreamUrls: null,
   actions: {
-    setCurrentTrackStreamUrls(urls: StreamUrls) {
+    setCurrentEpisodeStreamUrls(urls: StreamUrls) {
       set({
-        currentTrackStreamUrls: urls,
+        currentEpisodeStreamUrls: urls,
       });
     },
-    loadTrack(trackId: string) {
-      const hasTrackLoaded = get().currentTrackId !== undefined;
+    loadEpisode(episodeId: string) {
+      const hasEpisodeLoaded = get().currentEpisodeId !== undefined;
       const isPlaying = get().playing;
-      if (!hasTrackLoaded || !isPlaying) {
+      if (!hasEpisodeLoaded || !isPlaying) {
         set({
-          // We can play the new track since we were already playing audio
-          currentTrackId: trackId,
+          // We can play the new episode since we were already playing audio
+          currentEpisodeId: episodeId,
           progress: 0,
           cuePosition: 0,
         });
       } else {
         set({
           playing: true,
-          currentTrackId: trackId,
+          currentEpisodeId: episodeId,
           progress: 0,
           cuePosition: 0,
         });
@@ -78,10 +78,10 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     },
     setLoadingStatus: (status: PlayerLoadingStatus) =>
       set({ loadingStatus: status }),
-    play(trackId: string) {
+    play(episodeId: string) {
       set({
         playing: true,
-        currentTrackId: trackId,
+        currentEpisodeId: episodeId,
         progress: 0,
         cuePosition: 0,
       });
@@ -101,9 +101,9 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
         progress: progress,
       });
     },
-    setTrackDuration(duration: number) {
+    setEpisodeDuration(duration: number) {
       set({
-        trackDuration: duration,
+        episodeDuration: duration,
       });
     },
     setCuePosition(cuePos: number) {
@@ -162,27 +162,27 @@ export const usePlayerProgress = () => usePlayerStore((s) => s.progress);
 export const usePlayerCuePosition = () => usePlayerStore((s) => s.cuePosition);
 export const usePlayerLoadingStatus = () =>
   usePlayerStore((s) => s.loadingStatus);
-export const usePlayerTrackDuration = () =>
-  usePlayerStore((s) => s.trackDuration);
+export const usePlayerEpisodeDuration = () =>
+  usePlayerStore((s) => s.episodeDuration);
 
-export const usePlayerCurrentTrackId = () =>
-  usePlayerStore((s) => s.currentTrackId);
+export const usePlayerCurrentEpisodeId = () =>
+  usePlayerStore((s) => s.currentEpisodeId);
 
-export const usePlayerTrackStreamUrls = () =>
-  usePlayerStore((s) => s.currentTrackStreamUrls);
+export const usePlayerEpisodeStreamUrls = () =>
+  usePlayerStore((s) => s.currentEpisodeStreamUrls);
 
 export const usePlayerActions = () => usePlayerStore((s) => s.actions);
 
 export const usePlayerMuted = () => usePlayerStore((s) => s.volume <= 0);
 export function usePlayerState() {
-  const currentTrackId = usePlayerCurrentTrackId();
+  const currentEpisodeId = usePlayerCurrentEpisodeId();
   const playing = usePlayerPlaying();
 
-  if (!playing && currentTrackId) {
+  if (!playing && currentEpisodeId) {
     return "paused";
   }
 
-  if (!playing && !currentTrackId) {
+  if (!playing && !currentEpisodeId) {
     return "idle";
   }
 

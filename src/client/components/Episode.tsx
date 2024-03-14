@@ -7,21 +7,21 @@ import {
   IconDotsHorizontal,
   IconSpeaker,
 } from "./Icons";
-import { ITrack } from "../TracksScreen/TracksStore";
-import { usePlayEpisodeMutation } from "../TracksScreen/TracksScreenContainer";
-import { usePlayerPlaying } from "../TracksScreen/PlayerStore";
+import { usePlayEpisodeMutation } from "../EpisodesScreen/useEpisodesScreenState";
+import { usePlayerPlaying } from "../EpisodesScreen/PlayerStore";
+import { EpisodeProjection } from "@/server/router";
 
-export type TrackProps = {
-  track: ITrack;
+export type EpisodeProps = {
+  episode: EpisodeProjection;
   selected?: boolean;
   favorite?: boolean;
   onFavoriteClick?: () => void;
   onOptionsClick?: () => void;
 } & React.HTMLAttributes<HTMLDivElement>;
 
-export function Track(props: TrackProps) {
+export function Episode(props: EpisodeProps) {
   const {
-    track,
+    episode: episode,
     selected: selected = false,
     onClick,
     favorite = false,
@@ -31,7 +31,7 @@ export function Track(props: TrackProps) {
 
   return (
     <div
-      data-episode-id={track._id}
+      data-episode-id={episode.id}
       className="flex h-full w-full items-stretch"
     >
       <div
@@ -48,17 +48,17 @@ export function Track(props: TrackProps) {
               <img
                 loading={"lazy"}
                 className="h-full w-full bg-gray-200"
-                src={track.picture_large}
-                alt={track.name}
+                src={episode.artworkUrl}
+                alt={episode.name}
               />
               {selected && <AlbumArtOverlay />}
             </div>
             <div className="ml-2 md:flex md:flex-col-reverse">
               <div className="text-sm text-gray-700 md:text-base">
-                <span>{formatDate(track.created_time)}</span>
+                <span>{formatDate(episode.releasedAt)}</span>
                 <span className="mx-1 inline-block md:hidden">&bull;</span>
                 <span className="inline-block md:hidden">
-                  {formatTimeSecs(track.duration)}
+                  {formatTimeSecs(episode.duration)}
                 </span>
               </div>
               <div
@@ -71,7 +71,7 @@ export function Track(props: TrackProps) {
                     <PlayingAnimation />
                   </div>
                 )}
-                <div className="font-bold leading-tight">{track.name}</div>
+                <div className="font-bold leading-tight">{episode.name}</div>
               </div>
             </div>
           </div>
@@ -99,7 +99,7 @@ export function Track(props: TrackProps) {
             )}
           </button>
 
-          <span className="">{formatTimeSecs(track.duration)}</span>
+          <span className="">{formatTimeSecs(episode.duration)}</span>
         </div>
       </div>
       <div className="flex md:hidden">

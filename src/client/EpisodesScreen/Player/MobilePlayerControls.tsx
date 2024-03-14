@@ -12,8 +12,8 @@ import { motion } from "framer-motion";
 import { PlayerControlsProps } from "./PlayerControls";
 
 export function MobilePlayerControls({
-  track,
-  trackDuration,
+  episode,
+  episodeDuration,
   volume,
   onVolumeChange,
   muted,
@@ -43,7 +43,7 @@ export function MobilePlayerControls({
               showThumb
               aria-label="progress"
               minValue={0}
-              maxValue={trackDuration}
+              maxValue={episodeDuration}
               value={scrubberProgress}
               onChange={(val) => {
                 setSeeking(true);
@@ -62,7 +62,7 @@ export function MobilePlayerControls({
               {formatTime(Math.ceil(scrubberProgress))}
             </div>
             <div className="text-left text-xs text-white">
-              {formatTime(Math.ceil(trackDuration))}
+              {formatTime(Math.ceil(episodeDuration))}
             </div>
           </div>
         </div>

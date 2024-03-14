@@ -3,7 +3,7 @@ import Player, { USE_NEW_PLAYER } from "./Player";
 import { ShuffleButton } from "../components/ShuffleButton";
 import EpisodeListSpinner from "./EpisodeList/EpisodeListSpinner";
 import { EpisodeList } from "./EpisodeList";
-import { useTracksScreenContainer } from "./TracksScreenContainer";
+import { useEpisodesScreenState } from "./useEpisodesScreenState";
 import { useEpisodeAlbumArtColors } from "./useEpisodeAlbumArtColors";
 import { EpisodeListError } from "./EpisodeList/EpisodeListError";
 import {
@@ -12,10 +12,10 @@ import {
   useIsFavoriteFast,
 } from "./FavoritesStore";
 import classNames from "classnames";
-import { ITrack, useEpisodes, useGetEpisode } from "./TracksStore";
+import { useEpisodes, useGetEpisode } from "./useEpisodeHooks";
 import { EpisodeListHeader } from "./EpisodeListHeader";
-import { useTrackOptionsStore } from "./TrackOptionsModal";
-import { Track } from "../components/Track";
+import { useEpisodeOptionsStore } from "./EpisodeOptionsModal";
+import { Episode } from "../components/Episode";
 import { AudioPlayer } from "../components/AudioPlayer";
 import {
   StreamUrls,
@@ -35,12 +35,13 @@ import {
 import { IconSearch } from "../components/Icons";
 import { cn } from "@/lib/utils";
 import { useCollectiveSelectStore, useNavbarStore } from "./Navbar";
+import { EpisodeProjection } from "@/server/router";
 
 type Props = {
   searchText: string;
 };
 
-function TracksScreen({ searchText }: Props) {
+export function EpisodesScreen({ searchText }: Props) {
   const [selectedSection, setSelectedSection] = useState<"all" | "favorites">(
     "all"
   );
@@ -54,23 +55,25 @@ function TracksScreen({ searchText }: Props) {
 
   const { data: episodes, error } = useEpisodes();
 
-    const loadPersistedCollective = useCollectiveSelectStore(
-      (s) => s.loadPersisted
-    );
+  const loadPersistedCollective = useCollectiveSelectStore(
+    (s) => s.loadPersisted
+  );
 
-    useEffect(() => {
-      loadPersistedCollective();
-    }, []);
+  useEffect(() => {
+    loadPersistedCollective();
+  }, []);
 
   const {
-    currentTrackId,
-    onTrackClick,
+    currentEpisodeId,
+    onEpisodeClick,
     onRandomClick,
-    currentTrackStreamUrls,
-  } = useTracksScreenContainer();
+    currentEpisodeStreamUrls,
+  } = useEpisodesScreenState();
 
   const { addFavorite, removeFavorite } = useFavorites();
-  const setContextMenuTrack = useTrackOptionsStore((state) => state.setTrack);
+  const setContextMenuEpisode = useEpisodeOptionsStore(
+    (state) => state.setEpisode
+  );
   const favoritesCount = useFavoritesCount();
   const isFavoriteFast = useIsFavoriteFast();
   const selectedCollective = useCollectiveSelectStore((s) => s.selected);
@@ -82,12 +85,10 @@ function TracksScreen({ searchText }: Props) {
       let eps = episodes;
 
       if (selectedCollective !== "all") {
-        eps = episodes.filter(
-          (ep) => ep.collective_slug === selectedCollective
-        );
+        eps = episodes.filter((ep) => ep.collectiveSlug === selectedCollective);
       }
 
-      return eps.filter((episode) => isFavoriteFast(episode._id));
+      return eps.filter((episode) => isFavoriteFast(episode.id));
     }
 
     return [];
@@ -96,14 +97,12 @@ function TracksScreen({ searchText }: Props) {
   const searchOpen = useNavbarStore((state) => state.searchOpen);
   const openSearch = useNavbarStore((state) => state.openSearch);
 
-  const filteredTracks = useMemo(() => {
+  const filteredEpisodes = useMemo(() => {
     if (episodes) {
       let eps = episodes;
 
       if (selectedCollective !== "all") {
-        eps = episodes.filter(
-          (ep) => ep.collective_slug === selectedCollective
-        );
+        eps = episodes.filter((ep) => ep.collectiveSlug === selectedCollective);
       }
 
       if (!searchText.trim()) {
@@ -119,13 +118,13 @@ function TracksScreen({ searchText }: Props) {
     return [];
   }, [episodes, searchText, selectedCollective]);
 
-  const activeTracks = activeSection === "all" ? filteredTracks : favorites;
+  const activeEpisodes = activeSection === "all" ? filteredEpisodes : favorites;
 
-  function onFavoriteClick(episode: ITrack) {
-    if (isFavoriteFast(episode._id)) {
-      removeFavorite(episode._id);
+  function onFavoriteClick(episode: EpisodeProjection) {
+    if (isFavoriteFast(episode.id)) {
+      removeFavorite(episode.id);
     } else {
-      addFavorite(episode._id);
+      addFavorite(episode.id);
     }
   }
 
@@ -146,15 +145,15 @@ function TracksScreen({ searchText }: Props) {
         <div
           className={classNames(
             "relative h-full overflow-scroll py-2 pb-safe-bottom",
-            currentTrackId && "mb-24"
+            currentEpisodeId && "mb-24"
           )}
         >
-          <EpisodeList focusedEpisodeId={currentTrackId}>
+          <EpisodeList focusedEpisodeId={currentEpisodeId}>
             <>
               <EpisodeListHeader
                 rightContent={
                   <div className="font-semibold text-gray-600">
-                    {activeTracks.length} Total
+                    {activeEpisodes.length} Total
                   </div>
                 }
                 filterText={searchText}
@@ -164,27 +163,27 @@ function TracksScreen({ searchText }: Props) {
               {activeSection === "favorites" ? (
                 <div>
                   {favorites.map((episode) => (
-                    <Track
-                      key={episode._id}
-                      onClick={() => onTrackClick(episode._id)}
-                      track={episode}
-                      selected={episode._id === currentTrackId}
-                      favorite={isFavoriteFast(episode._id)}
-                      onOptionsClick={() => setContextMenuTrack(episode)}
+                    <Episode
+                      key={episode.id}
+                      onClick={() => onEpisodeClick(episode.id)}
+                      episode={episode}
+                      selected={episode.id === currentEpisodeId}
+                      favorite={isFavoriteFast(episode.id)}
+                      onOptionsClick={() => setContextMenuEpisode(episode)}
                       onFavoriteClick={() => onFavoriteClick(episode)}
                     />
                   ))}
                 </div>
               ) : (
                 <div>
-                  {filteredTracks.map((episode) => (
-                    <Track
-                      key={episode._id}
-                      onClick={() => onTrackClick(episode._id)}
-                      track={episode}
-                      selected={episode._id === currentTrackId}
-                      favorite={isFavoriteFast(episode._id)}
-                      onOptionsClick={() => setContextMenuTrack(episode)}
+                  {filteredEpisodes.map((episode) => (
+                    <Episode
+                      key={episode.id}
+                      onClick={() => onEpisodeClick(episode.id)}
+                      episode={episode}
+                      selected={episode.id === currentEpisodeId}
+                      favorite={isFavoriteFast(episode.id)}
+                      onOptionsClick={() => setContextMenuEpisode(episode)}
                       onFavoriteClick={() => onFavoriteClick(episode)}
                     />
                   ))}
@@ -213,18 +212,18 @@ function TracksScreen({ searchText }: Props) {
               <ShuffleButton onClick={onRandomClick} />
             </div>
           ) : null}
-          {currentTrackId && <Player currentTrackId={currentTrackId} />}
-          {USE_NEW_PLAYER && currentTrackId && currentTrackStreamUrls && (
+          {currentEpisodeId && <Player currentEpisodeId={currentEpisodeId} />}
+          {USE_NEW_PLAYER && currentEpisodeId && currentEpisodeStreamUrls && (
             <EpisodeAudioPlayer
-              currentTrackId={currentTrackId}
-              currentTrackStreamUrls={currentTrackStreamUrls}
+              currentEpisodeId={currentEpisodeId}
+              currentEpisodeStreamUrls={currentEpisodeStreamUrls}
             />
           )}
         </div>
         {!isWideScreen && (
           <EpisodeModalSheet
-            episodeId={currentTrackId}
-            showTrackModal={isEpisodeModalSheetOpen}
+            episodeId={currentEpisodeId}
+            showEpisodeModal={isEpisodeModalSheetOpen}
             onCloseModal={() => episodeModalSheetActions.close()}
           ></EpisodeModalSheet>
         )}
@@ -247,17 +246,15 @@ function TracksScreen({ searchText }: Props) {
   );
 }
 
-export default TracksScreen;
-
 export interface EpisodeAudioPlayerProps {
-  currentTrackId: string;
-  currentTrackStreamUrls: StreamUrls;
+  currentEpisodeId: string;
+  currentEpisodeStreamUrls: StreamUrls;
 }
 export function EpisodeAudioPlayer({
-  currentTrackId,
-  currentTrackStreamUrls,
+  currentEpisodeId,
+  currentEpisodeStreamUrls,
 }: EpisodeAudioPlayerProps) {
-  const episode = useGetEpisode(currentTrackId);
+  const episode = useGetEpisode(currentEpisodeId);
   const playing = usePlayerPlaying();
   const volume = usePlayerVolume();
   const playerActions = usePlayerActions();
@@ -270,7 +267,7 @@ export function EpisodeAudioPlayer({
 
   function onPlayerReady(audioDuration: number) {
     playerActions.setLoadingStatus("loaded");
-    playerActions.setTrackDuration(audioDuration);
+    playerActions.setEpisodeDuration(audioDuration);
   }
 
   useEffect(() => {
@@ -292,7 +289,7 @@ export function EpisodeAudioPlayer({
     <AudioPlayer
       playing={playing}
       onReady={onPlayerReady}
-      mp3StreamUrl={currentTrackStreamUrls.http_mp3_128_url}
+      mp3StreamUrl={currentEpisodeStreamUrls.http_mp3_128_url}
       onPlayProgressChange={onPlayProgressChange}
       onPause={onPause}
       onPlay={onPlay}
@@ -311,37 +308,37 @@ function setNavigatorMediaMetadata(episode: ReturnType<typeof useGetEpisode>) {
 
     navigator.mediaSession.metadata = new MediaMetadata({
       title: episode.name,
-      artist: `${prefixMap[episode.collective_slug]} ${formatDate(
-        episode.created_time
+      artist: `${prefixMap[episode.collectiveSlug]} ${formatDate(
+        episode.releasedAt
       )}`,
       artwork: [
         {
-          src: episode.picture_large,
+          src: episode.artworkUrl,
           sizes: "96x96",
           type: "image/jpg",
         },
         {
-          src: episode.picture_large,
+          src: episode.artworkUrl,
           sizes: "128x128",
           type: "image/jpg",
         },
         {
-          src: episode.picture_large,
+          src: episode.artworkUrl,
           sizes: "192x192",
           type: "image/jpg",
         },
         {
-          src: episode.picture_large,
+          src: episode.artworkUrl,
           sizes: "256x256",
           type: "image/jpg",
         },
         {
-          src: episode.picture_large,
+          src: episode.artworkUrl,
           sizes: "384x384",
           type: "image/jpg",
         },
         {
-          src: episode.picture_large,
+          src: episode.artworkUrl,
           sizes: "512x512",
           type: "image/jpg",
         },
