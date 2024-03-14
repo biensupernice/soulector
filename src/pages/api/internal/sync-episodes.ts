@@ -1,11 +1,11 @@
 import { NextApiRequest, NextApiResponse } from "next";
-
 import _ from "lodash";
 import { SoundCloudApiClient } from "@/server/crosscutting/soundCloudApiClient";
 import { createDbConnection } from "@/server/db";
 import { Db } from "mongodb";
+import { DBTrack } from "@/server/router";
 
-function createLargeSoundtrackThumbUrl(url: string) {
+function createLargeSoundCloudThumbUrl(url: string) {
   const newUrl = url.replace("-large", "-t500x500");
   return newUrl;
 }
@@ -28,17 +28,6 @@ export async function syncAllCollectives(db: Db) {
   return retrieved;
 }
 
-interface DBTrack {
-  source: "SOUNDCLOUD" | "MIXCLOUD";
-  duration: number;
-  created_time: Date;
-  key: number;
-  name: string;
-  url: string;
-  picture_large: string;
-  collective_slug: "soulection" | "sasha-marie-radio";
-}
-
 export async function getSoundCloudTracks(
   db: Db,
   collectiveSlug: "soulection" | "sasha-marie-radio" = "soulection"
@@ -50,7 +39,7 @@ export async function getSoundCloudTracks(
     .getPlaylistInfo(playlists[collectiveSlug])
     .then((res) => res.tracks);
 
-  let mapped: DBTrack[] = trackDtos.map((track) => ({
+  let mapped = trackDtos.map((track) => ({
     source: "SOUNDCLOUD",
     duration: parseInt(`${track.duration / 1000}`, 10),
     created_time: new Date(track.created_at),
@@ -58,8 +47,8 @@ export async function getSoundCloudTracks(
     name: track.title,
     url: track.permalink_url,
     collective_slug: collectiveSlug,
-    picture_large: createLargeSoundtrackThumbUrl(track.artwork_url),
-  }));
+    picture_large: createLargeSoundCloudThumbUrl(track.artwork_url),
+  })) satisfies DBTrack[];
 
   let incomingIds = mapped.map((it) => it.key);
 

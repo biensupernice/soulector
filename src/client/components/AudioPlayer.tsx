@@ -4,7 +4,7 @@ export interface AudioPlayerProps {
   mp3StreamUrl: string | null;
   playing: boolean;
   volume?: number;
-  onReady: (trackDuration: number) => void;
+  onReady: (audioDuration: number) => void;
   onPlayProgressChange: (position: number) => void;
   onPause: () => void;
   onPlay: () => void;

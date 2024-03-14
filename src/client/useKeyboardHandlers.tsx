@@ -1,11 +1,8 @@
 import {
-  PlayerStore,
   usePlayerActions,
   usePlayerPlaying,
-  usePlayerStore,
-  usePlayerTrackDuration,
-} from "./TracksScreen/PlayerStore";
-import shallow from "zustand/shallow";
+  usePlayerEpisodeDuration,
+} from "./EpisodesScreen/PlayerStore";
 import { useEffect, useMemo } from "react";
 import {
   isWritableElement,
@@ -14,7 +11,7 @@ import {
   isArrowKey,
   EVENT,
 } from "./helpers";
-import { useNavbarStore } from "./TracksScreen/Navbar";
+import { useNavbarStore } from "./EpisodesScreen/Navbar";
 
 export interface KeyboardAction {
   perform: Function;
@@ -29,7 +26,7 @@ export type KeyboarActionsMap = {
 export function useShortcutHandlers() {
   const playerActions = usePlayerActions();
   const playing = usePlayerPlaying();
-  const trackDuration = usePlayerTrackDuration();
+  const episodeDuration = usePlayerEpisodeDuration();
   const openSearch = useNavbarStore((state) => state.openSearch);
 
   const togglePlay = useMemo(() => {
@@ -92,7 +89,7 @@ export function useShortcutHandlers() {
         return event.key === KEYS.ONE_KEY;
       },
       perform: () => {
-        playerActions.setCuePosition(trackDuration * 0.1);
+        playerActions.setCuePosition(episodeDuration * 0.1);
       },
     },
     TWENTY_PERCENT: {
@@ -100,7 +97,7 @@ export function useShortcutHandlers() {
         return event.key === KEYS.TWO_KEY;
       },
       perform: () => {
-        playerActions.setCuePosition(trackDuration * 0.2);
+        playerActions.setCuePosition(episodeDuration * 0.2);
       },
     },
     THIRTY_PERCENT: {
@@ -108,7 +105,7 @@ export function useShortcutHandlers() {
         return event.key === KEYS.THREE_KEY;
       },
       perform: () => {
-        playerActions.setCuePosition(trackDuration * 0.3);
+        playerActions.setCuePosition(episodeDuration * 0.3);
       },
     },
     FOURTY_PERCENT: {
@@ -116,7 +113,7 @@ export function useShortcutHandlers() {
         return event.key === KEYS.FOUR_KEY;
       },
       perform: () => {
-        playerActions.setCuePosition(trackDuration * 0.4);
+        playerActions.setCuePosition(episodeDuration * 0.4);
       },
     },
     FIFTY_PERCENT: {
@@ -124,7 +121,7 @@ export function useShortcutHandlers() {
         return event.key === KEYS.FIVE_KEY;
       },
       perform: () => {
-        playerActions.setCuePosition(trackDuration * 0.5);
+        playerActions.setCuePosition(episodeDuration * 0.5);
       },
     },
     SIXTY_PERCENT: {
@@ -132,7 +129,7 @@ export function useShortcutHandlers() {
         return event.key === KEYS.SIX_KEY;
       },
       perform: () => {
-        playerActions.setCuePosition(trackDuration * 0.6);
+        playerActions.setCuePosition(episodeDuration * 0.6);
       },
     },
     SEVENTY_PERCENT: {
@@ -140,7 +137,7 @@ export function useShortcutHandlers() {
         return event.key === KEYS.SEVEN_KEY;
       },
       perform: () => {
-        playerActions.setCuePosition(trackDuration * 0.7);
+        playerActions.setCuePosition(episodeDuration * 0.7);
       },
     },
     EIGHTY_PERCENT: {
@@ -148,7 +145,7 @@ export function useShortcutHandlers() {
         return event.key === KEYS.EIGHT_KEY;
       },
       perform: () => {
-        playerActions.setCuePosition(trackDuration * 0.8);
+        playerActions.setCuePosition(episodeDuration * 0.8);
       },
     },
     NINETY_PERCENT: {
@@ -156,7 +153,7 @@ export function useShortcutHandlers() {
         return event.key === KEYS.NINE_KEY;
       },
       perform: () => {
-        playerActions.setCuePosition(trackDuration * 0.9);
+        playerActions.setCuePosition(episodeDuration * 0.9);
       },
     },
   };

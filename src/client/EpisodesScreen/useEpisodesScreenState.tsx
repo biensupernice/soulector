@@ -2,17 +2,17 @@ import { trpc } from "@/utils/trpc";
 import { sample } from "lodash-es";
 import { event } from "nextjs-google-analytics";
 import { usePlayerActions, usePlayerStore } from "./PlayerStore";
-import { useEpisodes } from "./TracksStore";
+import { useEpisodes } from "./useEpisodeHooks";
 import { useCustomMutation } from "../infra/useCustomMutation";
 import { useEpisodeModalSheetActions } from "./EpisodeModalSheet";
 import { useCollectiveSelectStore } from "./Navbar";
 
-export function useTracksScreenContainer() {
-  const currentTrackId = usePlayerStore((state) => state.currentTrackId);
+export function useEpisodesScreenState() {
+  const currentEpisodeId = usePlayerStore((state) => state.currentEpisodeId);
   const playing = usePlayerStore((state) => state.playing);
   const volume = usePlayerStore((state) => state.volume);
-  const currentTrackStreamUrls = usePlayerStore(
-    (state) => state.currentTrackStreamUrls
+  const currentEpisodeStreamUrls = usePlayerStore(
+    (state) => state.currentEpisodeStreamUrls
   );
 
   const selectedCollective = useCollectiveSelectStore((s) => s.selected);
@@ -24,21 +24,21 @@ export function useTracksScreenContainer() {
   const { mutate } = usePlayEpisodeMutation();
   const episodeModalSheetActions = useEpisodeModalSheetActions();
 
-  async function onTrackClick(episodeId: string) {
+  async function onEpisodeClick(episodeId: string) {
     if (episodes) {
-      const episode = episodes.find((e) => e._id === episodeId);
+      const episode = episodes.find((e) => e.id === episodeId);
       event("Track Click", {
         category: "User",
         label: episode && episode.name ? episode.name : episodeId,
       });
 
       episodeModalSheetActions.open();
-      playerActions.loadTrack(episodeId);
+      playerActions.loadEpisode(episodeId);
 
       mutate(episodeId, {
         onSuccess(data) {
           if (data) {
-            playerActions.setCurrentTrackStreamUrls(data);
+            playerActions.setCurrentEpisodeStreamUrls(data);
           }
         },
       });
@@ -52,17 +52,17 @@ export function useTracksScreenContainer() {
 
     let eps = episodes;
     if (selectedCollective !== "all") {
-      eps = episodes?.filter((e) => e.collective_slug === selectedCollective);
+      eps = episodes?.filter((e) => e.collectiveSlug === selectedCollective);
     }
 
     let episode = sample(eps);
     if (episode) {
-      playerActions.loadTrack(episode._id);
+      playerActions.loadEpisode(episode.id);
       episodeModalSheetActions.open();
-      mutate(episode._id, {
+      mutate(episode.id, {
         onSuccess(data) {
           if (data) {
-            playerActions.setCurrentTrackStreamUrls(data);
+            playerActions.setCurrentEpisodeStreamUrls(data);
           }
         },
       });
@@ -72,21 +72,17 @@ export function useTracksScreenContainer() {
   return {
     playing,
     volume,
-    currentTrackId,
-    onTrackClick,
+    currentEpisodeId,
+    onEpisodeClick,
     onRandomClick,
-    currentTrackStreamUrls,
+    currentEpisodeStreamUrls,
   };
 }
-
-export const playEpisodeMutationKey = {
-  queryKey: ["playEpisode"],
-};
 
 export function usePlayEpisodeMutation() {
   const utils = trpc.useUtils();
   const fetchStreamUrl = utils["episode.getStreamUrl"].fetch;
-  
+
   return useCustomMutation(
     playEpisodeMutationKey.queryKey,
     async (episodeId: string) => {
@@ -107,3 +103,7 @@ export function usePlayEpisodeMutation() {
     }
   );
 }
+
+export const playEpisodeMutationKey = {
+  queryKey: ["playEpisode"],
+};

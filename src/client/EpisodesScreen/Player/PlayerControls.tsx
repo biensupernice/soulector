@@ -9,12 +9,12 @@ import {
   IconSpeaker,
 } from "../../components/Icons";
 import cx from "classnames";
-import { ITrack } from "../TracksStore";
 import { Slider } from "@/client/components/Slider";
 import { motion } from "framer-motion";
+import { EpisodeProjection } from "@/server/router";
 
 export type PlayerControlsProps = {
-  track: ITrack;
+  episode: EpisodeProjection;
   playing: boolean;
   volume: number;
   onVolumeChange: (vol: number) => void;
@@ -27,12 +27,12 @@ export type PlayerControlsProps = {
   onCuePositionChange: (cuePos: number) => void;
   onForward: (secs: number) => void;
   onRewind: (secs: number) => void;
-  trackDuration: number;
+  episodeDuration: number;
   loading: boolean;
 };
 export function PlayerControls({
-  track,
-  trackDuration,
+  episode,
+  episodeDuration,
   volume,
   onVolumeChange,
   muted,
@@ -58,14 +58,14 @@ export function PlayerControls({
         <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg">
           <img
             className="h-full w-full bg-gray-200"
-            src={track.picture_large}
-            alt={track.name}
+            src={episode.artworkUrl}
+            alt={episode.name}
           />
         </div>
         <div className="flex flex-col justify-center">
-          <div className="text-md font-bold leading-tight">{track.name}</div>
+          <div className="text-md font-bold leading-tight">{episode.name}</div>
           <div className="text-md text-gray-700">
-            {formatDate(track.created_time)}
+            {formatDate(episode.releasedAt)}
           </div>
         </div>
       </div>
@@ -151,7 +151,7 @@ export function PlayerControls({
                 <Slider
                   aria-label="progress"
                   minValue={0}
-                  maxValue={trackDuration}
+                  maxValue={episodeDuration}
                   value={scrubberProgress}
                   onChange={(val) => {
                     setSeeking(true);
@@ -166,7 +166,7 @@ export function PlayerControls({
                 />
               </div>
               <div className="w-10 text-xs">
-                {formatTime(Math.ceil(trackDuration))}
+                {formatTime(Math.ceil(episodeDuration))}
               </div>
             </div>
           </>
@@ -184,7 +184,7 @@ export function PlayerControls({
             title="Open in SoundCloud"
             target="_blank"
             rel="noopener noreferrer"
-            href={track.url}
+            href={episode.permalinkUrl}
           >
             <IconSoundcloud className="h-5 w-5 fill-current" />
           </a>

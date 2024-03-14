@@ -1,9 +1,9 @@
 import { useState } from "react";
-import TracksScreen from "@/client/TracksScreen";
+import { EpisodesScreen } from "@/client/EpisodesScreen/EpisodesScreen";
 import { useShortcutHandlers } from "@/client/useKeyboardHandlers";
-import Navbar from "@/client/TracksScreen/Navbar";
+import Navbar from "@/client/EpisodesScreen/Navbar";
 import "react-spring-bottom-sheet/dist/style.css";
-import { TrackOptionsModal } from "../client/TracksScreen/TrackOptionsModal";
+import { EpisodeOptionsModal } from "../client/EpisodesScreen/EpisodeOptionsModal";
 import { motion, useScroll, useTransform } from "framer-motion";
 
 export default function Home() {
@@ -30,9 +30,9 @@ export default function Home() {
             />
           </div>
         </div>
-        <TracksScreen searchText={searchText} />
+        <EpisodesScreen searchText={searchText} />
       </div>
-      <TrackOptionsModal />
+      <EpisodeOptionsModal />
     </>
   );
 }

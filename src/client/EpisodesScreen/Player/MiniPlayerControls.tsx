@@ -10,8 +10,8 @@ export interface MiniPlayerControlsPromps extends PlayerControlsProps {
 }
 
 export function MiniPlayerControls({
-  track,
-  trackDuration,
+  episode,
+  episodeDuration,
   volume,
   onVolumeChange,
   muted,
@@ -32,7 +32,7 @@ export function MiniPlayerControls({
       <div className="absolute top-0 h-[2px] w-full bg-gray-300">
         <div
           className="absolute top-0 h-[2px] bg-accent"
-          style={{ width: `${(100 * progress) / trackDuration}%` }}
+          style={{ width: `${(100 * progress) / episodeDuration}%` }}
         ></div>
       </div>
       <button
@@ -42,16 +42,16 @@ export function MiniPlayerControls({
         <div className="relative h-11 w-11 flex-shrink-0 rounded">
           <img
             className="h-full w-full rounded bg-gray-200"
-            src={track.picture_large}
-            alt={track.name}
+            src={episode.artworkUrl}
+            alt={episode.name}
           />
         </div>
         <div className="flex w-full flex-col justify-center overflow-hidden">
           <div className="w-full overflow-hidden text-ellipsis whitespace-nowrap text-base font-semibold leading-tight">
-            {track.name}
+            {episode.name}
           </div>
           <div className="text-sm text-gray-700">
-            {formatDate(track.created_time)}
+            {formatDate(episode.releasedAt)}
           </div>
         </div>
       </button>

@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createDbConnection } from "@/server/db";
 
-async function getAllTracks() {
+async function getAllEpisodes() {
   const db = await createDbConnection();
 
   const trackCollection = db.collection("tracksOld");
@@ -17,7 +17,7 @@ async function getAllTracks() {
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {
   try {
-    let tracks = await getAllTracks();
+    let tracks = await getAllEpisodes();
 
     console.log("successfully retrieved tracks");
     res.status(200).json({ tracks });

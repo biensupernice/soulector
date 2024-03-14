@@ -12,13 +12,14 @@ import {
   usePlayerVolume,
   usePlayerMuted,
   usePlayerProgress,
-  usePlayerTrackDuration,
+  usePlayerEpisodeDuration,
   usePlayerLoadingStatus,
   usePlayerActions,
 } from "../PlayerStore";
-import { useGetEpisode } from "../TracksStore";
+import { useGetEpisode } from "../useEpisodeHooks";
 import Sheet from "react-modal-sheet";
 import create from "zustand";
+import { useEffect } from "react";
 
 interface EpisodeModalSheetStore {
   isOpen: boolean;
@@ -41,19 +42,19 @@ export const useEpisodeModalSheetActions = () =>
   useEpisodeModalSheetStore((s) => s.actions);
 
 interface EpisodeModalSheetProps {
-  showTrackModal: boolean;
+  showEpisodeModal: boolean;
   onCloseModal: () => void;
   episodeId?: string;
 }
 export function EpisodeModalSheet({
-  showTrackModal,
+  showEpisodeModal,
   onCloseModal,
   episodeId,
 }: EpisodeModalSheetProps) {
   return (
     <Sheet
       className="full-height-sheet mx-auto w-full max-w-2xl"
-      isOpen={showTrackModal}
+      isOpen={showEpisodeModal}
       onClose={onCloseModal}
     >
       <Sheet.Container>
@@ -71,18 +72,19 @@ export function EpisodeModalSheet({
 
 function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
   const episode = useGetEpisode(episodeId);
+
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-between space-y-3 overflow-auto pb-safe-top">
       <div className="w-full flex-col space-y-3 px-6 pt-6">
         <img
           className="min-h-40 min-w-40 mx-auto w-full max-w-sm rounded-lg object-fill"
-          src={episode.picture_large}
+          src={episode.artworkUrl}
           alt={episode.name}
         />
         <div className="flex w-full flex-col text-center">
           <div className="font-bold text-white">{episode.name}</div>
           <div className="text-sm text-white/80">
-            {formatDate(episode.created_time)}
+            {formatDate(episode.releasedAt)}
           </div>
         </div>
       </div>
@@ -91,8 +93,8 @@ function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
       </div>
       <div className="grid w-full grid-cols-2 gap-x-2 px-6">
         <a
-          href={episode.url}
-          className="inline-flex w-full flex-1 items-center justify-center space-x-1 rounded-md border-2 border-white bg-transparent py-1 px-2 text-center text-xs font-semibold text-white"
+          href={episode.permalinkUrl}
+          className="inline-flex w-full flex-1 items-center justify-center space-x-1 rounded-md border-2 border-white bg-transparent px-2 py-1 text-center text-xs font-semibold text-white"
         >
           <span
             className={classNames("inline-block rounded-full p-1")}
@@ -128,7 +130,7 @@ export function EpisodeSheetFavoriteToggle({
           addFavorite(episodeId);
         }
       }}
-      className="inline-flex w-full items-center justify-center space-x-2 rounded-md border-2 border-white bg-transparent py-1 px-3 text-xs font-bold text-white"
+      className="inline-flex w-full items-center justify-center space-x-2 rounded-md border-2 border-white bg-transparent px-3 py-1 text-xs font-bold text-white"
     >
       {isFavorited ? (
         <>
@@ -153,9 +155,9 @@ export function EpisodeSheetPlayer({ episodeId }: EpisodeSheetPlayerProps) {
   const volume = usePlayerVolume();
   const muted = usePlayerMuted();
   const progress = usePlayerProgress();
-  const trackDuration = usePlayerTrackDuration();
+  const episodeDuration = usePlayerEpisodeDuration();
   const loadingStatus = usePlayerLoadingStatus();
-  const currentTrack = useGetEpisode(episodeId);
+  const currentEpisode = useGetEpisode(episodeId);
 
   const playerActions = usePlayerActions();
 
@@ -165,7 +167,7 @@ export function EpisodeSheetPlayer({ episodeId }: EpisodeSheetPlayerProps) {
       onVolumeChange={playerActions.setVolume}
       onPause={playerActions.pause}
       onResume={playerActions.resume}
-      track={currentTrack}
+      episode={currentEpisode}
       playing={playing}
       muted={muted}
       onMute={playerActions.mute}
@@ -174,7 +176,7 @@ export function EpisodeSheetPlayer({ episodeId }: EpisodeSheetPlayerProps) {
       onCuePositionChange={playerActions.setCuePosition}
       onForward={playerActions.forward}
       onRewind={playerActions.rewind}
-      trackDuration={trackDuration}
+      episodeDuration={episodeDuration}
       loading={loadingStatus === "loading"}
     />
   );
