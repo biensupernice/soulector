@@ -13,7 +13,8 @@ import { syncAllCollectives } from "@/pages/api/internal/sync-episodes";
 export type DBTrack = {
   source: "SOUNDCLOUD" | "MIXCLOUD";
   duration: number;
-  created_time: Date;
+  // TODO: In Prod, mixcloud episodes have string dates
+  created_time: string | Date; 
   key: number;
   name: string;
   url: string;
@@ -27,8 +28,14 @@ export function episodeProjection(t: WithId<DBTrack>) {
     id: t._id.toString(),
     source: t.source,
     duration: t.duration,
-    releasedAt: t.created_time.toISOString(),
-    createadAt: t.created_time.toISOString(),
+    releasedAt:
+      typeof t.created_time !== "string"
+        ? t.created_time.toISOString()
+        : t.created_time,
+    createadAt:
+      typeof t.created_time !== "string"
+        ? t.created_time.toISOString()
+        : t.created_time,
     embedPlayerKey: t.key,
     name: t.name,
     permalinkUrl: t.url,
