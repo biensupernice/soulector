@@ -18,10 +18,11 @@ export type DBTrack = {
   name: string;
   url: string;
   picture_large: string;
-  collective_slug: "soulection" | "sasha-marie-radio";
+  collective_slug: "soulection" | "sasha-marie-radio" | "the-love-below-hour";
 };
 
 export type EpisodeProjection = ReturnType<typeof episodeProjection>;
+export type EpisodeCollectiveSlugProjection = DBTrack["collective_slug"];
 export function episodeProjection(t: WithId<DBTrack>) {
   return {
     id: t._id.toString(),

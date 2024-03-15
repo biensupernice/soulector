@@ -16,8 +16,6 @@ export function useEpisodeAlbumArtColors() {
 
   useEffect(() => {
     if (data) {
-      const rgbString = data.rgb.join(" ");
-
       const [h, s, l] = data.hsl;
       const hslString = `${h * 360} ${s * 100}% ${l * 100}%`;
 

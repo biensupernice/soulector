@@ -1,6 +1,10 @@
-import { SashaMarieRadioLogo, SoulectionLogo } from "./Logos";
+import {
+  SashaMarieRadioLogo,
+  SoulectionLogo,
+  TheLoveBelowHourLogo,
+} from "./Logos";
 import React, { useEffect } from "react";
-import { IconChevron, IconSearch, Soulector } from "../../components/Icons";
+import { IconChevron, IconSearch, Soulection } from "../../components/Icons";
 import NavbarSearch from "./NavbarSearch";
 import cx from "classnames";
 import create from "zustand";
@@ -16,6 +20,7 @@ import EpisodeListSpinner from "../EpisodeList/EpisodeListSpinner";
 import { CardStackIcon } from "@radix-ui/react-icons";
 import { SelectSeparator } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { EpisodeCollectiveSlugProjection } from "@/server/router";
 
 export type NavbarStore = {
   searchOpen: boolean;
@@ -38,8 +43,8 @@ export const useNavbarStore = create<NavbarStore>((set, get) => ({
 }));
 
 export type CollectiveSelectStore = {
-  selected: "all" | "soulection" | "sasha-marie-radio";
-  setSelected: (collective: "all" | "soulection" | "sasha-marie-radio") => void;
+  selected: "all" | EpisodeCollectiveSlugProjection;
+  setSelected: (collective: "all" | EpisodeCollectiveSlugProjection) => void;
   loadPersisted: () => void;
 };
 
@@ -58,8 +63,7 @@ export const useCollectiveSelectStore = create<CollectiveSelectStore>(
         set({
           selected: persistedCollective as
             | "all"
-            | "soulection"
-            | "sasha-marie-radio",
+            | EpisodeCollectiveSlugProjection,
         });
       }
     },
@@ -122,6 +126,9 @@ export default function Navbar({
               </CollectiveSelectItem>
               <CollectiveSelectItem value="soulection">
                 <SoulectionLogo />
+              </CollectiveSelectItem>
+              <CollectiveSelectItem value="the-love-below-hour">
+                <TheLoveBelowHourLogo />
               </CollectiveSelectItem>
             </CollectiveSelectContent>
           </CollectiveSelect>

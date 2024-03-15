@@ -1,11 +1,20 @@
 import React from "react";
-import { Soulector } from "../../components/Icons";
+import { Soulection } from "../../components/Icons";
 
 export function SoulectionLogo() {
   return (
     <div className="flex items-center space-x-2">
-      <Soulector className="h-8 w-8 fill-current" />
-      <SoulectionLogotype className="h-4 w-52 fill-current pr-10" />
+      <Soulection className="h-8 w-8 fill-current" />
+      <SoulectionLogotype className="h-4 w-60 fill-current pr-10" />
+    </div>
+  );
+}
+
+export function TheLoveBelowHourLogo() {
+  return (
+    <div className="flex items-center space-x-2 hover:text-white">
+      <TheLoveBelowLogo className="h-7 w-7 fill-current" />
+      <div className="w-60 text-xl text-left font-bold">The Love Below Hour</div>
     </div>
   );
 }
@@ -13,7 +22,7 @@ export function SoulectionLogo() {
 export function SashaMarieRadioLogo() {
   return (
     <div className="flex items-center space-x-2">
-      <SashaMarioRadio className="h-7 w-60 pt-1 fill-current pr-10" />
+      <SashaMarioRadio className="h-7 w-60 fill-current pr-10 pt-1" />
     </div>
   );
 }
@@ -123,6 +132,24 @@ export function SashaMarioRadio(props: any) {
       <path
         d="M322.95 25.9019C322.613 25.9019 322.324 26.3349 322.324 26.8641C322.324 27.73 322.613 27.8263 326.654 27.8263C330.022 27.8263 331.032 27.6338 331.272 27.0565C331.417 26.6717 331.128 25.9982 330.503 25.5171L329.444 24.6511L330.455 18.6376C331.994 9.78573 332.331 8.53491 333.678 8.05383C334.351 7.81329 334.832 7.23599 334.832 6.65869C334.832 5.74462 334.496 5.69653 330.455 5.69653C326.943 5.69653 326.077 5.84085 325.836 6.41815C325.644 6.89923 325.932 7.47653 326.558 7.90951C327.857 8.82354 327.857 9.49706 326.365 17.5311C325.163 23.9776 324.393 25.9019 322.95 25.9019Z"
         // fill="black"
+      />
+    </svg>
+  );
+}
+
+export function TheLoveBelowLogo(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 126 126"
+    >
+      <path
+        fill="currentColor"
+        fill-rule="evenodd"
+        d="M125.487 62.743c0 34.653-28.091 62.744-62.744 62.744C28.091 125.487 0 97.396 0 62.743 0 28.091 28.091 0 62.743 0c34.653 0 62.744 28.091 62.744 62.743Zm-114.594 17.6c6.35 18.8 22.35 32.65 42.35 36.7 4.5.9 13.9.85 18.85-.05 11.25-2.05 20.4-6.7 28.5-14.5 9.25-8.8 14.95-19.65 16.65-31.7.9-6.25.35-15.7-1.2-21.8-5.85-22.4-25.25-38.75-48.2-40.7-25.65-2.15-48.7 12.85-56.95 37.1-3.6 10.7-3.6 24.15 0 34.95Zm43.35 9.25c0 .2 1.9 2.35 4.25 4.75 2.3 2.4 4.45 4.4 4.75 4.4.75 0 9.05-8.8 8.65-9.2-.45-.45-17.65-.45-17.65.05Zm-6.94-6.47c-.12.465.712 1.179 1.94 2.27l2 1.85h23.5l2-2c1.15-1.1 1.9-2.25 1.75-2.5-.2-.35-5.9-.5-15.8-.5-11.365 0-15.156-.021-15.39.88Zm-10.01-10.13 2.7 2.85 2.75 2.9h40.5l2.85-2.9 2.9-2.85-12.85-.15c-7.1-.1-18.7-.1-25.85 0l-13 .15Zm-8.3-16.75c0 5 .1 6 1.1 7.85l1.15 2.15h63.5l1.1-2.4c.95-2 1.15-3.2 1.15-7.6 0-4.9-.15-5.5-1.65-8.65-5.4-11.5-20.35-15.25-30.3-7.65-.9.7-1.85 1.3-2.05 1.3-.2 0-1.35-.7-2.55-1.55-10.45-7.15-24.45-3.5-30 7.8-1.35 2.75-1.45 3.4-1.45 8.75Z"
+        clip-rule="evenodd"
       />
     </svg>
   );

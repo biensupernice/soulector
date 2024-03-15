@@ -304,6 +304,7 @@ function setNavigatorMediaMetadata(episode: ReturnType<typeof useGetEpisode>) {
     const prefixMap = {
       soulection: "Soulection on",
       "sasha-marie-radio": "Sasha Marie on",
+      "the-love-below-hour": "The Love Below on",
     };
 
     navigator.mediaSession.metadata = new MediaMetadata({
