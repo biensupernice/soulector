@@ -33,6 +33,7 @@ export default function NavbarSearch({
     all: "Search all episodes...",
     soulection: "Search Soulection episodes...",
     "sasha-marie-radio": "Search Sasha Marie Radio episodes...",
+    "the-love-below-hour": "The Love Below episodes..."
   };
 
   const placeHolder = placeHolderOptions[selectedCollective];
