@@ -4,7 +4,8 @@ Experience it at [soulector.app](https://soulector.app)
 
 #### An overview by [jalvarado91](https://github.com/jalvarado91)
 
-Soulector is both an experiment, a tool, an expression self, and a way to give back to a small community.
+Soulector is many things: an experiment, a tool, an expression self, and a way to give back to a small community.
+
 
 At the most ovbious it's a music player. As a tool, it's an easy and delightful way of introducing people to what I (and a like minded community) believe is a different and interesting way of experiencing music. 
 
