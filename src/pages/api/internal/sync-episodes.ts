@@ -13,11 +13,12 @@ function createLargeSoundCloudThumbUrl(url: string) {
 const playlists = {
   soulection: "8025093",
   "sasha-marie-radio": "944232886",
+  "the-love-below-hour": "269025488"
 } as const;
 type PlaylistSlugs = keyof typeof playlists;
 
 export async function syncAllCollectives(db: Db) {
-  const slugs: PlaylistSlugs[] = ["soulection", "sasha-marie-radio"];
+  const slugs: PlaylistSlugs[] = ["soulection", "sasha-marie-radio", "the-love-below-hour"];
 
   let retrieved: string[] = [];
   for (const s of slugs) {
@@ -30,7 +31,7 @@ export async function syncAllCollectives(db: Db) {
 
 export async function getSoundCloudTracks(
   db: Db,
-  collectiveSlug: "soulection" | "sasha-marie-radio" = "soulection"
+  collectiveSlug: PlaylistSlugs = "soulection"
 ) {
   const soundCloudClient = new SoundCloudApiClient();
   await soundCloudClient.getToken();
