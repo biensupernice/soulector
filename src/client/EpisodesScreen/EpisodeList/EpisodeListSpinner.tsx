@@ -1,10 +1,10 @@
 import React from "react";
-import { Soulection } from "../../components/Icons";
+import { Soulector } from "../../components/Icons";
 
 export default function EpisodeListSpinner() {
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center animate-fade-loop">
-      <Soulection className="w-10 h-10" />
+    <div className="animate-fade-loop flex h-full w-full flex-col items-center justify-center">
+      <Soulector className="h-14 w-14" />
       <div className="font-semibold">Loading Episodes</div>
     </div>
   );
