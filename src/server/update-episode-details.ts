@@ -2,24 +2,22 @@ import { Db, WithId } from "mongodb";
 import { z } from "zod";
 import { DBEpisode, EpisodeTrack } from "./router";
 import { asyncResult, result } from "@expo/results";
+import { set } from "date-fns";
 
 const TimeFormat = z.string().regex(/^\d{2}:\d{2}:\d{2}$/);
 
-const updateEpisodeDetailsValuesSchema = z.object({
+export const trackInputSchema = z.object({
+  order: z.number(),
+  name: z.string(),
+  artist: z.string(),
+  platforms: z.array(z.string()).optional(),
+  timestamp: TimeFormat.optional(),
+});
+
+export const updateEpisodeDetailsValuesSchema = z.object({
   releaseDate: z.date().optional(),
   name: z.string().optional(),
-  tracks: z
-    .array(
-      z.object({
-        order: z.number(),
-        name: z.string(),
-        artist: z.string(),
-        string: z.string(),
-        links: z.array(z.string()).optional(),
-        timestamp: TimeFormat.optional(),
-      })
-    )
-    .optional(),
+  tracks: z.array(trackInputSchema).optional(),
 });
 type UpdateEpisodeDetailsValues = z.infer<
   typeof updateEpisodeDetailsValuesSchema
@@ -51,35 +49,52 @@ export async function updateEpisodeDetails(
   episode: WithId<DBEpisode>,
   values: UpdateEpisodeDetailsValues
 ) {
-  const episodeTracks = values.tracks ? values.tracks.map(t => {
-    return {
-      artist: t.artist,
-      episode_id: episode._id,
-      links: t.links ?? [],
-      name: t.name,
-      order: t.order,
-      timestamp: t.timestamp ? parseDurationToSeconds(t.timestamp) : undefined
-    } satisfies EpisodeTrack
-  }) : episode.tracks
+  let releaseDate = episode.release_date;
+  if (values.releaseDate) {
+    releaseDate = set(values.releaseDate, { hours: 12 });
+  }
+
+  const episodeTracks = values.tracks
+    ? values.tracks.map((t) => {
+        return {
+          artist: t.artist,
+          episode_id: episode._id,
+          links: t.platforms ?? [],
+          name: t.name,
+          order: t.order,
+          timestamp: t.timestamp
+            ? parseDurationToSeconds(t.timestamp)
+            : undefined,
+        } satisfies EpisodeTrack;
+      })
+    : episode.tracks;
 
   const updatedEpisode = {
     ...episode,
     name: values.name ?? episode.name,
-    release_date: values.releaseDate ?? episode.release_date,
+    release_date: releaseDate,
     tracks: episodeTracks,
   } satisfies DBEpisode;
 
   const episodesCollection = db.collection<DBEpisode>("tracksOld");
-  await episodesCollection.updateOne({_id: episode._id}, {
-    $set: updatedEpisode
-  });
+  const updated = await episodesCollection.updateOne(
+    { _id: episode._id },
+    {
+      $set: updatedEpisode,
+    }
+  );
+
+  if (updated.modifiedCount < 1) {
+    console.log("no updates happened. Sad");
+  }
+
+  console.log("updated result", updated);
 }
 
-
 function parseDurationToSeconds(durationString: string): number {
-    // Split the duration string into hours, minutes, and seconds
-    const [hours, minutes, seconds] = durationString.split(':').map(Number);
-    // Calculate the total duration in seconds
-    const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
-    return totalSeconds;
+  // Split the duration string into hours, minutes, and seconds
+  const [hours, minutes, seconds] = durationString.split(":").map(Number);
+  // Calculate the total duration in seconds
+  const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+  return totalSeconds;
 }
