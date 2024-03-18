@@ -78,7 +78,7 @@ function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
 
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-between space-y-3 overflow-auto pb-safe-top">
-      <div className="w-full flex-col space-y-3 px-6 pt-6">
+      <div className="w-full flex-col space-y-3 px-4 md:px-6 pt-6">
         <img
           className="min-h-40 min-w-40 mx-auto w-full max-w-sm rounded-lg object-fill"
           src={episode.artworkUrl}
@@ -139,7 +139,7 @@ function EpisodeTracksList({ episodeId }: { episodeId: string }) {
   }
 
   return loaded && loadedData.length > 0 ? (
-    <>
+    <div className="slide-in-from-bottom-3 animate-in duration-600">
       <div className="py-1" />
       <div className="py-4 rounded-lg text-white relative mx-4 bg-accent shadow border-accent">
         <div className="absolute rounded-lg inset-0 bg-black/20"></div>
@@ -195,7 +195,7 @@ function EpisodeTracksList({ episodeId }: { episodeId: string }) {
           })}
         </div>
       </div>
-    </>
+    </div>
   ) : null;
 }
 

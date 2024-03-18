@@ -176,7 +176,7 @@ body {
   .full-height-sheet .react-modal-sheet-container {
     height: 100%  !important;
     padding-top: env(safe-area-inset-top) !important;
-    padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
+    padding-bottom: calc(env(safe-area-inset-bottom));
 
     @apply !bg-accent transition-colors
   }
