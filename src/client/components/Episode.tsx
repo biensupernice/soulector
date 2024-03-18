@@ -118,7 +118,7 @@ export function Episode(props: EpisodeProps) {
   );
 }
 
-function PlayingAnimation() {
+export function PlayingAnimation() {
   const isPlaying = usePlayerPlaying();
 
   return (

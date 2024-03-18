@@ -19,6 +19,16 @@ export type EpisodeTrack = {
   links: string[];
 };
 
+export type EpisodeTrackProjection = ReturnType<typeof episodeTrackProjection>;
+export function episodeTrackProjection(t: EpisodeTrack) {
+  return {
+    order: t.order,
+    name: t.name,
+    artist: t.artist,
+    timestamp: t.timestamp,
+  } as const;
+}
+
 export type DBEpisode = {
   source: "SOUNDCLOUD" | "MIXCLOUD";
   duration: number;
@@ -34,20 +44,20 @@ export type DBEpisode = {
 
 export type EpisodeProjection = ReturnType<typeof episodeProjection>;
 export type EpisodeCollectiveSlugProjection = DBEpisode["collective_slug"];
-export function episodeProjection(t: WithId<DBEpisode>) {
+export function episodeProjection(e: WithId<DBEpisode>) {
   return {
-    id: t._id.toString(),
-    source: t.source,
-    duration: t.duration,
-    releasedAt: t.release_date
-      ? t.release_date.toISOString()
-      : t.created_time.toISOString(),
-    createadAt: t.created_time.toISOString(),
-    embedPlayerKey: t.key,
-    name: t.name,
-    permalinkUrl: t.url,
-    collectiveSlug: t.collective_slug,
-    artworkUrl: t.picture_large,
+    id: e._id.toString(),
+    source: e.source,
+    duration: e.duration,
+    releasedAt: e.release_date
+      ? e.release_date.toISOString()
+      : e.created_time.toISOString(),
+    createadAt: e.created_time.toISOString(),
+    embedPlayerKey: e.key,
+    name: e.name,
+    permalinkUrl: e.url,
+    collectiveSlug: e.collective_slug,
+    artworkUrl: e.picture_large,
   } as const;
 }
 
@@ -214,6 +224,21 @@ export const episodeRouter = router({
       };
 
       return darkVibrantResult;
+    }),
+  "episode.getTracks": publicProcedure
+    .input(
+      z.object({
+        episodeId: z.string(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
+      const episode = await trackCollection.findOne({
+        _id: new ObjectId(input.episodeId),
+      });
+
+      const tracks = episode?.tracks ?? [];
+      return tracks.map(episodeTrackProjection);
     }),
   "episode.getFakeStreamUrl": publicProcedure
     .input(
