@@ -3,7 +3,7 @@ import _ from "lodash";
 import { SoundCloudApiClient } from "@/server/crosscutting/soundCloudApiClient";
 import { createDbConnection } from "@/server/db";
 import { Db } from "mongodb";
-import { DBTrack } from "@/server/router";
+import { DBEpisode } from "@/server/router";
 
 function createLargeSoundCloudThumbUrl(url: string) {
   const newUrl = url.replace("-large", "-t500x500");
@@ -49,11 +49,11 @@ export async function getSoundCloudTracks(
     url: track.permalink_url,
     collective_slug: collectiveSlug,
     picture_large: createLargeSoundCloudThumbUrl(track.artwork_url),
-  })) satisfies DBTrack[];
+  })) satisfies DBEpisode[];
 
   let incomingIds = mapped.map((it) => it.key);
 
-  const trackCollection = db.collection<DBTrack>("tracksOld");
+  const trackCollection = db.collection<DBEpisode>("tracksOld");
 
   let existing = await trackCollection
     .find({

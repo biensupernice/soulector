@@ -10,25 +10,38 @@ import Vibrant from "node-vibrant";
 import { initTRPC } from "@trpc/server";
 import { syncAllCollectives } from "@/pages/api/internal/sync-episodes";
 
-export type DBTrack = {
+export type EpisodeTrack = {
+  order: number;
+  episode_id: ObjectId;
+  name: string;
+  artist: string;
+  timestamp?: number;
+  links: string[];
+};
+
+export type DBEpisode = {
   source: "SOUNDCLOUD" | "MIXCLOUD";
   duration: number;
   created_time: Date;
+  release_date?: Date;
   key: number | string;
   name: string;
   url: string;
   picture_large: string;
   collective_slug: "soulection" | "sasha-marie-radio" | "the-love-below-hour";
+  tracks?: EpisodeTrack[];
 };
 
 export type EpisodeProjection = ReturnType<typeof episodeProjection>;
-export type EpisodeCollectiveSlugProjection = DBTrack["collective_slug"];
-export function episodeProjection(t: WithId<DBTrack>) {
+export type EpisodeCollectiveSlugProjection = DBEpisode["collective_slug"];
+export function episodeProjection(t: WithId<DBEpisode>) {
   return {
     id: t._id.toString(),
     source: t.source,
     duration: t.duration,
-    releasedAt: t.created_time.toISOString(),
+    releasedAt: t.release_date
+      ? t.release_date.toISOString()
+      : t.created_time.toISOString(),
     createadAt: t.created_time.toISOString(),
     embedPlayerKey: t.key,
     name: t.name,
@@ -74,7 +87,7 @@ export const episodeRouter = router({
     };
   }),
   "internal.backfillCollectives": publicProcedure.query(({ ctx }) => {
-    const trackCollection = ctx.db.collection<DBTrack>("tracksOld");
+    const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
 
     trackCollection.updateMany(
       {},
@@ -98,9 +111,21 @@ export const episodeRouter = router({
 
       let filter = collective === "all" ? {} : { collective_slug: collective };
 
-      const trackCollection = ctx.db.collection<DBTrack>("tracksOld");
+      const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
       let allTracks = await trackCollection
-        .find(filter)
+        .find(filter, {
+          projection: {
+            source: 1,
+            duration: 1,
+            created_time: 1,
+            release_date: 1,
+            key: 1,
+            name: 1,
+            url: 1,
+            picture_large: 1,
+            collective_slug: 1,
+          },
+        })
         .sort({
           created_time: -1,
         })
@@ -117,7 +142,7 @@ export const episodeRouter = router({
     .query(async ({ input, ctx }) => {
       const { episodeId } = input;
 
-      const trackCollection = ctx.db.collection<DBTrack>("tracksOld");
+      const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
       const episode = await trackCollection.findOne({
         _id: new ObjectId(episodeId),
       });
@@ -152,7 +177,7 @@ export const episodeRouter = router({
         return defaultAccentColor;
       }
 
-      const trackCollection = ctx.db.collection<DBTrack>("tracksOld");
+      const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
       const episode = await trackCollection.findOne({
         _id: new ObjectId(episodeId),
       });
