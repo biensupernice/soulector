@@ -25,7 +25,7 @@ export function episodeTrackProjection(t: EpisodeTrack) {
     order: t.order,
     name: t.name,
     artist: t.artist,
-    timestamp: t.timestamp,
+    ...(t.timestamp ? { timestamp: t.timestamp } : null),
   } as const;
 }
 

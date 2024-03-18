@@ -15,12 +15,14 @@ import {
   usePlayerEpisodeDuration,
   usePlayerLoadingStatus,
   usePlayerActions,
+  usePlayerCuePosition,
 } from "../PlayerStore";
 import { useGetEpisode } from "../useEpisodeHooks";
 import Sheet from "react-modal-sheet";
 import create from "zustand";
 import { trpc } from "@/utils/trpc";
 import { cn } from "@/lib/utils";
+import { EpisodeTrackProjection } from "@/server/router";
 
 interface EpisodeModalSheetStore {
   isOpen: boolean;
@@ -114,6 +116,7 @@ function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
 
 function EpisodeTracksList({ episodeId }: { episodeId: string }) {
   const progress = usePlayerProgress();
+  const playerActions = usePlayerActions();
   const progressSecs = progress / 1000;
 
   const { data, status } = trpc["episode.getTracks"].useQuery({
@@ -129,6 +132,12 @@ function EpisodeTracksList({ episodeId }: { episodeId: string }) {
 
   const currentTrack = possibleTracks.at(-1);
 
+  function onTrckClick(t: EpisodeTrackProjection) {
+    if (t.timestamp) {
+      playerActions.setCuePosition(t.timestamp * 1000);
+    }
+  }
+
   return loaded && loadedData.length > 0 ? (
     <>
       <div className="py-1" />
@@ -141,8 +150,11 @@ function EpisodeTracksList({ episodeId }: { episodeId: string }) {
           {loadedData.map((t, i) => {
             const isCurrent = currentTrack?.order === t.order;
             return (
-              <div className="flex justify-between items-center px-4 py-2 space-x-4">
-                <div className="flex items-center space-x-3">
+              <button
+                onClick={() => onTrckClick(t)}
+                className="flex w-full justify-between items-center px-4 py-2 space-x-4"
+              >
+                <div className="flex text-left items-center space-x-3">
                   <div
                     className={cn(
                       "text-xs h-5 w-5 inline-flex p-1 items-center justify-center relative",
@@ -178,7 +190,7 @@ function EpisodeTracksList({ episodeId }: { episodeId: string }) {
                 ) : (
                   <></>
                 )}
-              </div>
+              </button>
             );
           })}
         </div>
