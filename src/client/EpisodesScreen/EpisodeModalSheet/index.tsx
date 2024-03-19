@@ -3,7 +3,7 @@ import {
   HeartFilled,
   HeartOutline,
 } from "@/client/components/Icons";
-import { formatDate } from "@/client/helpers";
+import { formatDate, formatTimeSecs } from "@/client/helpers";
 import classNames from "classnames";
 import { useFavorites, useIsFavoriteFast } from "../FavoritesStore";
 import { MobilePlayerControls } from "../Player/MobilePlayerControls";
@@ -15,11 +15,14 @@ import {
   usePlayerEpisodeDuration,
   usePlayerLoadingStatus,
   usePlayerActions,
+  usePlayerCuePosition,
 } from "../PlayerStore";
 import { useGetEpisode } from "../useEpisodeHooks";
 import Sheet from "react-modal-sheet";
 import create from "zustand";
-import { useEffect } from "react";
+import { trpc } from "@/utils/trpc";
+import { cn } from "@/lib/utils";
+import { EpisodeTrackProjection } from "@/server/router";
 
 interface EpisodeModalSheetStore {
   isOpen: boolean;
@@ -75,7 +78,7 @@ function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
 
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-between space-y-3 overflow-auto pb-safe-top">
-      <div className="w-full flex-col space-y-3 px-6 pt-6">
+      <div className="w-full flex-col space-y-3 px-4 md:px-6 pt-6">
         <img
           className="min-h-40 min-w-40 mx-auto w-full max-w-sm rounded-lg object-fill"
           src={episode.artworkUrl}
@@ -106,8 +109,94 @@ function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
         </a>
         <EpisodeSheetFavoriteToggle episodeId={episodeId} />
       </div>
+      <EpisodeTracksList episodeId={episodeId} />
     </div>
   );
+}
+
+function EpisodeTracksList({ episodeId }: { episodeId: string }) {
+  const progress = usePlayerProgress();
+  const playerActions = usePlayerActions();
+  const progressSecs = progress / 1000;
+
+  const { data, status } = trpc["episode.getTracks"].useQuery({
+    episodeId,
+  });
+
+  const loaded = status === "success";
+  const loadedData = loaded ? (data ? data : []) : [];
+
+  const possibleTracks = loadedData.filter((t) =>
+    t.timestamp ? progressSecs >= t.timestamp : false
+  );
+
+  const currentTrack = possibleTracks.at(-1);
+
+  function onTrckClick(t: EpisodeTrackProjection) {
+    if (t.timestamp) {
+      playerActions.setCuePosition(t.timestamp * 1000);
+    }
+  }
+
+  return loaded && loadedData.length > 0 ? (
+    <div className="slide-in-from-bottom-3 animate-in duration-600">
+      <div className="py-1" />
+      <div className="py-4 rounded-lg text-white relative mx-4 bg-accent shadow border-accent">
+        <div className="absolute rounded-lg inset-0 bg-black/20"></div>
+        <div className="relative px-4 font-bold text-white text-lg mb-4">
+          {loadedData.length} Tracks
+        </div>
+        <div className="relative space-y">
+          {loadedData.map((t, i) => {
+            const isCurrent = currentTrack?.order === t.order;
+            return (
+              <button
+                onClick={() => onTrckClick(t)}
+                className="flex w-full justify-between items-center px-4 py-2 space-x-4"
+              >
+                <div className="flex text-left items-center space-x-3">
+                  <div
+                    className={cn(
+                      "text-xs h-5 w-5 inline-flex p-1 items-center justify-center relative",
+                      isCurrent && "bg-white text-accent rounded-full"
+                    )}
+                  >
+                    {isCurrent && (
+                      <div className="bg-white animate-ping [animation-duration:1500ms] absolute rounded-full origin-center p-2"></div>
+                    )}
+                    <div className="relative">{t.order}</div>
+                  </div>
+                  <div>
+                    <div
+                      className={cn(
+                        "font-medium text-sm",
+                        isCurrent && "!font-bold"
+                      )}
+                    >
+                      {t.name}
+                    </div>
+                    <div
+                      className={cn(
+                        "text-white/80 text-sm",
+                        isCurrent && "text-white/100"
+                      )}
+                    >
+                      {t.artist}
+                    </div>
+                  </div>
+                </div>
+                {t.timestamp ? (
+                  <div className="text-xs">{formatTimeSecs(t.timestamp)}</div>
+                ) : (
+                  <></>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  ) : null;
 }
 
 export interface EpisodeSheetFavoriteToggleProps {
