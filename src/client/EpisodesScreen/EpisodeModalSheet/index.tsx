@@ -94,7 +94,7 @@ function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
       <div className="w-full px-6">
         <EpisodeSheetPlayer episodeId={episodeId} />
       </div>
-      <div className="grid w-full grid-cols-2 gap-x-2 px-6">
+      <div className="grid w-full grid-cols-2 gap-x-2 px-4">
         <a
           href={episode.permalinkUrl}
           className="inline-flex w-full flex-1 items-center justify-center space-x-1 rounded-md border-2 border-white bg-transparent px-2 py-1 text-center text-xs font-semibold text-white"
@@ -110,6 +110,7 @@ function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
         <EpisodeSheetFavoriteToggle episodeId={episodeId} />
       </div>
       <EpisodeTracksList episodeId={episodeId} />
+      <br />
     </div>
   );
 }
@@ -119,9 +120,15 @@ function EpisodeTracksList({ episodeId }: { episodeId: string }) {
   const playerActions = usePlayerActions();
   const progressSecs = progress / 1000;
 
-  const { data, status } = trpc["episode.getTracks"].useQuery({
-    episodeId,
-  });
+  const { data, status } = trpc["episode.getTracks"].useQuery(
+    {
+      episodeId,
+    },
+    {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    }
+  );
 
   const loaded = status === "success";
   const loadedData = loaded ? (data ? data : []) : [];
@@ -152,44 +159,52 @@ function EpisodeTracksList({ episodeId }: { episodeId: string }) {
             return (
               <button
                 onClick={() => onTrckClick(t)}
-                className="flex w-full justify-between items-center px-4 py-2 space-x-4"
+                className={cn("w-full relative")}
               >
-                <div className="flex text-left items-center space-x-3">
-                  <div
-                    className={cn(
-                      "text-xs h-5 w-5 inline-flex p-1 items-center justify-center relative",
-                      isCurrent && "bg-white text-accent rounded-full"
-                    )}
-                  >
-                    {isCurrent && (
-                      <div className="bg-white animate-ping [animation-duration:1500ms] absolute rounded-full origin-center p-2"></div>
-                    )}
-                    <div className="relative">{t.order}</div>
-                  </div>
-                  <div>
+                <div
+                  data-current-track={isCurrent}
+                  className={cn(
+                    "absolute w-[2px] inset-y-0 bg-white opacity-0 fade-in-100 data-[current-track=true]:opacity-100 data-[current-track=true]:animate-in"
+                  )}
+                ></div>
+                <div className="space-x-5 relative flex w-full justify-between items-center px-4 py-2">
+                  <div className="flex text-left items-center space-x-3 relative w-full">
                     <div
                       className={cn(
-                        "font-medium text-sm",
-                        isCurrent && "!font-bold"
+                        "text-xs h-5 w-5 inline-flex p-1 items-center justify-center relative",
+                        isCurrent && "bg-white text-accent rounded-full"
                       )}
                     >
-                      {t.name}
+                      {isCurrent && (
+                        <div className="bg-white animate-ping [animation-duration:1500ms] absolute rounded-full origin-center p-2"></div>
+                      )}
+                      <div className="relative">{t.order}</div>
                     </div>
-                    <div
-                      className={cn(
-                        "text-white/80 text-sm",
-                        isCurrent && "text-white/100"
-                      )}
-                    >
-                      {t.artist}
+                    <div>
+                      <div
+                        className={cn(
+                          "font-medium text-sm",
+                          isCurrent && "!font-bold"
+                        )}
+                      >
+                        {t.name}
+                      </div>
+                      <div
+                        className={cn(
+                          "text-white/80 text-sm",
+                          isCurrent && "text-white/100"
+                        )}
+                      >
+                        {t.artist}
+                      </div>
                     </div>
                   </div>
+                  {t.timestamp ? (
+                    <div className="text-xs">{formatTimeSecs(t.timestamp)}</div>
+                  ) : (
+                    <></>
+                  )}
                 </div>
-                {t.timestamp ? (
-                  <div className="text-xs">{formatTimeSecs(t.timestamp)}</div>
-                ) : (
-                  <></>
-                )}
               </button>
             );
           })}
