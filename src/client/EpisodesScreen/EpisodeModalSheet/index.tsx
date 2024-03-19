@@ -139,7 +139,7 @@ function EpisodeTracksList({ episodeId }: { episodeId: string }) {
 
   const currentTrack = possibleTracks.at(-1);
 
-  function onTrckClick(t: EpisodeTrackProjection) {
+  function onTrackClick(t: EpisodeTrackProjection) {
     if (t.timestamp) {
       playerActions.setCuePosition(t.timestamp * 1000);
     }
@@ -158,7 +158,7 @@ function EpisodeTracksList({ episodeId }: { episodeId: string }) {
             const isCurrent = currentTrack?.order === t.order;
             return (
               <button
-                onClick={() => onTrckClick(t)}
+                onClick={() => onTrackClick(t)}
                 className={cn("w-full relative")}
               >
                 <div

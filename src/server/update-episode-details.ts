@@ -85,7 +85,7 @@ export async function updateEpisodeDetails(
   );
 
   if (updated.modifiedCount < 1) {
-    console.log("no updates happened. Sad");
+    console.log("no updates happened. Sad", updatedEpisode);
   }
 
   console.log("updated result", updated);
