@@ -18,7 +18,7 @@ export class SoundCloudApiClient {
 
   constructor() {
     this.client = axios.create({
-      baseURL: "http://api.soundcloud.com",
+      baseURL: "https://api.soundcloud.com",
     });
 
     this.client.interceptors.request.use((config) => {
