@@ -109,13 +109,34 @@ function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
         </a>
         <EpisodeSheetFavoriteToggle episodeId={episodeId} />
       </div>
-      <EpisodeTracksList episodeId={episodeId} />
+      <div className="xs:slide-in-from-bottom-3 md:fade-in animate-in rounded-lg duration-600 relative mx-3">
+        <div className="absolute rounded-lg inset-0 bg-black/20"></div>
+        <EpisodeTracksList episodeId={episodeId} />
+      </div>
       <br />
     </div>
   );
 }
 
-function EpisodeTracksList({ episodeId }: { episodeId: string }) {
+export function useEpisodeTracks(episodeId: string) {
+  const { data, status } = trpc["episode.getTracks"].useQuery(
+    {
+      episodeId,
+    },
+    {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    }
+  );
+
+  return {
+    data,
+    loaded: status === "success",
+    hasTracks: status === "success" && data.length > 0,
+  };
+}
+
+export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
   const progress = usePlayerProgress();
   const playerActions = usePlayerActions();
   const progressSecs = progress / 1000;
@@ -146,10 +167,10 @@ function EpisodeTracksList({ episodeId }: { episodeId: string }) {
   }
 
   return loaded && loadedData.length > 0 ? (
-    <div className="slide-in-from-bottom-3 animate-in duration-600">
+    <div className="xs:slide-in-from-bottom-3 md:fade-in xs:animate-in duration-600 relative">
       <div className="py-1" />
-      <div className="py-4 rounded-lg text-white relative mx-4 bg-accent shadow border-accent">
-        <div className="absolute rounded-lg inset-0 bg-black/20"></div>
+      <div className="py-4 rounded-lg text-white relative border-accent">
+        {/* <div className="absolute rounded-lg inset-0 bg-black/20"></div> */}
         <div className="relative px-4 font-bold text-white text-lg mb-4">
           {loadedData.length} Tracks
         </div>
@@ -159,15 +180,15 @@ function EpisodeTracksList({ episodeId }: { episodeId: string }) {
             return (
               <button
                 onClick={() => onTrackClick(t)}
-                className={cn("w-full relative")}
+                className={cn("w-full relative hover:bg-white/10")}
               >
                 <div
                   data-current-track={isCurrent}
                   className={cn(
-                    "absolute w-[2px] inset-y-0 bg-white opacity-0 fade-in-100 data-[current-track=true]:opacity-100 data-[current-track=true]:animate-in"
+                    "absolute w-[2px] md:w-[4px] inset-y-0 bg-white opacity-0 fade-in-100 data-[current-track=true]:opacity-100 data-[current-track=true]:animate-in"
                   )}
                 ></div>
-                <div className="space-x-5 relative flex w-full justify-between items-center px-4 py-2">
+                <div className="space-x-5 relative flex w-full justify-between items-center px-4 md:px-4 py-2">
                   <div className="flex text-left items-center space-x-3 relative w-full">
                     <div
                       className={cn(
@@ -184,7 +205,7 @@ function EpisodeTracksList({ episodeId }: { episodeId: string }) {
                       <div
                         className={cn(
                           "font-medium text-sm",
-                          isCurrent && "!font-bold"
+                          isCurrent && "!font-bold md:!font-black"
                         )}
                       >
                         {t.name}

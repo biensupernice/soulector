@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import cx from "classnames";
 import { formatDate, formatTimeSecs } from "../helpers";
 import {
+  BarsArrowDown,
+  BarsArrowUp,
   HeartFilled,
   HeartOutline,
   IconDotsHorizontal,
@@ -10,6 +12,11 @@ import {
 import { usePlayEpisodeMutation } from "../EpisodesScreen/useEpisodesScreenState";
 import { usePlayerPlaying } from "../EpisodesScreen/PlayerStore";
 import { EpisodeProjection } from "@/server/router";
+import {
+  EpisodeTracksList,
+  useEpisodeTracks,
+} from "../EpisodesScreen/EpisodeModalSheet";
+import { AnimatePresence, motion } from "framer-motion";
 
 export type EpisodeProps = {
   episode: EpisodeProjection;
@@ -20,6 +27,8 @@ export type EpisodeProps = {
 } & React.HTMLAttributes<HTMLDivElement>;
 
 export function Episode(props: EpisodeProps) {
+  const [showTracks, setShowTracks] = useState<boolean>(false);
+
   const {
     episode: episode,
     selected: selected = false,
@@ -29,92 +38,137 @@ export function Episode(props: EpisodeProps) {
     onOptionsClick = () => {},
   } = props;
 
+  const { hasTracks, loaded: hasTracksLoaded } = useEpisodeTracks(episode.id);
+
   return (
-    <div
-      data-episode-id={episode.id}
-      className="flex h-full w-full items-stretch"
-    >
+    <>
       <div
-        onClick={onClick}
-        className={cx(
-          "flex w-full cursor-pointer items-center justify-between border border-transparent p-3 text-left md:rounded-lg",
-          "active:bg-slate-50 md:hover:border md:hover:border-gray-100 md:hover:bg-slate-50",
-          "group transition-colors duration-75 focus:outline-none"
-        )}
+        data-episode-id={episode.id}
+        className="flex h-full w-full items-stretch"
       >
-        <div className="flex items-center justify-start text-left">
-          <div className="flex w-full items-center">
-            <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg">
-              <img
-                loading={"lazy"}
-                className="h-full w-full bg-gray-200"
-                src={episode.artworkUrl}
-                alt={episode.name}
-              />
-              {selected && <AlbumArtOverlay />}
-            </div>
-            <div className="ml-2 md:flex md:flex-col-reverse">
-              <div className="text-sm text-gray-700 md:text-base">
-                <span>{formatDate(episode.releasedAt)}</span>
-                <span className="mx-1 inline-block md:hidden">&bull;</span>
-                <span className="inline-block md:hidden">
-                  {formatTimeSecs(episode.duration)}
-                </span>
+        <div
+          onClick={onClick}
+          className={cx(
+            "flex w-full cursor-pointer items-center justify-between border border-transparent p-3 text-left md:rounded-lg",
+            "active:bg-slate-50 md:hover:border md:hover:border-gray-100 md:hover:bg-slate-50",
+            "group transition-colors duration-75 focus:outline-none"
+          )}
+        >
+          <div className="flex items-center justify-start text-left">
+            <div className="flex w-full items-center">
+              <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg">
+                <img
+                  loading={"lazy"}
+                  className="h-full w-full bg-gray-200"
+                  src={episode.artworkUrl}
+                  alt={episode.name}
+                />
+                {selected && <AlbumArtOverlay />}
               </div>
-              <div
-                className={cx("flex items-start space-x-[4px]", "md:text-lg", {
-                  "text-accent": selected,
-                })}
-              >
-                {selected && (
-                  <div className="shrink-0">
-                    <PlayingAnimation />
-                  </div>
-                )}
-                <div className="font-bold leading-tight">{episode.name}</div>
+              <div className="ml-2 md:flex md:flex-col-reverse">
+                <div className="text-sm text-gray-700 md:text-base">
+                  <span>{formatDate(episode.releasedAt)}</span>
+                  <span className="mx-1 inline-block md:hidden">&bull;</span>
+                  <span className="inline-block md:hidden">
+                    {formatTimeSecs(episode.duration)}
+                  </span>
+                </div>
+                <div
+                  className={cx(
+                    "flex items-start space-x-[4px]",
+                    "md:text-lg",
+                    {
+                      "text-accent": selected,
+                    }
+                  )}
+                >
+                  {selected && (
+                    <div className="shrink-0">
+                      <PlayingAnimation />
+                    </div>
+                  )}
+                  <div className="font-bold leading-tight">{episode.name}</div>
+                </div>
               </div>
             </div>
           </div>
+          <div className="hidden items-center justify-end space-x-8 md:flex">
+            <div className="w-full flex space-x-3">
+              {hasTracks && selected && (
+                <button
+                  className={cx(
+                    "inline-block rounded-full p-2",
+                    "transition-all duration-200 ease-in-out opacity-0",
+                    "focus:outline-none hover:bg-gray-200 group-hover:opacity-100",
+                    showTracks && "!opacity-100"
+                  )}
+                  title={showTracks ? "Close tracks" : "View Tracks"}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowTracks((currentState) => !currentState);
+                  }}
+                >
+                  {showTracks ? (
+                    <BarsArrowUp className="h-5 w-5 fill-current" />
+                  ) : (
+                    <BarsArrowDown className="h-5 w-5 stroke-current" />
+                  )}
+                </button>
+              )}
+
+              <button
+                className={cx(
+                  "inline-block rounded-full p-2",
+                  "transition-all duration-200 ease-in-out",
+                  "hover:bg-gray-200",
+                  "focus:outline-none",
+                  "opacity-0 group-hover:opacity-100",
+                  favorite && "text-accent opacity-100"
+                )}
+                title={favorite ? "Remove from favorites" : "Add to favorites"}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFavoriteClick();
+                }}
+              >
+                {favorite ? (
+                  <HeartFilled className="h-5 w-5 fill-current" />
+                ) : (
+                  <HeartOutline className="h-5 w-5 stroke-current" />
+                )}
+              </button>
+            </div>
+
+            <span className="ml-">{formatTimeSecs(episode.duration)}</span>
+          </div>
         </div>
-        <div className="hidden w-28 items-center justify-between space-x-4 md:flex">
+        <div className="flex md:hidden">
           <button
             className={cx(
-              "inline-block rounded-full p-1",
-              "transition-all duration-200 ease-in-out",
-              "hover:bg-gray-200",
-              "focus:outline-none",
-              "opacity-0 group-hover:opacity-100",
-              favorite && "text-accent opacity-100"
+              "flex h-full w-full items-center pl-2 pr-3",
+              "active:bg-slate-50",
+              "focus:outline-none"
             )}
-            title={favorite ? "Remove from favorites" : "Add to favorites"}
-            onClick={(e) => {
-              e.stopPropagation();
-              onFavoriteClick();
-            }}
+            onClick={() => onOptionsClick()}
           >
-            {favorite ? (
-              <HeartFilled className="h-5 w-5 fill-current" />
-            ) : (
-              <HeartOutline className="h-5 w-5 stroke-current" />
-            )}
+            <IconDotsHorizontal className="h-5 w-5 stroke-current " />
           </button>
-
-          <span className="">{formatTimeSecs(episode.duration)}</span>
         </div>
       </div>
-      <div className="flex md:hidden">
-        <button
-          className={cx(
-            "flex h-full w-full items-center pl-2 pr-3",
-            "active:bg-slate-50",
-            "focus:outline-none"
-          )}
-          onClick={() => onOptionsClick()}
-        >
-          <IconDotsHorizontal className="h-5 w-5 stroke-current " />
-        </button>
-      </div>
-    </div>
+      <AnimatePresence>
+        {selected && showTracks && (
+          <motion.div
+            transition={{ type: "spring", mass: 0.15, duration: 0.02 }}
+            initial={{ height: 0 }}
+            animate={{ height: "auto" }}
+            exit={{ height: 0 }}
+            className="hidden md:flex max-h-[calc(100vh*0.6)] items-stretch origin-top bg-accent rounded-lg overflow-y-auto relative"
+          >
+            <EpisodeTracksList episodeId={episode.id} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
