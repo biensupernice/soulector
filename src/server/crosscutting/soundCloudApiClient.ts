@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse } from "axios";
+import { Buffer } from "buffer";
 
 const SOUNDCLOUD_CLIENT_ID =
   process.env.SOUNDCLOUD_CLIENT_ID || "no_sound_client_id_read";
@@ -28,9 +29,21 @@ export class SoundCloudApiClient {
   }
 
   async getToken() {
-    const res = await this.client
+    const credentials = `${SOUNDCLOUD_CLIENT_ID}:${SOUNDCLOUD_CLIENT_SECRET}`;
+    const encodedCredentials = Buffer.from(credentials).toString("base64");
+
+    const res = await axios
       .post<{ access_token: string }>(
-        `/oauth2/token?client_id=${SOUNDCLOUD_CLIENT_ID}&client_secret=${SOUNDCLOUD_CLIENT_SECRET}&grant_type=client_credentials`
+        "https://secure.soundcloud.com/oauth/token",
+        new URLSearchParams({
+          grant_type: "client_credentials",
+        }),
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Authorization: `Basic ${encodedCredentials}`,
+          },
+        }
       )
       .then(this._data);
 
