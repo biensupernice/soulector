@@ -70,7 +70,7 @@ export default function Player({ currentEpisodeId }: PlayerProps) {
         className={classNames(
           "bg-white",
           !showMini && "w-full border border-t-gray-200 bg-white px-3 py-3",
-          showMini && "h-0"
+          showMini && "h-0",
         )}
       >
         {currentEpisode.source === "MIXCLOUD" && (

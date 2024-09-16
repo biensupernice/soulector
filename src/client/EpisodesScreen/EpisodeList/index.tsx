@@ -1,29 +1,37 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useImperativeHandle } from "react";
 
 type EpisodeListProps = {
-  focusedEpisodeId?: string;
   children: React.ReactElement;
 };
 
-export function EpisodeList({ focusedEpisodeId, children }: EpisodeListProps) {
+export type EpisodeListHandle = {
+  focusEpisode: (episodeId: string) => void;
+};
+
+export const EpisodeList = React.forwardRef<
+  EpisodeListHandle,
+  EpisodeListProps
+>(({ children }: EpisodeListProps, ref) => {
   const episodeListRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    if (focusedEpisodeId) {
-      const episode = episodeListRef.current?.querySelector(
-        `[data-episode-id="${focusedEpisodeId}"]`
-      );
-      if (episode) {
-        episode.scrollIntoView({
-          block: "center",
-        });
-      } else {
-        episodeListRef.current?.scrollTo({
-          top: 0,
-        });
-      }
-    }
-  }, [focusedEpisodeId]);
+  useImperativeHandle(
+    ref,
+    () => {
+      return {
+        focusEpisode(episodeId: string) {
+          const episode = episodeListRef.current?.querySelector(
+            `[data-episode-id="${episodeId}"]`,
+          );
+          if (episode) {
+            episode.scrollIntoView({
+              block: "center",
+            });
+          }
+        },
+      };
+    },
+    [],
+  );
 
   return (
     <div
@@ -33,4 +41,4 @@ export function EpisodeList({ focusedEpisodeId, children }: EpisodeListProps) {
       {children}
     </div>
   );
-}
+});

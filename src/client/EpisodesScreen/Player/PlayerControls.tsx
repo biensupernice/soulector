@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { formatDate, formatTime } from "../../helpers";
 import {
   IconPause,
@@ -12,6 +12,7 @@ import cx from "classnames";
 import { Slider } from "@/client/components/Slider";
 import { motion } from "framer-motion";
 import { EpisodeProjection } from "@/server/router";
+import { EpisodeListContext } from "@/pages";
 
 export type PlayerControlsProps = {
   episode: EpisodeProjection;
@@ -52,6 +53,8 @@ export function PlayerControls({
 
   const scrubberProgress = seeking ? seekPosition : progress;
 
+  const { focusEpisode } = useContext(EpisodeListContext);
+
   return (
     <div className={cx("grid grid-cols-3 gap-5 xl:grid-cols-10")}>
       <div className="flex items-center space-x-3 xl:col-span-2 ">
@@ -63,7 +66,12 @@ export function PlayerControls({
           />
         </div>
         <div className="flex flex-col justify-center">
-          <div className="text-md font-bold leading-tight">{episode.name}</div>
+          <button
+            className="text-md text-left hover:underline font-bold leading-tight"
+            onClick={() => focusEpisode(episode.id)}
+          >
+            {episode.name}
+          </button>
           <div className="text-md text-gray-700">
             {formatDate(episode.releasedAt)}
           </div>
@@ -80,7 +88,7 @@ export function PlayerControls({
               "rounded-full bg-transparent p-2 text-gray-700",
               "transition-all duration-200 ease-in-out",
               "hover:text-gray-900",
-              "focus:bg-gray-200 focus:outline-none"
+              "focus:bg-gray-200 focus:outline-none",
             )}
           >
             <IconBackThirty className="h-8 w-8 fill-current" />
@@ -95,7 +103,7 @@ export function PlayerControls({
               "transition-all duration-200 ease-in-out",
               "hover:bg-accent/90 hover:shadow-lg",
               "focus:bg-accent/90 focus:outline-none",
-              loading && "cursor-not-allowed disabled:cursor-not-allowed"
+              loading && "cursor-not-allowed disabled:cursor-not-allowed",
             )}
           >
             {loading ? (
@@ -135,7 +143,7 @@ export function PlayerControls({
               "rounded-full bg-transparent p-2 text-gray-700",
               "transition-all duration-200 ease-in-out",
               "hover:text-gray-900",
-              "focus:bg-gray-200 focus:outline-none"
+              "focus:bg-gray-200 focus:outline-none",
             )}
           >
             <IconSkipThirty className="h-8 w-8 fill-current" />
@@ -179,7 +187,7 @@ export function PlayerControls({
             className={cx(
               "inline-block rounded-full p-2",
               "transition-all duration-200 ease-in-out",
-              "hover:bg-gray-200 "
+              "hover:bg-gray-200 ",
             )}
             title="Open in SoundCloud"
             target="_blank"
@@ -194,7 +202,7 @@ export function PlayerControls({
                 "inline-block rounded-full p-1",
                 "transition-all duration-200 ease-in-out",
                 "hover:bg-gray-200",
-                "focus:outline-none"
+                "focus:outline-none",
               )}
               title={muted ? "Unmute" : "Mute"}
               onClick={() => {

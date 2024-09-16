@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useState, useTransition } from "react";
+import React, {
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 import Player, { USE_NEW_PLAYER } from "./Player";
 import { ShuffleButton } from "../components/ShuffleButton";
 import EpisodeListSpinner from "./EpisodeList/EpisodeListSpinner";
@@ -36,6 +42,7 @@ import { IconSearch } from "../components/Icons";
 import { cn } from "@/lib/utils";
 import { useCollectiveSelectStore, useNavbarStore } from "./Navbar";
 import { EpisodeProjection } from "@/server/router";
+import { EpisodeListContext } from "@/pages";
 
 type Props = {
   searchText: string;
@@ -43,10 +50,10 @@ type Props = {
 
 export function EpisodesScreen({ searchText }: Props) {
   const [selectedSection, setSelectedSection] = useState<"all" | "favorites">(
-    "all"
+    "all",
   );
   const [activeSection, setActiveSection] = useState<"all" | "favorites">(
-    "all"
+    "all",
   );
   const [isPending, startTransition] = useTransition();
 
@@ -56,8 +63,10 @@ export function EpisodesScreen({ searchText }: Props) {
   const { data: episodes, error } = useEpisodes();
 
   const loadPersistedCollective = useCollectiveSelectStore(
-    (s) => s.loadPersisted
+    (s) => s.loadPersisted,
   );
+
+  const { ref: episodeListRef } = useContext(EpisodeListContext);
 
   useEffect(() => {
     loadPersistedCollective();
@@ -72,7 +81,7 @@ export function EpisodesScreen({ searchText }: Props) {
 
   const { addFavorite, removeFavorite } = useFavorites();
   const setContextMenuEpisode = useEpisodeOptionsStore(
-    (state) => state.setEpisode
+    (state) => state.setEpisode,
   );
   const favoritesCount = useFavoritesCount();
   const isFavoriteFast = useIsFavoriteFast();
@@ -111,7 +120,7 @@ export function EpisodesScreen({ searchText }: Props) {
 
       const lowerCaseSearch = searchText.toLowerCase();
       return eps.filter((episode) =>
-        episode.name.toLowerCase().includes(lowerCaseSearch)
+        episode.name.toLowerCase().includes(lowerCaseSearch),
       );
     }
 
@@ -145,10 +154,10 @@ export function EpisodesScreen({ searchText }: Props) {
         <div
           className={classNames(
             "relative h-full overflow-scroll py-2 pb-safe-bottom",
-            currentEpisodeId && "mb-24"
+            currentEpisodeId && "mb-24",
           )}
         >
-          <EpisodeList focusedEpisodeId={currentEpisodeId}>
+          <EpisodeList ref={episodeListRef}>
             <>
               <EpisodeListHeader
                 rightContent={
@@ -203,7 +212,7 @@ export function EpisodesScreen({ searchText }: Props) {
                   "rounded-full",
                   "shadow-md",
                   "hidden focus:outline-none",
-                  !searchOpen && "flex sm:hidden"
+                  !searchOpen && "flex sm:hidden",
                 )}
               >
                 <IconSearch className="h-5 w-5 fill-current" />
@@ -310,7 +319,7 @@ function setNavigatorMediaMetadata(episode: ReturnType<typeof useGetEpisode>) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: episode.name,
       artist: `${prefixMap[episode.collectiveSlug]} ${formatDate(
-        episode.releasedAt
+        episode.releasedAt,
       )}`,
       artwork: [
         {
