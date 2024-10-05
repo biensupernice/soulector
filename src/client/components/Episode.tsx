@@ -38,7 +38,10 @@ export function Episode(props: EpisodeProps) {
     onOptionsClick = () => {},
   } = props;
 
-  const { hasTracks, loaded: hasTracksLoaded } = useEpisodeTracks(episode.id);
+  const { hasTracks, loaded: hasTracksLoaded } = useEpisodeTracks(
+    episode.id,
+    selected,
+  );
 
   return (
     <>
@@ -51,7 +54,7 @@ export function Episode(props: EpisodeProps) {
           className={cx(
             "flex w-full cursor-pointer items-center justify-between border border-transparent p-3 text-left md:rounded-lg",
             "active:bg-slate-50 md:hover:border md:hover:border-gray-100 md:hover:bg-slate-50",
-            "group transition-colors duration-75 focus:outline-none"
+            "group transition-colors duration-75 focus:outline-none",
           )}
         >
           <div className="flex items-center justify-start text-left">
@@ -79,7 +82,7 @@ export function Episode(props: EpisodeProps) {
                     "md:text-lg",
                     {
                       "text-accent": selected,
-                    }
+                    },
                   )}
                 >
                   {selected && (
@@ -100,7 +103,7 @@ export function Episode(props: EpisodeProps) {
                     "inline-block rounded-full p-2",
                     "transition-all duration-200 ease-in-out opacity-0",
                     "focus:outline-none hover:bg-gray-200 group-hover:opacity-100",
-                    showTracks && "!opacity-100"
+                    showTracks && "!opacity-100",
                   )}
                   title={showTracks ? "Close tracks" : "View Tracks"}
                   onClick={(e) => {
@@ -123,7 +126,7 @@ export function Episode(props: EpisodeProps) {
                   "hover:bg-gray-200",
                   "focus:outline-none",
                   "opacity-0 group-hover:opacity-100",
-                  favorite && "text-accent opacity-100"
+                  favorite && "text-accent opacity-100",
                 )}
                 title={favorite ? "Remove from favorites" : "Add to favorites"}
                 onClick={(e) => {
@@ -147,7 +150,7 @@ export function Episode(props: EpisodeProps) {
             className={cx(
               "flex h-full w-full items-center pl-2 pr-3",
               "active:bg-slate-50",
-              "focus:outline-none"
+              "focus:outline-none",
             )}
             onClick={() => onOptionsClick()}
           >

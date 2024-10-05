@@ -38,7 +38,7 @@ export const useEpisodeModalSheetStore = create<EpisodeModalSheetStore>(
       open: () => set({ isOpen: true }),
       close: () => set({ isOpen: false }),
     },
-  })
+  }),
 );
 
 export const useEpisodeModalSheetActions = () =>
@@ -118,7 +118,7 @@ function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
   );
 }
 
-export function useEpisodeTracks(episodeId: string) {
+export function useEpisodeTracks(episodeId: string, enabled: boolean = true) {
   const { data, status } = trpc["episode.getTracks"].useQuery(
     {
       episodeId,
@@ -126,7 +126,8 @@ export function useEpisodeTracks(episodeId: string) {
     {
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
-    }
+      enabled,
+    },
   );
 
   return {
@@ -148,14 +149,14 @@ export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
     {
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
-    }
+    },
   );
 
   const loaded = status === "success";
   const loadedData = loaded ? (data ? data : []) : [];
 
   const possibleTracks = loadedData.filter((t) =>
-    t.timestamp ? progressSecs >= t.timestamp : false
+    t.timestamp ? progressSecs >= t.timestamp : false,
   );
 
   const currentTrack = possibleTracks.at(-1);
@@ -185,7 +186,7 @@ export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
                 <div
                   data-current-track={isCurrent}
                   className={cn(
-                    "absolute w-[2px] md:w-[4px] inset-y-0 bg-white opacity-0 fade-in-100 data-[current-track=true]:opacity-100 data-[current-track=true]:animate-in"
+                    "absolute w-[2px] md:w-[4px] inset-y-0 bg-white opacity-0 fade-in-100 data-[current-track=true]:opacity-100 data-[current-track=true]:animate-in",
                   )}
                 ></div>
                 <div className="space-x-5 relative flex w-full justify-between items-center px-4 md:px-4 py-2">
@@ -193,7 +194,7 @@ export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
                     <div
                       className={cn(
                         "text-xs h-5 w-5 inline-flex p-1 items-center justify-center relative",
-                        isCurrent && "bg-white text-accent rounded-full"
+                        isCurrent && "bg-white text-accent rounded-full",
                       )}
                     >
                       {isCurrent && (
@@ -205,7 +206,7 @@ export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
                       <div
                         className={cn(
                           "font-medium text-sm",
-                          isCurrent && "!font-bold md:!font-black"
+                          isCurrent && "!font-bold md:!font-black",
                         )}
                       >
                         {t.name}
@@ -213,7 +214,7 @@ export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
                       <div
                         className={cn(
                           "text-white/80 text-sm",
-                          isCurrent && "text-white/100"
+                          isCurrent && "text-white/100",
                         )}
                       >
                         {t.artist}
