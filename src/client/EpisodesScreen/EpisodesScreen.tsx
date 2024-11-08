@@ -314,6 +314,7 @@ function setNavigatorMediaMetadata(episode: ReturnType<typeof useGetEpisode>) {
       soulection: "Soulection on",
       "sasha-marie-radio": "Sasha Marie on",
       "the-love-below-hour": "The Love Below on",
+      local: "Local Selector on",
     };
 
     navigator.mediaSession.metadata = new MediaMetadata({
