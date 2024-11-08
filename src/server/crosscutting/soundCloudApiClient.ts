@@ -43,7 +43,7 @@ export class SoundCloudApiClient {
             "Content-Type": "application/x-www-form-urlencoded",
             Authorization: `Basic ${encodedCredentials}`,
           },
-        }
+        },
       )
       .then(this._data);
 
@@ -126,7 +126,7 @@ interface SoundCloudTrackDTO {
   downloads_remaining: null;
 }
 
-interface GetStreamUrlsDTO {
+export interface GetStreamUrlsDTO {
   http_mp3_128_url: string;
   hls_mp3_128_url: string;
   hls_opus_64_url: string;

@@ -1,5 +1,8 @@
 import { Context } from "@/server/context";
-import { createSoundCloudApiClient } from "@/server/crosscutting/soundCloudApiClient";
+import {
+  GetStreamUrlsDTO,
+  createSoundCloudApiClient,
+} from "@/server/crosscutting/soundCloudApiClient";
 import { ObjectId, WithId } from "mongodb";
 import { string, z } from "zod";
 import path from "path";
@@ -9,6 +12,10 @@ import { asyncResult } from "@expo/results";
 import Vibrant from "node-vibrant";
 import { initTRPC } from "@trpc/server";
 import { syncAllCollectives } from "@/pages/api/internal/sync-episodes";
+
+const ENABLE_LOCAL_SOURCE = process.env.ENABLE_LOCAL_SOURCE
+  ? process.env.ENABLE_LOCAL_SOURCE.toLowerCase() === "true"
+  : false;
 
 export type EpisodeTrack = {
   order: number;
@@ -38,13 +45,17 @@ export type DBEpisode = {
   name: string;
   url: string;
   picture_large: string;
-  collective_slug: "soulection" | "sasha-marie-radio" | "the-love-below-hour";
+  collective_slug:
+    | "soulection"
+    | "sasha-marie-radio"
+    | "the-love-below-hour"
+    | "local";
   tracks?: EpisodeTrack[];
 };
 
-export type EpisodeProjection = ReturnType<typeof episodeProjection>;
+export type EpisodeProjection = ReturnType<typeof episodeProjectionFromDb>;
 export type EpisodeCollectiveSlugProjection = DBEpisode["collective_slug"];
-export function episodeProjection(e: WithId<DBEpisode>) {
+export function episodeProjectionFromDb(e: WithId<DBEpisode>) {
   return {
     id: e._id.toString(),
     source: e.source,
@@ -61,10 +72,44 @@ export function episodeProjection(e: WithId<DBEpisode>) {
   } as const;
 }
 
+export function episodeProjectionFromFromObj(
+  e: DBEpisode & { id: string },
+): EpisodeProjection {
+  return {
+    id: e.id,
+    source: e.source,
+    duration: e.duration,
+    releasedAt: e.release_date
+      ? e.release_date.toISOString()
+      : e.created_time.toISOString(),
+    createadAt: e.created_time.toISOString(),
+    embedPlayerKey: e.key,
+    name: e.name,
+    permalinkUrl: e.url,
+    collectiveSlug: e.collective_slug,
+    artworkUrl: e.picture_large,
+  } as const;
+}
+
+const localEpisodesCollection = [
+  {
+    id: "jda-oct-twentyfour-rotation",
+    collective_slug: "local",
+    created_time: new Date("Nov 7, 2024 5:14:10 PM EST"),
+    release_date: new Date("Nov 7, 2024 5:14:10 PM EST"),
+    duration: 7229,
+    key: "jda-oct-twentyfour-rotation",
+    name: "JDA's October Rotation",
+    picture_large: "http://pastelito.local:8000/jda_mixes/oct_rotation_art.jpg",
+    source: "SOUNDCLOUD",
+    url: "http://pastelito.local:8000/jda_mixes/OctoberRotationMix.mp3",
+  },
+] satisfies Array<DBEpisode & { id: string }>;
+
 async function downloadImageFromUrl(
   url: string,
   name: string,
-  basePath = "/tmp/"
+  basePath = "/tmp/",
 ) {
   try {
     const response = await axios.get(url, {
@@ -105,25 +150,38 @@ export const episodeRouter = router({
         $set: {
           collective_slug: "soulection",
         },
-      }
+      },
     );
   }),
   "episodes.all": publicProcedure
     .input(
       z.optional(
         z.object({
-          collective: z.enum(["all", "soulection", "sasha-marie-radio"]),
-        })
-      )
+          collective: z.enum([
+            "all",
+            "soulection",
+            "sasha-marie-radio",
+            "local",
+          ]),
+        }),
+      ),
     )
     .query(async ({ ctx, input }) => {
       const collective = input?.collective ?? "soulection";
 
-      let filter = collective === "all" ? {} : { collective_slug: collective };
+      const isLocalEnabled = ENABLE_LOCAL_SOURCE;
+      const localTracks = isLocalEnabled
+        ? localEpisodesCollection.map(episodeProjectionFromFromObj)
+        : [];
+
+      let dbTracksFilter =
+        collective === "all" || collective === "local"
+          ? {}
+          : { collective_slug: collective };
 
       const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
-      let allTracks = await trackCollection
-        .find(filter, {
+      let allDbTracks = await trackCollection
+        .find(dbTracksFilter, {
           projection: {
             source: 1,
             duration: 1,
@@ -141,16 +199,32 @@ export const episodeRouter = router({
         })
         .toArray();
 
-      return allTracks.map(episodeProjection);
+      const dbTrackProjections = allDbTracks.map(episodeProjectionFromDb);
+
+      return [...localTracks, ...dbTrackProjections];
     }),
   "episode.getStreamUrl": publicProcedure
     .input(
       z.object({
         episodeId: z.string(),
-      })
+      }),
     )
     .query(async ({ input, ctx }) => {
       const { episodeId } = input;
+
+      const isLocalEnabled = ENABLE_LOCAL_SOURCE;
+      const localEpisode = isLocalEnabled
+        ? localEpisodesCollection.find((e) => e.id === episodeId)
+        : null;
+
+      if (localEpisode) {
+        return {
+          http_mp3_128_url: localEpisode.url,
+          hls_mp3_128_url: localEpisode.url,
+          hls_opus_64_url: localEpisode.url,
+          preview_mp3_128_url: localEpisode.url,
+        } satisfies GetStreamUrlsDTO;
+      }
 
       const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
       const episode = await trackCollection.findOne({
@@ -171,7 +245,7 @@ export const episodeRouter = router({
     .input(
       z.object({
         episodeId: z.string().optional(),
-      })
+      }),
     )
     .query(async ({ input, ctx }) => {
       const { episodeId } = input;
@@ -187,18 +261,25 @@ export const episodeRouter = router({
         return defaultAccentColor;
       }
 
-      const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
-      const episode = await trackCollection.findOne({
-        _id: new ObjectId(episodeId),
-      });
+      const localEpisode = localEpisodesCollection.find(
+        (e) => e.id === episodeId,
+      );
 
+      const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
+      const dbEpisode = !!localEpisode
+        ? null
+        : await trackCollection.findOne({
+            _id: new ObjectId(episodeId),
+          });
+
+      const episode = !!localEpisode ? localEpisode : dbEpisode;
       if (!episode) {
         return defaultAccentColor;
       }
 
       const albumArtUrl = episode.picture_large;
       const downloadAlbumArtResult = await asyncResult(
-        downloadImageFromUrl(albumArtUrl, episode.url, "/tmp")
+        downloadImageFromUrl(albumArtUrl, episode.url, "/tmp"),
       );
 
       if (!downloadAlbumArtResult.ok) {
@@ -229,7 +310,7 @@ export const episodeRouter = router({
     .input(
       z.object({
         episodeId: z.string(),
-      })
+      }),
     )
     .query(async ({ input, ctx }) => {
       const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
@@ -244,7 +325,7 @@ export const episodeRouter = router({
     .input(
       z.object({
         episodeId: z.string(),
-      })
+      }),
     )
     .query(async ({ input }) => {
       const { episodeId } = input;
