@@ -138,7 +138,6 @@ export function EpisodesScreen({ searchText }: Props) {
   }
 
   const isWideScreen = useMedia("(min-width: 768px)");
-
   const shouldShowSuffleButton = !searchText && episodes;
 
   function onSectionClick(section: "all" | "favorites") {
@@ -150,7 +149,7 @@ export function EpisodesScreen({ searchText }: Props) {
 
   if (episodes) {
     return (
-      <div className="flex-2 md-safe-bottom relative mt-14 h-full flex-col overflow-hidden pt-safe-top">
+      <div className="bg-gradient-to-b from-gray-400 to-green-500 flex-2 md-safe-bottom relative mt-14 h-full flex-col overflow-hidden pt-safe-top">
         <div
           className={classNames(
             "relative h-full overflow-scroll py-2 pb-safe-bottom",
@@ -201,41 +200,6 @@ export function EpisodesScreen({ searchText }: Props) {
             </>
           </EpisodeList>
         </div>
-        <div className="fixed bottom-0 right-0 z-20 w-full bg-white pb-safe-bottom">
-          {shouldShowSuffleButton || searchOpen ? (
-            <div className="absolute bottom-full right-0 mb-2 flex flex-col items-end justify-end space-y-2 pr-3 md:mb-4">
-              <button
-                onClick={openSearch}
-                className={cn(
-                  "border border-accent/30 bg-white font-semibold text-accent transition-all hover:bg-gray-50 ",
-                  "items-center space-x-1 px-4 py-3",
-                  "rounded-full",
-                  "shadow-md",
-                  "hidden focus:outline-none",
-                  !searchOpen && "flex sm:hidden",
-                )}
-              >
-                <IconSearch className="h-5 w-5 fill-current" />
-                <div>Search</div>
-              </button>
-              <ShuffleButton onClick={onRandomClick} />
-            </div>
-          ) : null}
-          {currentEpisodeId && <Player currentEpisodeId={currentEpisodeId} />}
-          {USE_NEW_PLAYER && currentEpisodeId && currentEpisodeStreamUrls && (
-            <EpisodeAudioPlayer
-              currentEpisodeId={currentEpisodeId}
-              currentEpisodeStreamUrls={currentEpisodeStreamUrls}
-            />
-          )}
-        </div>
-        {!isWideScreen && (
-          <EpisodeModalSheet
-            episodeId={currentEpisodeId}
-            showEpisodeModal={isEpisodeModalSheetOpen}
-            onCloseModal={() => episodeModalSheetActions.close()}
-          ></EpisodeModalSheet>
-        )}
       </div>
     );
   }

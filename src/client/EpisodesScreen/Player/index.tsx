@@ -18,8 +18,7 @@ import { SoundCloudPlayer } from "@/client/components/SoundCloudPlayer";
 import { useMedia } from "@/client/infra/useMedia";
 import { useEpisodeModalSheetActions } from "../EpisodeModalSheet";
 import classNames from "classnames";
-
-export const USE_NEW_PLAYER = true;
+import { USE_NEW_PLAYER } from "@/pages";
 
 export interface PlayerProps {
   currentEpisodeId: string;

@@ -18,6 +18,7 @@ import {
 } from "@/client/EpisodesScreen/PlayerStore";
 import { EpisodeProjection } from "@/server/router";
 import { useEffect } from "react";
+import Link from "next/link";
 
 export function EpisodeOptionsModal() {
   const open = useEpisodeOptionsStore((state) => state.open);
@@ -71,7 +72,7 @@ export function EpisodeOptionsModal() {
                   className={cx(
                     "flex w-full items-center space-x-4 px-4 py-4 font-medium",
                     "active:bg-slate-200",
-                    "focus:outline-none"
+                    "focus:outline-none",
                   )}
                   onClick={() => {
                     playerActions.play(episode.id);
@@ -86,7 +87,7 @@ export function EpisodeOptionsModal() {
                 className={cx(
                   "flex w-full items-center space-x-4 px-4 py-4 font-medium",
                   "active:bg-slate-200",
-                  "focus:outline-none"
+                  "focus:outline-none",
                 )}
                 title="Add to favorites"
                 onClick={(e) => {
@@ -119,7 +120,7 @@ export function EpisodeOptionsModal() {
                   className={cx(
                     "just flex w-full items-center space-x-4 px-4 py-4 font-medium",
                     "active:bg-slate-200",
-                    "focus:outline-none"
+                    "focus:outline-none",
                   )}
                   title="Add to favorites"
                   onClick={(e) => {
@@ -130,6 +131,9 @@ export function EpisodeOptionsModal() {
                   <div>Open in SoundCloud</div>
                 </a>
               ) : null}
+              <Link href={`${episode.collectiveSlug}/${episode.id}`}>
+                View Details
+              </Link>
             </div>
           </div>
         ) : null}
@@ -150,5 +154,5 @@ export const useEpisodeOptionsStore = create<EpisodeOptionsStore>(
     onClose: () => set({ open: false, episode: null }),
     setEpisode: (episode: EpisodeProjection) =>
       set({ open: true, episode: episode }),
-  })
+  }),
 );
