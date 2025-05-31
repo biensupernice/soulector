@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState, useRef } from "react";
 import { formatDate, formatTime } from "../../helpers";
 import {
   IconPause,
@@ -52,25 +52,33 @@ export function PlayerControls({
   const [seekPosition, setSeekPosition] = useState(progress);
   const pendingSeekRef = useRef<number | null>(null);
 
-  // Sync seekPosition with progress, but wait for progress to catch up after seeking
-  useEffect(() => {
-    if (!seeking) {
-      if (pendingSeekRef.current !== null) {
-        // We're waiting for progress to catch up to our seek position
-        const diff = Math.abs(progress - pendingSeekRef.current);
-        if (diff < 500) {
-          // Progress has caught up, clear the pending seek
-          pendingSeekRef.current = null;
-          setSeekPosition(progress);
-        }
-      } else {
-        // Normal operation - keep seekPosition in sync with progress
+  // Compute what to display based on current state
+  let scrubberProgress;
+  if (seeking) {
+    // Currently seeking - show the seek position
+    scrubberProgress = seekPosition;
+  } else if (pendingSeekRef.current !== null) {
+    // We just finished seeking, check if progress caught up
+    const diff = Math.abs(progress - pendingSeekRef.current);
+    if (diff < 500) {
+      // Progress caught up - clear pending and use progress
+      pendingSeekRef.current = null;
+      scrubberProgress = progress;
+      // Update seekPosition to stay in sync
+      if (seekPosition !== progress) {
         setSeekPosition(progress);
       }
+    } else {
+      // Still waiting for progress to catch up
+      scrubberProgress = pendingSeekRef.current;
     }
-  }, [progress, seeking]);
-
-  const scrubberProgress = seekPosition;
+  } else {
+    // Normal operation - use progress and keep seekPosition in sync
+    scrubberProgress = progress;
+    if (seekPosition !== progress) {
+      setSeekPosition(progress);
+    }
+  }
 
   const { focusEpisode } = useContext(EpisodeListContext);
 
