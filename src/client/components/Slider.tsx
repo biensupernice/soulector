@@ -20,7 +20,8 @@ export interface SliderProps {
 }
 
 // Scale animation configuration
-// Adjust these values to customize the hover/touch scale behavior:
+// Adjust these values to customize the hover/touch/drag scale behavior:
+// NOTE: Scaling now works on both desktop (hover) and mobile (touch/drag)
 //
 // BASIC SCALING:
 // - scaleFactor: How much to scale the whole slider (1.0 = no scale, 1.2 = 20% larger, 1.5 = 50% larger)
@@ -28,7 +29,7 @@ export interface SliderProps {
 //
 // DIRECTIONAL SCALING (only when scaleEvenly = false):
 // - scaleX: Whether to scale horizontally (true/false)
-// - scaleY: Whether to scale vertically (true/false)
+// - scaleY: Whether to scale vertically (true/false) 
 //
 // HEIGHT SCALING (the track height animation):
 // - enableHeightScaling: Whether the track height should grow on interaction
@@ -43,11 +44,11 @@ export interface SliderProps {
 // Minimal scaling: { scaleFactor: 1.05, heightScaleFactor: 1.5 }
 //
 // QUICK TWEAKS:
-// → Want bigger scaling? Change line 55: scaleFactor: 1.3 (or higher)
-// → Want smaller scaling? Change line 55: scaleFactor: 1.1 (or lower)
-// → Want no scaling? Change line 55: scaleFactor: 1.0
-// → Want horizontal stretch only? Change line 56: scaleEvenly: false, line 57: scaleX: true, line 58: scaleY: false
-// → Want no height animation? Change line 59: enableHeightScaling: false
+// → Want bigger scaling? Change line 57: scaleFactor: 1.3 (or higher)
+// → Want smaller scaling? Change line 57: scaleFactor: 1.1 (or lower)  
+// → Want no scaling? Change line 57: scaleFactor: 1.0
+// → Want horizontal stretch only? Change line 58: scaleEvenly: false, line 59: scaleX: true, line 60: scaleY: false
+// → Want no height animation? Change line 61: enableHeightScaling: false
 const SCALE_CONFIG = {
   scaleFactor: 1.1, // Overall scale multiplier
   scaleEvenly: false, // Set to false for directional scaling
@@ -129,10 +130,6 @@ export function Slider({
       )}
 
       <motion.div
-        onHoverStart={() => animate(scale, SCALE_CONFIG.scaleFactor)}
-        onHoverEnd={() => animate(scale, 1)}
-        onTouchStart={() => animate(scale, SCALE_CONFIG.scaleFactor)}
-        onTouchEnd={() => animate(scale, 1)}
         style={{
           ...(SCALE_CONFIG.scaleEvenly
             ? { scale }
@@ -167,15 +164,25 @@ export function Slider({
           }}
           onPointerDown={(e) => {
             e.stopPropagation();
+            animate(scale, SCALE_CONFIG.scaleFactor);
             onMouseDown?.();
           }}
           onPointerUp={(e) => {
             e.stopPropagation();
+            animate(scale, 1);
             onMouseUp?.();
           }}
-          onTouchStart={(e) => e.stopPropagation()}
+          onTouchStart={(e) => {
+            e.stopPropagation();
+            animate(scale, SCALE_CONFIG.scaleFactor);
+          }}
           onTouchMove={(e) => e.stopPropagation()}
-          onTouchEnd={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => {
+            e.stopPropagation();
+            animate(scale, 1);
+          }}
+          onMouseEnter={() => animate(scale, SCALE_CONFIG.scaleFactor)}
+          onMouseLeave={() => animate(scale, 1)}
           onLostPointerCapture={() => {
             animate(overflow, 0, { type: "spring", bounce: 0.5 });
           }}
