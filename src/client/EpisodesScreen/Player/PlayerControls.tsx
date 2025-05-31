@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect, useRef } from "react";
 import { formatDate, formatTime } from "../../helpers";
 import {
   IconPause,
@@ -50,8 +50,27 @@ export function PlayerControls({
 }: PlayerControlsProps) {
   const [seeking, setSeeking] = useState(false);
   const [seekPosition, setSeekPosition] = useState(progress);
+  const pendingSeekRef = useRef<number | null>(null);
 
-  const scrubberProgress = seeking ? seekPosition : progress;
+  // Sync seekPosition with progress, but wait for progress to catch up after seeking
+  useEffect(() => {
+    if (!seeking) {
+      if (pendingSeekRef.current !== null) {
+        // We're waiting for progress to catch up to our seek position
+        const diff = Math.abs(progress - pendingSeekRef.current);
+        if (diff < 500) {
+          // Progress has caught up, clear the pending seek
+          pendingSeekRef.current = null;
+          setSeekPosition(progress);
+        }
+      } else {
+        // Normal operation - keep seekPosition in sync with progress
+        setSeekPosition(progress);
+      }
+    }
+  }, [progress, seeking]);
+
+  const scrubberProgress = seekPosition;
 
   const { focusEpisode } = useContext(EpisodeListContext);
 
@@ -166,8 +185,9 @@ export function PlayerControls({
                     setSeekPosition(val);
                   }}
                   onChangeEnd={(val) => {
-                    setSeeking(false);
+                    pendingSeekRef.current = val;
                     onCuePositionChange(val);
+                    setSeeking(false);
                   }}
                 />
               </div>

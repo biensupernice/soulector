@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { formatTime } from "../../helpers";
 import {
   IconPause,
@@ -30,8 +30,27 @@ export function MobilePlayerControls({
 }: PlayerControlsProps) {
   const [seeking, setSeeking] = useState(false);
   const [seekPosition, setSeekPosition] = useState(progress);
+  const pendingSeekRef = useRef<number | null>(null);
 
-  const scrubberProgress = seeking ? seekPosition : progress;
+  // Sync seekPosition with progress, but wait for progress to catch up after seeking
+  useEffect(() => {
+    if (!seeking) {
+      if (pendingSeekRef.current !== null) {
+        // We're waiting for progress to catch up to our seek position
+        const diff = Math.abs(progress - pendingSeekRef.current);
+        if (diff < 500) {
+          // Progress has caught up, clear the pending seek
+          pendingSeekRef.current = null;
+          setSeekPosition(progress);
+        }
+      } else {
+        // Normal operation - keep seekPosition in sync with progress
+        setSeekPosition(progress);
+      }
+    }
+  }, [progress, seeking]);
+
+  const scrubberProgress = seekPosition;
 
   return (
     <div className="flex h-full flex-col items-center space-y-3 pb-4">
@@ -49,8 +68,9 @@ export function MobilePlayerControls({
                 setSeekPosition(val);
               }}
               onChangeEnd={(val) => {
-                setSeeking(false);
+                pendingSeekRef.current = val;
                 onCuePositionChange(val);
+                setSeeking(false);
               }}
             />
           </div>
