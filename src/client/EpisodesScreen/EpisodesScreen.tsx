@@ -3,7 +3,7 @@ import React, {
   useEffect,
   useMemo,
   useState,
-  useTransition,
+  useDeferredValue,
 } from "react";
 import Player, { USE_NEW_PLAYER } from "./Player";
 import { ShuffleButton } from "../components/ShuffleButton";
@@ -52,10 +52,7 @@ export function EpisodesScreen({ searchText }: Props) {
   const [selectedSection, setSelectedSection] = useState<"all" | "favorites">(
     "all",
   );
-  const [activeSection, setActiveSection] = useState<"all" | "favorites">(
-    "all",
-  );
-  const [isPending, startTransition] = useTransition();
+  const deferredSelectedSection = useDeferredValue(selectedSection);
 
   const isEpisodeModalSheetOpen = useEpisodeModalSheetStore((s) => s.isOpen);
   const episodeModalSheetActions = useEpisodeModalSheetActions();
@@ -127,7 +124,7 @@ export function EpisodesScreen({ searchText }: Props) {
     return [];
   }, [episodes, searchText, selectedCollective]);
 
-  const activeEpisodes = activeSection === "all" ? filteredEpisodes : favorites;
+  const activeEpisodes = deferredSelectedSection === "all" ? filteredEpisodes : favorites;
 
   function onFavoriteClick(episode: EpisodeProjection) {
     if (isFavoriteFast(episode.id)) {
@@ -143,9 +140,6 @@ export function EpisodesScreen({ searchText }: Props) {
 
   function onSectionClick(section: "all" | "favorites") {
     setSelectedSection(section);
-    startTransition(() => {
-      setActiveSection(section);
-    });
   }
 
   if (episodes) {
@@ -169,7 +163,7 @@ export function EpisodesScreen({ searchText }: Props) {
                 activeSection={selectedSection}
                 onSectionClick={onSectionClick}
               />
-              {activeSection === "favorites" ? (
+              {deferredSelectedSection === "favorites" ? (
                 <div>
                   {favorites.map((episode) => (
                     <Episode
