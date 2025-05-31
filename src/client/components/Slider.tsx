@@ -1,140 +1,245 @@
-import React, { RefObject } from "react";
-import { useSliderState, SliderState } from "react-stately";
-
-import {
-  mergeProps,
-  useFocusRing,
-  useNumberFormatter,
-  useSlider,
-  useSliderThumb,
-  VisuallyHidden,
-  AriaSliderProps,
-} from "react-aria";
+import React, { ElementRef, useRef, useState, useCallback } from "react";
+import * as RadixSlider from "@radix-ui/react-slider";
+import { animate, motion, useMotionValue, useTransform } from "framer-motion";
 import cx from "classnames";
 
-export interface SliderProps
-  extends Omit<AriaSliderProps<number | number[]>, "numberFormatter"> {
-  onMouseDown?(): void;
-  onMouseUp?(): void;
-  showThumb?: boolean;
+const MAX_OVERFLOW = 50;
+
+export interface SliderProps {
+  value: number;
+  onChange?: (value: number) => void;
+  onChangeEnd?: (value: number) => void;
+  minValue?: number;
+  maxValue?: number;
+  "aria-label"?: string;
+  showThumb?: boolean; // Note: thumb is always hidden, this prop is kept for compatibility
   variant?: "default" | "flat";
+  onMouseDown?: () => void;
+  onMouseUp?: () => void;
+  label?: string;
 }
 
-export function Slider(props: SliderProps) {
-  let trackRef = React.useRef(null);
-  let numberFormatter = useNumberFormatter();
-  let state = useSliderState({ ...props, numberFormatter });
-  let { groupProps, trackProps, labelProps, outputProps } = useSlider(
-    props,
-    state,
-    trackRef
-  );
+// Scale animation configuration
+// Adjust these values to customize the hover/touch scale behavior:
+//
+// BASIC SCALING:
+// - scaleFactor: How much to scale the whole slider (1.0 = no scale, 1.2 = 20% larger, 1.5 = 50% larger)
+// - scaleEvenly: If true, scales uniformly in all directions
+//
+// DIRECTIONAL SCALING (only when scaleEvenly = false):
+// - scaleX: Whether to scale horizontally (true/false)
+// - scaleY: Whether to scale vertically (true/false)
+//
+// HEIGHT SCALING (the track height animation):
+// - enableHeightScaling: Whether the track height should grow on interaction
+// - heightScaleFactor: Multiplier for track height (e.g., 2.4 means 12px when base is 5px)
+//
+// EXAMPLES:
+// Subtle even scaling: { scaleFactor: 1.1, scaleEvenly: true }
+// Horizontal only: { scaleFactor: 1.3, scaleEvenly: false, scaleX: true, scaleY: false }
+// Vertical only: { scaleFactor: 1.4, scaleEvenly: false, scaleX: false, scaleY: true }
+// No height change: { scaleFactor: 1.2, enableHeightScaling: false }
+// Dramatic scaling: { scaleFactor: 1.5, heightScaleFactor: 3.0 }
+// Minimal scaling: { scaleFactor: 1.05, heightScaleFactor: 1.5 }
+//
+// QUICK TWEAKS:
+// → Want bigger scaling? Change line 55: scaleFactor: 1.3 (or higher)
+// → Want smaller scaling? Change line 55: scaleFactor: 1.1 (or lower)
+// → Want no scaling? Change line 55: scaleFactor: 1.0
+// → Want horizontal stretch only? Change line 56: scaleEvenly: false, line 57: scaleX: true, line 58: scaleY: false
+// → Want no height animation? Change line 59: enableHeightScaling: false
+const SCALE_CONFIG = {
+  scaleFactor: 1.1, // Overall scale multiplier
+  scaleEvenly: false, // Set to false for directional scaling
+  scaleX: false, // Horizontal scaling (when scaleEvenly = false)
+  scaleY: true, // Vertical scaling (when scaleEvenly = false)
+  enableHeightScaling: true, // Whether track height should animate
+  heightScaleFactor: 2.0, // Track height multiplier (12px / 5px = 2.4)
+};
 
-  const variant = props.variant ?? "default";
+// Sigmoid-based decay function
+function decay(value: number, max: number) {
+  if (max === 0) {
+    return 0;
+  }
 
-  const horizontal = state.orientation === "horizontal";
-  const vertical = state.orientation === "vertical";
+  let entry = value / max;
+  let sigmoid = 2 * (1 / (1 + Math.exp(-entry)) - 0.5);
 
-  return (
-    <div
-      {...groupProps}
-      onMouseDown={props.onMouseDown}
-      onMouseUp={props.onMouseUp}
-      className={cx(
-        "flex",
-        horizontal && "w-full flex-col",
-        vertical && "h-[150px]"
-      )}
-    >
-      {/* Create a container for the label and output element. */}
-      {props.label && (
-        <div className={cx("label-container", "flex justify-between")}>
-          <label {...labelProps}>{props.label}</label>
-          <output {...outputProps}>{state.getThumbValueLabel(0)}</output>
-        </div>
-      )}
-      {/* The track element holds the visible track line and the thumb. */}
-      <div
-        {...trackProps}
-        ref={trackRef}
-        className={cx(
-          horizontal && "group h-6 w-full",
-          state.isDisabled && "opacity-40"
-        )}
-      >
-        <div
-          className={cx(
-            "relative top-1/2 h-[5px] w-full -translate-y-1/2 rounded-full",
-            variant === "default" && "bg-gray-300",
-            variant === "flat" && "bg-white/50"
-          )}
-        >
-          <Thumb
-            index={0}
-            state={state}
-            trackRef={trackRef}
-            visible={props.showThumb}
-            variant={props.variant}
-          />
-        </div>
-      </div>
-    </div>
-  );
+  return sigmoid * max;
 }
 
-interface ThumbProps {
-  index: number;
-  trackRef: RefObject<Element>;
-  state: SliderState;
-  visible?: boolean;
-  variant?: "default" | "flat";
-}
-function Thumb(props: ThumbProps) {
-  let { state, trackRef, index, visible = false } = props;
-  let inputRef = React.useRef(null);
-  let { thumbProps, inputProps, isDragging } = useSliderThumb(
-    {
-      index,
-      trackRef,
-      inputRef,
+export function Slider({
+  value,
+  onChange,
+  onChangeEnd,
+  minValue = 0,
+  maxValue = 100,
+  "aria-label": ariaLabel,
+  showThumb = false,
+  variant = "default",
+  onMouseDown,
+  onMouseUp,
+  label,
+}: SliderProps) {
+  let ref = useRef<ElementRef<typeof RadixSlider.Root>>(null);
+  let [region, setRegion] = useState("middle");
+  let clientX = useMotionValue(0);
+  let overflow = useMotionValue(0);
+  let scale = useMotionValue(1);
+
+  const updateOverflow = useCallback(
+    (latest: number) => {
+      if (ref.current) {
+        let { left, right } = ref.current.getBoundingClientRect();
+        let newValue;
+
+        if (latest < left) {
+          setRegion("left");
+          newValue = left - latest;
+        } else if (latest > right) {
+          setRegion("right");
+          newValue = latest - right;
+        } else {
+          setRegion("middle");
+          newValue = 0;
+        }
+
+        overflow.set(decay(newValue, MAX_OVERFLOW));
+      }
     },
-    state
+    [overflow],
   );
-  const variant = props.variant ?? "default";
 
-  let { focusProps, isFocusVisible } = useFocusRing();
+  const handleValueChange = (values: number[]) => {
+    onChange?.(values[0]);
+  };
+
+  const handleValueCommit = (values: number[]) => {
+    onChangeEnd?.(values[0]);
+  };
+
   return (
-    <>
-      <div
-        {...thumbProps}
-        className={cx(
-          "absolute top-0 block h-full rounded-full bg-gray-500 group-hover:bg-accent",
-          variant === "default" && "group-hover:bg-accent",
-          variant === "flat" && "group-hover:bg-white",
-          (isFocusVisible || visible) && variant === "default" && "!bg-accent",
-          (isFocusVisible || visible) && variant === "flat" && "!bg-white"
-        )}
+    <div className="flex w-full flex-col">
+      {label && (
+        <div className="label-container flex justify-between">
+          <label>{label}</label>
+          <output>{value}</output>
+        </div>
+      )}
+
+      <motion.div
+        onHoverStart={() => animate(scale, SCALE_CONFIG.scaleFactor)}
+        onHoverEnd={() => animate(scale, 1)}
+        onTouchStart={() => animate(scale, SCALE_CONFIG.scaleFactor)}
+        onTouchEnd={() => animate(scale, 1)}
         style={{
-          width: `${state.getThumbPercent(0) * 100}%`,
+          ...(SCALE_CONFIG.scaleEvenly
+            ? { scale }
+            : {
+                scaleX: SCALE_CONFIG.scaleX ? scale : 1,
+                scaleY: SCALE_CONFIG.scaleY ? scale : 1,
+              }),
+          opacity: useTransform(
+            scale,
+            [1, SCALE_CONFIG.scaleFactor],
+            [variant === "flat" ? 1 : 0.7, 1],
+          ),
         }}
-      ></div>
-      <div
-        {...thumbProps}
-        className={cx(
-          "top-1/2 h-[12px] w-[12px] rounded-full opacity-0 group-hover:opacity-100",
-          variant === "default" && "border border-gray-500 bg-indigo-100",
-          variant === "flat" && "bg-white",
-          isDragging &&
-            variant === "default" &&
-            "shadow-[0_0_0_1px_rgba(255,255,255)_inset,1px_1px_4px_1px_rgba(0,0,0,0.3)_inset]",
-          isFocusVisible && "ring-3 opacity-100 ring ring-offset-1",
-          visible && "opacity-100"
-        )}
+        className="flex w-full touch-none select-none items-center justify-center"
       >
-        <VisuallyHidden>
-          <input ref={inputRef} {...mergeProps(inputProps, focusProps)} />
-        </VisuallyHidden>
-      </div>
-    </>
+        <RadixSlider.Root
+          ref={ref}
+          value={[value]}
+          onValueChange={handleValueChange}
+          onValueCommit={handleValueCommit}
+          min={minValue}
+          max={maxValue}
+          step={0.01}
+          aria-label={ariaLabel}
+          className="relative flex w-full grow cursor-grab touch-none select-none items-center py-4 active:cursor-grabbing"
+          onPointerMove={(e) => {
+            e.stopPropagation();
+            if (e.buttons > 0) {
+              clientX.set(e.clientX);
+              updateOverflow(e.clientX);
+            }
+          }}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            onMouseDown?.();
+          }}
+          onPointerUp={(e) => {
+            e.stopPropagation();
+            onMouseUp?.();
+          }}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => e.stopPropagation()}
+          onLostPointerCapture={() => {
+            animate(overflow, 0, { type: "spring", bounce: 0.5 });
+          }}
+        >
+          <motion.div
+            style={{
+              scaleX: useTransform(overflow, (val) => {
+                if (ref.current) {
+                  let { width } = ref.current.getBoundingClientRect();
+                  return 1 + val / width;
+                }
+                return 1;
+              }),
+              scaleY: useTransform(overflow, [0, MAX_OVERFLOW], [1, 0.8]),
+              transformOrigin: useTransform(clientX, (val) => {
+                if (ref.current) {
+                  let { left, width } = ref.current.getBoundingClientRect();
+                  return val < left + width / 2 ? "right" : "left";
+                }
+                return "center";
+              }),
+              ...(SCALE_CONFIG.enableHeightScaling
+                ? {
+                    height: useTransform(
+                      scale,
+                      [1, SCALE_CONFIG.scaleFactor],
+                      [5, 5 * SCALE_CONFIG.heightScaleFactor],
+                    ),
+                    marginTop: useTransform(
+                      scale,
+                      [1, SCALE_CONFIG.scaleFactor],
+                      [0, -(5 * SCALE_CONFIG.heightScaleFactor - 5) / 2],
+                    ),
+                    marginBottom: useTransform(
+                      scale,
+                      [1, SCALE_CONFIG.scaleFactor],
+                      [0, -(5 * SCALE_CONFIG.heightScaleFactor - 5) / 2],
+                    ),
+                  }
+                : {}),
+            }}
+            className="flex w-full grow"
+          >
+            <RadixSlider.Track
+              className={cx(
+                "relative isolate h-full w-full grow overflow-hidden rounded-full",
+                variant === "default" && "bg-gray-300",
+                variant === "flat" && "bg-white/50",
+              )}
+            >
+              <RadixSlider.Range
+                className={cx(
+                  "absolute h-full rounded-full",
+                  variant === "default" && "bg-gray-500 group-hover:bg-accent",
+                  variant === "flat" && "bg-white",
+                )}
+              />
+            </RadixSlider.Track>
+          </motion.div>
+          <RadixSlider.Thumb
+            className="opacity-0 pointer-events-none" // Always hidden - no visible thumb
+          />
+        </RadixSlider.Root>
+      </motion.div>
+    </div>
   );
 }

@@ -163,13 +163,11 @@ export function PlayerControls({
                   value={scrubberProgress}
                   onChange={(val) => {
                     setSeeking(true);
-                    const newVal = Array.isArray(val) ? val[0] : val;
-                    setSeekPosition(newVal);
+                    setSeekPosition(val);
                   }}
                   onChangeEnd={(val) => {
-                    const newVal = Array.isArray(val) ? val[0] : val;
                     setSeeking(false);
-                    onCuePositionChange(newVal);
+                    onCuePositionChange(val);
                   }}
                 />
               </div>
@@ -218,8 +216,7 @@ export function PlayerControls({
                 maxValue={100}
                 value={volume}
                 onChange={(val) => {
-                  const newVal = Array.isArray(val) ? val[0] : val;
-                  onVolumeChange(newVal);
+                  onVolumeChange(val);
                 }}
               />
             </div>

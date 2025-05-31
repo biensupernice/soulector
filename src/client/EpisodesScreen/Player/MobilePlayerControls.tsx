@@ -40,20 +40,17 @@ export function MobilePlayerControls({
           <div className="relative mx-3 flex w-full max-w-xl flex-1 flex-col justify-center">
             <Slider
               variant="flat"
-              showThumb
               aria-label="progress"
               minValue={0}
               maxValue={episodeDuration}
               value={scrubberProgress}
               onChange={(val) => {
                 setSeeking(true);
-                const newVal = Array.isArray(val) ? val[0] : val;
-                setSeekPosition(newVal);
+                setSeekPosition(val);
               }}
               onChangeEnd={(val) => {
-                const newVal = Array.isArray(val) ? val[0] : val;
                 setSeeking(false);
-                onCuePositionChange(newVal);
+                onCuePositionChange(val);
               }}
             />
           </div>
