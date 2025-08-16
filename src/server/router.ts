@@ -100,9 +100,10 @@ const localEpisodesCollection = [
     duration: 7229,
     key: "jda-oct-twentyfour-rotation",
     name: "JDA's October Rotation",
-    picture_large: "http://pastelito.local:8000/jda_mixes/oct_rotation_art.jpg",
+    picture_large:
+      "https://clrdbin-assets.jalvarado.dev/current_rotation_001_art.png",
     source: "SOUNDCLOUD",
-    url: "http://pastelito.local:8000/jda_mixes/OctoberRotationMix.mp3",
+    url: "https://clrdbin-assets.jalvarado.dev/current_rotation_001.mp3",
   },
 ] satisfies Array<DBEpisode & { id: string }>;
 
