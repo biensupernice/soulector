@@ -93,13 +93,13 @@ export function episodeProjectionFromFromObj(
 
 const localEpisodesCollection = [
   {
-    id: "jda-oct-twentyfour-rotation",
+    id: "jda-current-rotation-001",
     collective_slug: "local",
     created_time: new Date("Nov 7, 2024 5:14:10 PM EST"),
     release_date: new Date("Nov 7, 2024 5:14:10 PM EST"),
     duration: 7229,
-    key: "jda-oct-twentyfour-rotation",
-    name: "JDA's October Rotation",
+    key: "jda-current-rotation-001",
+    name: "JDA's Current Rotation | 001",
     picture_large:
       "https://clrdbin-assets.jalvarado.dev/current_rotation_001_art.png",
     source: "SOUNDCLOUD",
