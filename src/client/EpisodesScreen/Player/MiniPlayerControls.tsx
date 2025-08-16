@@ -1,9 +1,70 @@
-import React from "react";
+import React, { useRef, useLayoutEffect, useState } from "react";
 import { formatDate } from "../../helpers";
 import { IconPause, IconPlay, IconSkipThirty } from "../../components/Icons";
 import cx from "classnames";
 import { motion } from "framer-motion";
 import { PlayerControlsProps } from "./PlayerControls";
+
+// Marquee animation configuration
+const MARQUEE_GAP = 40; // Gap between repeated text in pixels
+const MARQUEE_SPEED = 30; // Animation speed in pixels per second
+
+interface MarqueeTextProps {
+  text: string;
+  className?: string;
+  gap?: number;
+  speed?: number;
+}
+
+const MarqueeText = React.memo(function MarqueeText({ text, className = "", gap = MARQUEE_GAP, speed = MARQUEE_SPEED }: MarqueeTextProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
+  const [shouldMarquee, setShouldMarquee] = useState(false);
+  const [textWidth, setTextWidth] = useState(0);
+
+  useLayoutEffect(() => {
+    const checkOverflow = () => {
+      if (containerRef.current && textRef.current) {
+        const containerWidth = containerRef.current.offsetWidth;
+        const measuredTextWidth = textRef.current.scrollWidth;
+        setShouldMarquee(measuredTextWidth > containerWidth);
+        setTextWidth(measuredTextWidth);
+      }
+    };
+
+    checkOverflow();
+    window.addEventListener('resize', checkOverflow);
+    return () => window.removeEventListener('resize', checkOverflow);
+  }, [text]);
+
+  if (!shouldMarquee) {
+    return (
+      <div ref={containerRef} className={`overflow-hidden ${className}`}>
+        <div ref={textRef} className="whitespace-nowrap">
+          {text}
+        </div>
+      </div>
+    );
+  }
+
+  const animationDuration = (textWidth + gap) / speed;
+
+  return (
+    <div ref={containerRef} className={`overflow-hidden ${className}`}>
+      <div
+        ref={textRef}
+        className="whitespace-nowrap"
+        style={{
+          animation: textWidth > 0 ? `marquee ${animationDuration}s linear infinite` : 'none',
+          '--marquee-distance': `${textWidth + gap}px`,
+        } as React.CSSProperties}
+      >
+        <span>{text}</span>
+        <span style={{ marginLeft: `${gap}px` }}>{text}</span>
+      </div>
+    </div>
+  );
+});
 
 export interface MiniPlayerControlsPromps extends PlayerControlsProps {
   onClick(): void;
@@ -47,9 +108,12 @@ export function MiniPlayerControls({
           />
         </div>
         <div className="flex w-full flex-col justify-center overflow-hidden">
-          <div className="w-full overflow-hidden text-ellipsis whitespace-nowrap text-base font-semibold leading-tight">
-            {episode.name}
-          </div>
+          <MarqueeText 
+            text={episode.name}
+            className="text-base font-semibold leading-tight"
+            gap={MARQUEE_GAP}
+            speed={MARQUEE_SPEED}
+          />
           <div className="text-sm text-gray-700">
             {formatDate(episode.releasedAt)}
           </div>
