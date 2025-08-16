@@ -202,7 +202,11 @@ export const episodeRouter = router({
 
       const dbTrackProjections = allDbTracks.map(episodeProjectionFromDb);
 
-      return [...localTracks, ...dbTrackProjections];
+      const allTracks = [...localTracks, ...dbTrackProjections];
+      return allTracks.sort(
+        (a, b) =>
+          new Date(b.releasedAt).getTime() - new Date(a.releasedAt).getTime(),
+      );
     }),
   "episode.getStreamUrl": publicProcedure
     .input(
