@@ -10,7 +10,7 @@ import axios from "axios";
 import fs from "fs";
 import { asyncResult } from "@expo/results";
 import Vibrant from "node-vibrant";
-import { initTRPC } from "@trpc/server";
+import { initTRPC, TRPCError } from "@trpc/server";
 import { syncAllCollectives } from "@/pages/api/internal/sync-episodes";
 
 const ENABLE_LOCAL_SOURCE = process.env.ENABLE_LOCAL_SOURCE
@@ -133,6 +133,22 @@ const t = initTRPC.context<Context>().create();
 const router = t.router;
 const publicProcedure = t.procedure;
 
+// Protected procedure for internal operations - requires basic auth via INTERNAL_AUTH_USERNAME/INTERNAL_AUTH_PASSWORD env vars
+const authenticatedProcedure = t.procedure.use(async ({ ctx, next }) => {
+  if (!ctx.isAuthenticated) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Authentication required for internal procedures",
+    });
+  }
+  return next({
+    ctx: {
+      ...ctx,
+      isAuthenticated: true as const,
+    },
+  });
+});
+
 export const episodeRouter = router({
   "internal.episodesSync": publicProcedure.query(async ({ ctx }) => {
     let retrieved = await syncAllCollectives(ctx.db);
@@ -142,7 +158,7 @@ export const episodeRouter = router({
       retrievedTracks: retrieved,
     };
   }),
-  "internal.backfillCollectives": publicProcedure.query(({ ctx }) => {
+  "internal.backfillCollectives": authenticatedProcedure.query(({ ctx }) => {
     const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
 
     trackCollection.updateMany(
@@ -153,6 +169,110 @@ export const episodeRouter = router({
         },
       },
     );
+  }),
+  "internal.importEpisodeTrackInfo": authenticatedProcedure
+    .input(
+      z.object({
+        streaming_urls: z.object({
+          soundcloud_url: z.string().url(),
+        }),
+        tracks: z.array(
+          z.object({
+            track_number: z.number(),
+            song: z.string(),
+            artist: z.string(),
+            timestamp: z.string().optional(),
+          }),
+        ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { streaming_urls, tracks } = input;
+      const { soundcloud_url: soundcloudUrl } = streaming_urls;
+
+      // TODO: Clean up URLs in database to remove query parameters
+      // MongoDB query to fix this:
+      // db.tracksOld.find({ url: { $regex: /\?utm_/ } }).forEach(function(doc) {
+      //   var cleanUrl = doc.url.split('?')[0];
+      //   db.tracksOld.updateOne({ _id: doc._id }, { $set: { url: cleanUrl } });
+      // });
+
+      // Validate that the episode exists
+      const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
+
+      // Strip query parameters from the input URL for matching
+      const cleanSoundcloudUrl = soundcloudUrl.split("?")[0];
+
+      // Match on URLs that start with the clean URL (handles URLs with query params in DB)
+      const episode = await trackCollection.findOne({
+        url: {
+          $regex: `^${cleanSoundcloudUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+        },
+      });
+
+      if (!episode) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Episode with URL ${soundcloudUrl} not found`,
+        });
+      }
+
+      const episodeId = episode._id;
+
+      // Helper function to convert timestamp string to seconds
+      const timestampToSeconds = (timestamp?: string): number | undefined => {
+        if (!timestamp || timestamp === "00:00:00") {
+          return undefined;
+        }
+
+        const parts = timestamp.split(":");
+        if (parts.length !== 3) {
+          return undefined;
+        }
+
+        const hours = parseInt(parts[0], 10);
+        const minutes = parseInt(parts[1], 10);
+        const seconds = parseInt(parts[2], 10);
+
+        return hours * 3600 + minutes * 60 + seconds;
+      };
+
+      // Transform the input tracks to match our EpisodeTrack type
+      const episodeTracks: EpisodeTrack[] = tracks.map((track) => ({
+        order: track.track_number,
+        episode_id: episodeId,
+        name: track.song,
+        artist: track.artist,
+        timestamp: timestampToSeconds(track.timestamp),
+        links: [],
+      }));
+
+      // Update the episode with the new track information
+      const updateResult = await trackCollection.updateOne(
+        { _id: episodeId },
+        { $set: { tracks: episodeTracks } },
+      );
+
+      if (updateResult.matchedCount === 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Failed to update episode with URL ${soundcloudUrl}`,
+        });
+      }
+
+      return {
+        success: true,
+        message: `Successfully imported ${tracks.length} tracks for episode ${soundcloudUrl}`,
+        episodeId: episodeId.toString(),
+        tracksCount: tracks.length,
+      };
+    }),
+  "internal.testAuth": authenticatedProcedure.query(async ({ ctx }) => {
+    return {
+      success: true,
+      message: "Authentication successful!",
+      timestamp: new Date().toISOString(),
+    };
   }),
   "episodes.all": publicProcedure
     .input(

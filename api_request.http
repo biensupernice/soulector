@@ -27,8 +27,33 @@ GET http://localhost:3000/api/trpc/episode.getStreamUrl?input=%7B%22episodeId%22
 POST http://api.soundcloud.com/oauth2/token?client_id={{SOUNDCLOUD_CLIENT_ID}}&client_secret={{SOUNDCLOUD_CLIENT_SECRET}}&grant_type=client_credentials HTTP/1.1
 
 
-### Backfill collective
+### Backfill collective (Requires Auth)
 GET http://localhost:3000/api/trpc/internal.backfillCollectives
+Authorization: Basic dGhlYm95YW5kdGhla2l0dGVuc3llcDptb3NoaXRoZWNhdA==
+
+### Test Auth (Requires Auth)
+GET http://localhost:3000/api/trpc/internal.testAuth
+Authorization: Basic dGhlYm95YW5kdGhla2l0dGVuc3llcDptb3NoaXRoZWNhdA==
+
+### Import Episode Track Info (Requires Auth)
+POST http://localhost:3000/api/trpc/internal.importEpisodeTrackInfo
+Authorization: Basic dGhlYm95YW5kdGhla2l0dGVuc3llcDptb3NoaXRoZWNhdA==
+Content-Type: application/json
+
+{
+  "streaming_urls": {
+    "soundcloud_url": "https://soundcloud.com/soulection/show-700-uptempo-edits-timeless-soul",
+    "apple_music_url": "https://music.apple.com/us/station/episode-700/ra.1837450757"
+  },
+  "tracks": [
+    {
+      "track_number": 1,
+      "timestamp": "00:00:20",
+      "artist": "Afrikano",
+      "song": "Jazzapiano",
+    },
+  ]
+}
 
 ### Get soundcloud tracks
 
@@ -56,9 +81,14 @@ Authorization: OAuth {{SOUNDCLOUD_API_TOKEN}}
 ### Apple Music Get Track
 GET https://api.music.apple.com/v1/catalog/us/songs/ra.1212031753
 
+# Authentication Notes:
+# - Replace "dXNlcm5hbWU6cGFzc3dvcmQ=" with base64 encoded "username:password"
+# - Set INTERNAL_AUTH_USERNAME and INTERNAL_AUTH_PASSWORD in your .env file
+# - Example: echo -n "myuser:mypass" | base64
 
 
-# Sync Episodes TRPC 
+
+# Sync Episodes TRPC
 # {
 #   "id": null,
 #   "result": {
