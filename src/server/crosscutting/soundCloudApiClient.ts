@@ -51,9 +51,40 @@ export class SoundCloudApiClient {
   }
 
   async getStreamUrls(trackId: string) {
-    return this.client
-      .get<GetStreamUrlsDTO>(`tracks/${trackId}/streams`)
-      .then(this._data);
+    try {
+      const result = await this.client
+        .get<GetStreamUrlsDTO>(`tracks/${trackId}/streams`)
+        .then(this._data);
+      return result;
+    } catch (error) {
+      console.error(
+        `[getStreamUrls] Error getting stream URLs for track ${trackId}:`,
+        error,
+      );
+      throw error;
+    }
+  }
+
+  async getStreamUrlDetail(trackId: string) {
+    try {
+      const streamUrls = await this.getStreamUrls(trackId);
+      const streamUrl = streamUrls.http_mp3_128_url;
+
+      const result = await this.client.get(streamUrl, {
+        maxRedirects: 0,
+        validateStatus: (status) => status === 302,
+      });
+
+      const redirectUrl: string = result.headers.location;
+
+      return redirectUrl;
+    } catch (error) {
+      console.error(
+        `[getStreamUrlDetail] Error getting stream URL detail for track ${trackId}:`,
+        error,
+      );
+      throw error;
+    }
   }
 
   async getPlaylistInfo(playlistId: string) {

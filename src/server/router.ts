@@ -362,9 +362,14 @@ export const episodeRouter = router({
 
       const scTrackId = `${episode.key}`;
       const scClient = await createSoundCloudApiClient();
-      const streamUrls = await scClient.getStreamUrls(scTrackId);
+      const streamUrlsDetail = await scClient.getStreamUrlDetail(scTrackId);
 
-      return streamUrls;
+      return {
+        http_mp3_128_url: streamUrlsDetail,
+        hls_mp3_128_url: streamUrlsDetail,
+        hls_opus_64_url: streamUrlsDetail,
+        preview_mp3_128_url: streamUrlsDetail,
+      } satisfies GetStreamUrlsDTO;
     }),
   "episode.getAccentColor": publicProcedure
     .input(
