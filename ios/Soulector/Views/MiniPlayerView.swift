@@ -5,8 +5,9 @@ struct MiniPlayerView: View {
     let onTap: () -> Void
 
     var body: some View {
-        guard let episode = playerStore.currentEpisode else { return AnyView(EmptyView()) }
-        return AnyView(content(episode: episode))
+        if let episode = playerStore.currentEpisode {
+            content(episode: episode)
+        }
     }
 
     private func content(episode: Episode) -> some View {

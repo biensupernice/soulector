@@ -102,14 +102,29 @@ final class PlayerStore: ObservableObject {
 
     // MARK: Playback control
 
-    func loadAndPlay(episode: Episode, streamUrl: String) {
+    /// Main entry point: sets loading state, fetches the stream URL, and starts playback.
+    func play(episode: Episode) async {
         tearDown()
 
         currentEpisode = episode
         currentTime = 0
         duration = 0
         state = .loading
+        updateNowPlayingInfo()
 
+        do {
+            guard let urls = try await APIClient.shared.fetchStreamUrl(episodeId: episode.id),
+                  !urls.httpMp3128Url.isEmpty else {
+                state = .error("No stream URL available")
+                return
+            }
+            startPlayback(streamUrl: urls.httpMp3128Url)
+        } catch {
+            state = .error(error.localizedDescription)
+        }
+    }
+
+    private func startPlayback(streamUrl: String) {
         guard let url = URL(string: streamUrl) else {
             state = .error("Invalid stream URL")
             return
@@ -129,6 +144,7 @@ final class PlayerStore: ObservableObject {
                     self.player?.play()
                     self.state = .playing
                     self.updateDuration()
+                    self.updateNowPlayingInfo()
                 case .failed:
                     self.state = .error(item.error?.localizedDescription ?? "Playback failed")
                 default:
@@ -159,8 +175,6 @@ final class PlayerStore: ObservableObject {
                 self?.player?.seek(to: .zero)
             }
             .store(in: &cancellables)
-
-        updateNowPlayingInfo()
     }
 
     func play() {

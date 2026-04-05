@@ -13,7 +13,6 @@ struct EpisodesView: View {
     @State private var selectedTab: EpisodeTab = .all
     @State private var showSearch = false
     @State private var selectedEpisode: Episode?
-    @State private var showEpisodeDetail = false
     @State private var showFullPlayer = false
 
     private var displayedEpisodes: [Episode] {
@@ -55,12 +54,10 @@ struct EpisodesView: View {
         }
         .animation(.spring(duration: 0.3), value: playerStore.hasEpisode)
         .task { await episodesVM.fetchEpisodes() }
-        .sheet(isPresented: $showEpisodeDetail) {
-            if let ep = selectedEpisode {
-                EpisodeDetailSheet(episode: ep)
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.hidden)
-            }
+        .sheet(item: $selectedEpisode) { episode in
+            EpisodeDetailSheet(episode: episode)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.hidden)
         }
         .sheet(isPresented: $showFullPlayer) {
             FullPlayerView()
@@ -82,7 +79,9 @@ struct EpisodesView: View {
             HStack(spacing: 4) {
                 // Shuffle
                 Button(action: {
-                    Task { await episodesVM.playRandom(playerStore: playerStore) }
+                    if let episode = episodesVM.filteredEpisodes.randomElement() {
+                        Task { await playerStore.play(episode: episode) }
+                    }
                 }) {
                     Image(systemName: "shuffle")
                         .font(.system(size: 18))
@@ -220,8 +219,7 @@ struct EpisodesView: View {
                         isFavorite: favoritesStore.isFavorite(episode.id),
                         onTap: {
                             selectedEpisode = episode
-                            showEpisodeDetail = true
-                            Task { await episodesVM.playEpisode(episode, playerStore: playerStore) }
+                            Task { await playerStore.play(episode: episode) }
                         },
                         onFavorite: { favoritesStore.toggleFavorite(episode.id) }
                     )

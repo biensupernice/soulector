@@ -82,28 +82,4 @@ final class EpisodesViewModel: ObservableObject {
         }
         isLoading = false
     }
-
-    // MARK: Playback coordination
-
-    /// Fetches the stream URL and hands off to PlayerStore.
-    func playEpisode(_ episode: Episode, playerStore: PlayerStore) async {
-        // Immediately update player state so UI responds
-        playerStore.loadAndPlay(episode: episode, streamUrl: "")
-        // Then fetch the real URL
-        do {
-            guard let urls = try await APIClient.shared.fetchStreamUrl(episodeId: episode.id),
-                  !urls.httpMp3128Url.isEmpty else {
-                return
-            }
-            playerStore.loadAndPlay(episode: episode, streamUrl: urls.httpMp3128Url)
-        } catch {
-            print("[EpisodesViewModel] Stream URL fetch failed: \(error)")
-        }
-    }
-
-    func playRandom(playerStore: PlayerStore) async {
-        let pool = filteredEpisodes
-        guard let episode = pool.randomElement() else { return }
-        await playEpisode(episode, playerStore: playerStore)
-    }
 }

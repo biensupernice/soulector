@@ -4,7 +4,6 @@ struct EpisodeDetailSheet: View {
     let episode: Episode
     @EnvironmentObject var playerStore: PlayerStore
     @EnvironmentObject var favoritesStore: FavoritesStore
-    @EnvironmentObject var episodesVM: EpisodesViewModel
     @Environment(\.dismiss) var dismiss
 
     @State private var tracks: [EpisodeTrack] = []
@@ -115,7 +114,6 @@ struct EpisodeDetailSheet: View {
 private struct PlayerControlsSection: View {
     let episode: Episode
     @EnvironmentObject var playerStore: PlayerStore
-    @EnvironmentObject var episodesVM: EpisodesViewModel
 
     private var isCurrentEpisode: Bool { playerStore.currentEpisode?.id == episode.id }
 
@@ -157,7 +155,7 @@ private struct PlayerControlsSection: View {
                     if isCurrentEpisode {
                         playerStore.togglePlayPause()
                     } else {
-                        Task { await episodesVM.playEpisode(episode, playerStore: playerStore) }
+                        Task { await playerStore.play(episode: episode) }
                     }
                 }) {
                     ZStack {
