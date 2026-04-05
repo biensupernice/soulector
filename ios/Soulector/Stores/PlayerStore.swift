@@ -40,6 +40,8 @@ final class PlayerStore: ObservableObject {
     private var timeObserver: Any?
     private var cancellables = Set<AnyCancellable>()
     private var artworkLoadTask: Task<Void, Never>?
+    private var loadedArtwork: MPMediaItemArtwork?
+    private var loadedArtworkEpisodeId: String?
 
     // MARK: Init
 
@@ -146,7 +148,6 @@ final class PlayerStore: ObservableObject {
         timeObserver = player?.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
             guard let self, !self.isSeeking else { return }
             self.currentTime = time.seconds.isNaN ? 0 : time.seconds
-            self.updateNowPlayingInfo()
         }
 
         // End of playback
@@ -229,6 +230,8 @@ final class PlayerStore: ObservableObject {
         cancellables.removeAll()
         artworkLoadTask?.cancel()
         artworkLoadTask = nil
+        loadedArtwork = nil
+        loadedArtworkEpisodeId = nil
     }
 
     // MARK: Now Playing Info
@@ -246,18 +249,27 @@ final class PlayerStore: ObservableObject {
         if duration > 0 {
             info[MPMediaItemPropertyPlaybackDuration] = duration
         }
+        if let artwork = loadedArtwork {
+            info[MPMediaItemPropertyArtwork] = artwork
+        }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
 
-        // Load artwork in background
-        artworkLoadTask?.cancel()
-        artworkLoadTask = Task {
-            guard let url = URL(string: episode.artworkUrl) else { return }
-            guard let (data, _) = try? await URLSession.shared.data(from: url),
-                  let image = UIImage(data: data) else { return }
-            let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
-            var updated = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
-            updated[MPMediaItemPropertyArtwork] = artwork
-            MPNowPlayingInfoCenter.default().nowPlayingInfo = updated
+        // Load artwork once per episode
+        if loadedArtworkEpisodeId != episode.id {
+            loadedArtworkEpisodeId = episode.id
+            loadedArtwork = nil
+            artworkLoadTask?.cancel()
+            artworkLoadTask = Task {
+                guard let url = URL(string: episode.artworkUrl) else { return }
+                guard let (data, _) = try? await URLSession.shared.data(from: url),
+                      let image = UIImage(data: data) else { return }
+                let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+                self.loadedArtwork = artwork
+                // Update now playing info with artwork
+                var updated = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+                updated[MPMediaItemPropertyArtwork] = artwork
+                MPNowPlayingInfoCenter.default().nowPlayingInfo = updated
+            }
         }
     }
 }
