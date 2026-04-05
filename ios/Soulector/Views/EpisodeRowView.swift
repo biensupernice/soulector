@@ -69,10 +69,16 @@ struct EpisodeRowView: View {
     private var playingOverlay: some View {
         ZStack {
             Color.black.opacity(0.4)
-            Image(systemName: "waveform")
-                .font(.system(size: 20, weight: .medium))
-                .foregroundColor(.white)
-                .symbolEffect(.variableColor.iterative, options: .repeating)
+            if #available(iOS 17.0, *) {
+                Image(systemName: "waveform")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(.white)
+                    .symbolEffect(.variableColor.iterative, options: .repeating)
+            } else {
+                Image(systemName: "waveform")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(.white)
+            }
         }
         .clipShape(RoundedRectangle(cornerRadius: 6))
     }
