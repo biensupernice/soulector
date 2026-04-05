@@ -34,3 +34,12 @@ yarn-error.log*
 .vercel
 
 /public/_test
+
+# iOS / Xcode
+xcuserdata/
+*.xcuserstate
+*.pbxuser
+!default.pbxuser
+DerivedData/
+*.xcarchive
+*.ipa
