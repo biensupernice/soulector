@@ -45,6 +45,11 @@ struct EpisodesView: View {
                 // Episode list
                 episodeListContent
             }
+            .sheet(item: $selectedEpisode) { episode in
+                EpisodeDetailSheet(episode: episode)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.hidden)
+            }
 
             // Mini player pinned to bottom
             if playerStore.hasEpisode {
@@ -54,11 +59,6 @@ struct EpisodesView: View {
         }
         .animation(.spring(duration: 0.3), value: playerStore.hasEpisode)
         .task { await episodesVM.fetchEpisodes() }
-        .sheet(item: $selectedEpisode) { episode in
-            EpisodeDetailSheet(episode: episode)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.hidden)
-        }
         .sheet(isPresented: $showFullPlayer) {
             FullPlayerView()
                 .presentationDetents([.large])

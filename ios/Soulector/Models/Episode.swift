@@ -17,8 +17,14 @@ struct Episode: Identifiable, Equatable, Hashable, Decodable {
     }
 
     var releasedAtDate: Date? {
-        ISO8601DateFormatter().date(from: releasedAt)
+        Self.iso8601Formatter.date(from: releasedAt)
     }
+
+    private static let iso8601Formatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
 
     var formattedDuration: String {
         let h = duration / 3600
@@ -29,11 +35,15 @@ struct Episode: Identifiable, Equatable, Hashable, Decodable {
 
     var formattedDate: String {
         guard let date = releasedAtDate else { return "" }
+        return Self.displayFormatter.string(from: date)
+    }
+
+    private static let displayFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateStyle = .medium
         f.timeStyle = .none
-        return f.string(from: date)
-    }
+        return f
+    }()
 
     var collectiveName: String {
         switch collectiveSlug {

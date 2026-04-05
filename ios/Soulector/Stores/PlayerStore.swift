@@ -22,6 +22,8 @@ final class PlayerStore: ObservableObject {
     @Published private(set) var currentEpisode: Episode?
     @Published private(set) var currentTime: Double = 0  // seconds
     @Published private(set) var duration: Double = 0     // seconds
+    @Published private(set) var currentTracks: [EpisodeTrack] = []
+    @Published private(set) var isLoadingTracks = false
     @Published var isSeeking = false
 
     var isPlaying: Bool { state == .playing }
@@ -40,6 +42,7 @@ final class PlayerStore: ObservableObject {
     private var timeObserver: Any?
     private var cancellables = Set<AnyCancellable>()
     private var artworkLoadTask: Task<Void, Never>?
+    private var tracksLoadTask: Task<Void, Never>?
     private var loadedArtwork: MPMediaItemArtwork?
     private var loadedArtworkEpisodeId: String?
 
@@ -109,8 +112,12 @@ final class PlayerStore: ObservableObject {
         currentEpisode = episode
         currentTime = 0
         duration = 0
+        currentTracks = []
         state = .loading
         updateNowPlayingInfo()
+
+        // Load tracks concurrently with stream URL
+        tracksLoadTask = Task { await loadTracks(for: episode.id) }
 
         do {
             guard let urls = try await APIClient.shared.fetchStreamUrl(episodeId: episode.id),
@@ -122,6 +129,18 @@ final class PlayerStore: ObservableObject {
         } catch {
             state = .error(error.localizedDescription)
         }
+    }
+
+    private func loadTracks(for episodeId: String) async {
+        isLoadingTracks = true
+        do {
+            currentTracks = try await APIClient.shared.fetchTracks(episodeId: episodeId)
+        } catch is CancellationError {
+            return
+        } catch {
+            print("[PlayerStore] Failed to load tracks: \(error)")
+        }
+        isLoadingTracks = false
     }
 
     private func startPlayback(streamUrl: String) {
@@ -220,6 +239,7 @@ final class PlayerStore: ObservableObject {
         state = .idle
         currentTime = 0
         duration = 0
+        currentTracks = []
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 
@@ -244,6 +264,8 @@ final class PlayerStore: ObservableObject {
         cancellables.removeAll()
         artworkLoadTask?.cancel()
         artworkLoadTask = nil
+        tracksLoadTask?.cancel()
+        tracksLoadTask = nil
         loadedArtwork = nil
         loadedArtworkEpisodeId = nil
     }

@@ -131,7 +131,16 @@ struct FullPlayerView: View {
                                     }
                                 }
                             }
-                            .padding(.bottom, 32)
+                            // Tracklist
+                            if playerStore.isLoadingTracks {
+                                ProgressView()
+                                    .tint(.white)
+                                    .padding()
+                            } else if !playerStore.currentTracks.isEmpty {
+                                TracklistView(tracks: playerStore.currentTracks, playerStore: playerStore)
+                            }
+
+                            Spacer(minLength: 32)
                         }
                     }
                 }

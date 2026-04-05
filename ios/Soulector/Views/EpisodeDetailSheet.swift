@@ -6,8 +6,8 @@ struct EpisodeDetailSheet: View {
     @EnvironmentObject var favoritesStore: FavoritesStore
     @Environment(\.dismiss) var dismiss
 
-    @State private var tracks: [EpisodeTrack] = []
-    @State private var isLoadingTracks = false
+    private var tracks: [EpisodeTrack] { playerStore.currentTracks }
+    private var isLoadingTracks: Bool { playerStore.isLoadingTracks }
 
     var body: some View {
         ZStack {
@@ -97,15 +97,6 @@ struct EpisodeDetailSheet: View {
                 }
             }
         }
-        .task {
-            await loadTracks()
-        }
-    }
-
-    private func loadTracks() async {
-        isLoadingTracks = true
-        tracks = (try? await APIClient.shared.fetchTracks(episodeId: episode.id)) ?? []
-        isLoadingTracks = false
     }
 }
 
