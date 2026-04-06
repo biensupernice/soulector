@@ -32,22 +32,34 @@ export class SoundCloudApiClient {
     const credentials = `${SOUNDCLOUD_CLIENT_ID}:${SOUNDCLOUD_CLIENT_SECRET}`;
     const encodedCredentials = Buffer.from(credentials).toString("base64");
 
-    const res = await axios
-      .post<{ access_token: string }>(
-        "https://secure.soundcloud.com/oauth/token",
-        new URLSearchParams({
-          grant_type: "client_credentials",
-        }),
-        {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            Authorization: `Basic ${encodedCredentials}`,
+    try {
+      const res = await axios
+        .post<{ access_token: string }>(
+          "https://secure.soundcloud.com/oauth/token",
+          new URLSearchParams({
+            grant_type: "client_credentials",
+          }),
+          {
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              Authorization: `Basic ${encodedCredentials}`,
+            },
           },
-        },
-      )
-      .then(this._data);
+        )
+        .then(this._data);
 
-    this.token = res.access_token;
+      this.token = res.access_token;
+    } catch (error) {
+      const axiosError = error as any;
+      console.error("[getToken] Failed to obtain SoundCloud token:", {
+        message: axiosError?.message,
+        status: axiosError?.response?.status,
+        data: axiosError?.response?.data,
+        clientIdPresent: SOUNDCLOUD_CLIENT_ID !== "no_sound_client_id_read",
+        clientSecretPresent: SOUNDCLOUD_CLIENT_SECRET !== "no_sound_client_secret_read",
+      });
+      throw error;
+    }
   }
 
   async getStreamUrls(trackId: string) {
@@ -57,10 +69,12 @@ export class SoundCloudApiClient {
         .then(this._data);
       return result;
     } catch (error) {
-      console.error(
-        `[getStreamUrls] Error getting stream URLs for track ${trackId}:`,
-        error,
-      );
+      const axiosError = error as any;
+      console.error(`[getStreamUrls] Error getting stream URLs for track ${trackId}:`, {
+        message: axiosError?.message,
+        status: axiosError?.response?.status,
+        data: axiosError?.response?.data,
+      });
       throw error;
     }
   }
@@ -79,10 +93,12 @@ export class SoundCloudApiClient {
 
       return redirectUrl;
     } catch (error) {
-      console.error(
-        `[getStreamUrlDetail] Error getting stream URL detail for track ${trackId}:`,
-        error,
-      );
+      const axiosError = error as any;
+      console.error(`[getStreamUrlDetail] Error getting stream URL detail for track ${trackId}:`, {
+        message: axiosError?.message,
+        status: axiosError?.response?.status,
+        data: axiosError?.response?.data,
+      });
       throw error;
     }
   }
