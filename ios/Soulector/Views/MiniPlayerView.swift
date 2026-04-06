@@ -38,7 +38,10 @@ struct MiniPlayerView: View {
                         .tint(.white)
                         .frame(width: 36, height: 36)
                 } else {
-                    Button(action: { playerStore.togglePlayPause() }) {
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        playerStore.togglePlayPause()
+                    }) {
                         Image(systemName: playerStore.isPlaying ? "pause.fill" : "play.fill")
                             .font(.system(size: 22))
                             .foregroundColor(.white)
@@ -52,15 +55,23 @@ struct MiniPlayerView: View {
             .background(.ultraThinMaterial)
             .background(Color.black.opacity(0.6))
             .overlay(
-                // Thin progress line at top
+                // Accent-colored progress line at top
                 GeometryReader { geo in
                     Rectangle()
-                        .fill(Color.white.opacity(0.6))
+                        .fill(playerStore.accentColor.opacity(0.9))
                         .frame(width: geo.size.width * playerStore.progress, height: 2)
                 },
                 alignment: .top
             )
         }
         .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 20)
+                .onEnded { value in
+                    if value.translation.height < -20 {
+                        onTap()
+                    }
+                }
+        )
     }
 }

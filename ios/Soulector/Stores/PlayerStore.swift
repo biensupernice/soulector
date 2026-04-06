@@ -2,6 +2,7 @@ import AVFoundation
 import Combine
 import Foundation
 import MediaPlayer
+import SwiftUI
 import UIKit
 
 // MARK: - State
@@ -24,7 +25,11 @@ final class PlayerStore: ObservableObject {
     @Published private(set) var duration: Double = 0     // seconds
     @Published private(set) var currentTracks: [EpisodeTrack] = []
     @Published private(set) var isLoadingTracks = false
+    @Published private(set) var accentColor: Color = .black
     @Published var isSeeking = false
+
+    /// Called when an episode plays to completion. Set by the view layer to implement auto-advance.
+    var onEpisodeEnded: ((Episode) -> Void)?
 
     var isPlaying: Bool { state == .playing }
     var isLoading: Bool { state == .loading }
@@ -43,6 +48,7 @@ final class PlayerStore: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var artworkLoadTask: Task<Void, Never>?
     private var tracksLoadTask: Task<Void, Never>?
+    private var accentColorTask: Task<Void, Never>?
     private var loadedArtwork: MPMediaItemArtwork?
     private var loadedArtworkEpisodeId: String?
 
@@ -101,6 +107,12 @@ final class PlayerStore: ObservableObject {
             Task { await self?.seek(to: e.positionTime) }
             return .success
         }
+
+        center.nextTrackCommand.addTarget { [weak self] _ in
+            guard let self, let episode = self.currentEpisode else { return .noSuchContent }
+            self.onEpisodeEnded?(episode)
+            return .success
+        }
     }
 
     // MARK: Playback control
@@ -116,8 +128,9 @@ final class PlayerStore: ObservableObject {
         state = .loading
         updateNowPlayingInfo()
 
-        // Load tracks concurrently with stream URL
+        // Load tracks and accent color concurrently with stream URL
         tracksLoadTask = Task { await loadTracks(for: episode.id) }
+        accentColorTask = Task { await loadAccentColor(for: episode.id) }
 
         do {
             guard let urls = try await APIClient.shared.fetchStreamUrl(episodeId: episode.id),
@@ -129,6 +142,12 @@ final class PlayerStore: ObservableObject {
         } catch {
             state = .error(error.localizedDescription)
         }
+    }
+
+    private func loadAccentColor(for episodeId: String) async {
+        guard let accent = try? await APIClient.shared.fetchAccentColor(episodeId: episodeId) else { return }
+        guard !Task.isCancelled else { return }
+        accentColor = accent.swiftUIColor
     }
 
     private func loadTracks(for episodeId: String) async {
@@ -189,9 +208,12 @@ final class PlayerStore: ObservableObject {
         NotificationCenter.default.publisher(for: .AVPlayerItemDidPlayToEndTime, object: item)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                self?.state = .paused
-                self?.currentTime = 0
-                self?.player?.seek(to: .zero)
+                guard let self else { return }
+                let finished = self.currentEpisode
+                self.state = .paused
+                self.currentTime = 0
+                self.player?.seek(to: .zero)
+                if let finished { self.onEpisodeEnded?(finished) }
             }
             .store(in: &cancellables)
     }
@@ -266,6 +288,9 @@ final class PlayerStore: ObservableObject {
         artworkLoadTask = nil
         tracksLoadTask?.cancel()
         tracksLoadTask = nil
+        accentColorTask?.cancel()
+        accentColorTask = nil
+        accentColor = .black
         loadedArtwork = nil
         loadedArtworkEpisodeId = nil
     }

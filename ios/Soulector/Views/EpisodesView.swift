@@ -13,7 +13,6 @@ struct EpisodesView: View {
     @State private var selectedTab: EpisodeTab = .all
     @State private var showSearch = false
     @State private var selectedEpisode: Episode?
-    @State private var showFullPlayer = false
 
     private var displayedEpisodes: [Episode] {
         selectedTab == .all
@@ -53,16 +52,21 @@ struct EpisodesView: View {
 
             // Mini player pinned to bottom
             if playerStore.hasEpisode {
-                MiniPlayerView(onTap: { showFullPlayer = true })
+                MiniPlayerView(onTap: { selectedEpisode = playerStore.currentEpisode })
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .animation(.spring(duration: 0.3), value: playerStore.hasEpisode)
         .task { await episodesVM.fetchEpisodes() }
-        .sheet(isPresented: $showFullPlayer) {
-            FullPlayerView()
-                .presentationDetents([.large])
-                .presentationDragIndicator(.hidden)
+        .onAppear {
+            playerStore.onEpisodeEnded = { [weak episodesVM] finished in
+                guard let vm = episodesVM,
+                      let idx = vm.filteredEpisodes.firstIndex(where: { $0.id == finished.id }),
+                      idx + 1 < vm.filteredEpisodes.count
+                else { return }
+                let next = vm.filteredEpisodes[idx + 1]
+                Task { await playerStore.play(episode: next) }
+            }
         }
     }
 

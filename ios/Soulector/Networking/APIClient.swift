@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // MARK: - Response wrappers
 
@@ -22,19 +23,20 @@ struct StreamUrls: Decodable {
 
 struct AccentColor: Decodable {
     let rgb: [Double]
-    // API has a typo: "bodyTexColor" instead of "bodyTextColor"
-    let bodyTextColor: String
-    let titleTextColor: String
+    let hsl: [Double]
 
-    private enum CodingKeys: String, CodingKey {
-        case rgb
-        case bodyTextColor = "bodyTexColor"
-        case titleTextColor
-    }
-
-    var color: (r: Double, g: Double, b: Double) {
-        guard rgb.count >= 3 else { return (0, 0, 0) }
-        return (rgb[0] / 255, rgb[1] / 255, rgb[2] / 255)
+    /// A SwiftUI Color using the HSL values, with lightness boosted into a visible range
+    /// so dark album art colors still produce a distinguishable gradient background.
+    var swiftUIColor: Color {
+        guard hsl.count >= 3 else { return .black }
+        let h = hsl[0]
+        let s = hsl[1]
+        // Clamp lightness: dark colors (< 0.25) get lifted; very bright ones get toned down
+        let l = max(0.28, min(0.48, hsl[2]))
+        // Convert HSL → HSB so SwiftUI's Color(hue:saturation:brightness:) can consume it
+        let b = l + s * min(l, 1 - l)
+        let sHSB = b == 0 ? 0.0 : 2 * (1 - l / b)
+        return Color(hue: h, saturation: sHSB, brightness: b)
     }
 }
 

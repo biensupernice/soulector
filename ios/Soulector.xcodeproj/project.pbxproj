@@ -19,7 +19,6 @@
 		AA000010 /* EpisodeRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000010 /* EpisodeRowView.swift */; };
 		AA000011 /* EpisodeDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000011 /* EpisodeDetailSheet.swift */; };
 		AA000012 /* MiniPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000012 /* MiniPlayerView.swift */; };
-		AA000013 /* FullPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000013 /* FullPlayerView.swift */; };
 		AA000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000014 /* Assets.xcassets */; };
 		AA000015 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000015 /* Preview Assets.xcassets */; };
 /* End PBXBuildFile section */
@@ -38,7 +37,6 @@
 		AB000010 /* EpisodeRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeRowView.swift; sourceTree = "<group>"; };
 		AB000011 /* EpisodeDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeDetailSheet.swift; sourceTree = "<group>"; };
 		AB000012 /* MiniPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniPlayerView.swift; sourceTree = "<group>"; };
-		AB000013 /* FullPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullPlayerView.swift; sourceTree = "<group>"; };
 		AB000014 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AB000015 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		AB000016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -121,7 +119,6 @@
 				AB000010 /* EpisodeRowView.swift */,
 				AB000011 /* EpisodeDetailSheet.swift */,
 				AB000012 /* MiniPlayerView.swift */,
-				AB000013 /* FullPlayerView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -224,7 +221,6 @@
 				AA000010 /* EpisodeRowView.swift in Sources */,
 				AA000011 /* EpisodeDetailSheet.swift in Sources */,
 				AA000012 /* MiniPlayerView.swift in Sources */,
-				AA000013 /* FullPlayerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

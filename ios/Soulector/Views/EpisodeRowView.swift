@@ -50,7 +50,10 @@ struct EpisodeRowView: View {
                 Spacer()
 
                 // Favorite button
-                Button(action: onFavorite) {
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: isFavorite ? .light : .medium).impactOccurred()
+                    onFavorite()
+                }) {
                     Image(systemName: isFavorite ? "heart.fill" : "heart")
                         .font(.system(size: 18))
                         .foregroundColor(isFavorite ? .red : .white.opacity(0.4))
@@ -63,6 +66,25 @@ struct EpisodeRowView: View {
             .background(isPlaying ? Color.white.opacity(0.06) : Color.clear)
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            Button(action: {
+                UIImpactFeedbackGenerator(style: isFavorite ? .light : .medium).impactOccurred()
+                onFavorite()
+            }) {
+                Label(
+                    isFavorite ? "Unfavorite" : "Favorite",
+                    systemImage: isFavorite ? "heart.slash" : "heart"
+                )
+            }
+            Button(action: onTap) {
+                Label("Play", systemImage: "play.fill")
+            }
+            if let url = URL(string: episode.permalinkUrl) {
+                Link(destination: url) {
+                    Label("Open in SoundCloud", systemImage: "link")
+                }
+            }
+        }
     }
 
     @ViewBuilder
