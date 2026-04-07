@@ -12,12 +12,13 @@ enum CollectiveFilter: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .all:              return "All"
+        case .all:              return "All Collectives"
         case .soulection:       return "Soulection"
-        case .sashaMarieRadio:  return "Sasha Marie"
-        case .theLoveBelowHour: return "The Love Below"
+        case .sashaMarieRadio:  return "Sasha Marie Radio"
+        case .theLoveBelowHour: return "The Love Below Hour"
         }
     }
+
 }
 
 // MARK: - EpisodesViewModel

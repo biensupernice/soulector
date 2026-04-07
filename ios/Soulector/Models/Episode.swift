@@ -35,13 +35,23 @@ struct Episode: Identifiable, Equatable, Hashable, Decodable {
 
     var formattedDate: String {
         guard let date = releasedAtDate else { return "" }
-        return Self.displayFormatter.string(from: date)
+        let cal = Calendar.current
+        let day = cal.component(.day, from: date)
+        let year = cal.component(.year, from: date)
+        let month = Self.monthFormatter.string(from: date)
+        let ordinal = Self.ordinalFormatter.string(from: NSNumber(value: day)) ?? "\(day)"
+        return "\(month) \(ordinal) \(year)"
     }
 
-    private static let displayFormatter: DateFormatter = {
+    private static let monthFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.dateStyle = .medium
-        f.timeStyle = .none
+        f.dateFormat = "MMMM"
+        return f
+    }()
+
+    private static let ordinalFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .ordinal
         return f
     }()
 

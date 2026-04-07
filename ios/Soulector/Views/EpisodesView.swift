@@ -13,6 +13,8 @@ struct EpisodesView: View {
     @State private var selectedTab: EpisodeTab = .all
     @State private var showSearch = false
     @State private var selectedEpisode: Episode?
+    @State private var showCollectivePicker = false
+    @State private var navBarHeight: CGFloat = 0
 
     private var displayedEpisodes: [Episode] {
         selectedTab == .all
@@ -28,21 +30,30 @@ struct EpisodesView: View {
                 // Navigation bar area
                 navBar
 
-                // Collective filter pills
-                collectiveFilter
-
                 // Search bar
                 if showSearch {
                     searchBar
                 }
 
-                // Tab selector
+                // Tab pills + count
                 tabSelector
-
-                Divider().background(Color.white.opacity(0.1))
 
                 // Episode list
                 episodeListContent
+            }
+            .overlay(alignment: .topLeading) {
+                if showCollectivePicker {
+                    ZStack(alignment: .topLeading) {
+                        Color.black.opacity(0.01)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                withAnimation(.spring(duration: 0.2)) { showCollectivePicker = false }
+                            }
+                        collectiveDropdown
+                            .padding(.top, navBarHeight)
+                    }
+                    .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .topLeading)))
+                }
             }
             .sheet(item: $selectedEpisode) { episode in
                 EpisodeDetailSheet(episode: episode)
@@ -74,9 +85,20 @@ struct EpisodesView: View {
 
     private var navBar: some View {
         HStack {
-            Text("Soulector")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundColor(.white)
+            // Collective picker
+            Button(action: {
+                withAnimation(.spring(duration: 0.2)) { showCollectivePicker.toggle() }
+            }) {
+                HStack(spacing: 5) {
+                    Text(episodesVM.selectedCollective.displayName)
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(.white)
+                    Image(systemName: showCollectivePicker ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.6))
+                }
+            }
+            .buttonStyle(.plain)
 
             Spacer()
 
@@ -104,27 +126,11 @@ struct EpisodesView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-    }
-
-    private var collectiveFilter: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(CollectiveFilter.allCases) { collective in
-                    let isSelected = episodesVM.selectedCollective == collective
-                    Button(action: { episodesVM.selectCollective(collective) }) {
-                        Text(collective.displayName)
-                            .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
-                            .foregroundColor(isSelected ? .black : .white.opacity(0.7))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 7)
-                            .background(isSelected ? Color.white : Color.white.opacity(0.12))
-                            .clipShape(Capsule())
-                    }
-                }
+        .background(
+            GeometryReader { geo in
+                Color.clear.onAppear { navBarHeight = geo.size.height }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-        }
+        )
     }
 
     private var searchBar: some View {
@@ -153,22 +159,109 @@ struct EpisodesView: View {
     }
 
     private var tabSelector: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 8) {
             ForEach(EpisodeTab.allCases, id: \.self) { tab in
                 Button(action: { selectedTab = tab }) {
-                    VStack(spacing: 4) {
-                        Text(tab.rawValue)
-                            .font(.system(size: 14, weight: selectedTab == tab ? .semibold : .regular))
-                            .foregroundColor(selectedTab == tab ? .white : .white.opacity(0.45))
-
-                        Rectangle()
-                            .fill(selectedTab == tab ? Color.white : Color.clear)
-                            .frame(height: 2)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
+                    Text(tab.rawValue)
+                        .font(.system(size: 14, weight: selectedTab == tab ? .semibold : .regular))
+                        .foregroundColor(selectedTab == tab ? .black : .white.opacity(0.6))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 7)
+                        .background(selectedTab == tab ? Color.white : Color.white.opacity(0.12))
+                        .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
+            }
+
+            Spacer()
+
+            Text("\(displayedEpisodes.count) Total")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.white.opacity(0.4))
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+
+    private var collectiveDropdown: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(CollectiveFilter.allCases.enumerated()), id: \.element.id) { index, collective in
+                if index == 1 {
+                    Divider()
+                        .overlay(Color.white.opacity(0.12))
+                }
+                Button(action: {
+                    withAnimation(.spring(duration: 0.2)) { showCollectivePicker = false }
+                    episodesVM.selectCollective(collective)
+                }) {
+                    HStack(spacing: 0) {
+                        collectiveLogo(collective)
+                        Spacer()
+                        if episodesVM.selectedCollective == collective {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(.trailing, 16)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color(white: 0.15))
+                .shadow(color: .black.opacity(0.4), radius: 20, x: 0, y: 8)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .zIndex(100)
+    }
+
+    @ViewBuilder
+    private func collectiveLogo(_ collective: CollectiveFilter) -> some View {
+        switch collective {
+        case .all:
+            HStack(spacing: 12) {
+                Image(systemName: "square.stack.fill")
+                    .font(.system(size: 22))
+                    .frame(width: 28)
+                    .foregroundColor(.white)
+                Text("All Collectives")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(.white)
+            }
+        case .soulection:
+            HStack(spacing: 12) {
+                Image("SoulectionIcon")
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 28, height: 19)
+                    .foregroundColor(.white)
+                Text("Soulection")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(.white)
+            }
+        case .sashaMarieRadio:
+            Text("SASHA MARIE RADIO")
+                .font(.system(size: 16, weight: .bold))
+                .tracking(1.5)
+                .foregroundColor(.white)
+        case .theLoveBelowHour:
+            HStack(spacing: 12) {
+                Image("TheLoveBelowIcon")
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 26, height: 26)
+                    .foregroundColor(.white)
+                Text("The Love Below Hour")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(.white)
             }
         }
     }

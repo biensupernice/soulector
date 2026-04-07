@@ -24,30 +24,48 @@ struct MiniPlayerView: View {
                 .frame(width: 44, height: 44)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
 
-                // Episode name
-                Text(episode.name)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white)
-                    .lineLimit(1)
+                // Episode name + date
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(episode.name)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                    Text(episode.formattedDate)
+                        .font(.system(size: 12))
+                        .foregroundColor(.white.opacity(0.5))
+                        .lineLimit(1)
+                }
 
                 Spacer()
 
-                // Loading indicator or play/pause
+                // Loading indicator or controls
                 if playerStore.isLoading {
                     ProgressView()
                         .tint(.white)
                         .frame(width: 36, height: 36)
                 } else {
-                    Button(action: {
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        playerStore.togglePlayPause()
-                    }) {
-                        Image(systemName: playerStore.isPlaying ? "pause.fill" : "play.fill")
-                            .font(.system(size: 22))
-                            .foregroundColor(.white)
-                            .frame(width: 36, height: 36)
+                    HStack(spacing: 4) {
+                        // Skip forward 30s
+                        Button(action: { playerStore.forward(30) }) {
+                            Image(systemName: "goforward.30")
+                                .font(.system(size: 20))
+                                .foregroundColor(.white.opacity(0.85))
+                                .frame(width: 36, height: 36)
+                        }
+                        .buttonStyle(.plain)
+
+                        // Play / pause
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            playerStore.togglePlayPause()
+                        }) {
+                            Image(systemName: playerStore.isPlaying ? "pause.fill" : "play.fill")
+                                .font(.system(size: 22))
+                                .foregroundColor(.white)
+                                .frame(width: 36, height: 36)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, 16)
