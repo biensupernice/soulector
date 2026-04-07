@@ -34,12 +34,29 @@ final class EpisodesViewModel: ObservableObject {
 
     private let persistedCollectiveKey = "soulector.selectedCollective"
 
+    private static let cacheURL: URL? = FileManager.default
+        .urls(for: .cachesDirectory, in: .userDomainMask).first?
+        .appendingPathComponent("episodes_cache.json")
+
     init() {
         // Restore last-used collective
         if let raw = UserDefaults.standard.string(forKey: persistedCollectiveKey),
            let filter = CollectiveFilter(rawValue: raw) {
             selectedCollective = filter
         }
+        // Populate from cache immediately so the list is visible before the network returns
+        if let url = Self.cacheURL,
+           let data = try? Data(contentsOf: url),
+           let cached = try? JSONDecoder().decode([Episode].self, from: data) {
+            episodes = cached
+        }
+    }
+
+    private func persistCache(_ episodes: [Episode]) {
+        guard let url = Self.cacheURL,
+              let data = try? JSONEncoder().encode(episodes)
+        else { return }
+        try? data.write(to: url, options: .atomic)
     }
 
     // MARK: Derived lists
@@ -77,9 +94,12 @@ final class EpisodesViewModel: ObservableObject {
         isLoading = true
         error = nil
         do {
-            episodes = try await APIClient.shared.fetchEpisodes()
+            let fetched = try await APIClient.shared.fetchEpisodes()
+            episodes = fetched
+            persistCache(fetched)
         } catch {
-            self.error = error
+            // Only surface the error when we have nothing to show
+            if episodes.isEmpty { self.error = error }
         }
         isLoading = false
     }

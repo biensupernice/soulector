@@ -268,7 +268,7 @@ struct EpisodesView: View {
 
     @ViewBuilder
     private var episodeListContent: some View {
-        if episodesVM.isLoading {
+        if episodesVM.isLoading && episodesVM.episodes.isEmpty {
             VStack {
                 Spacer()
                 ProgressView("Loading episodes…")

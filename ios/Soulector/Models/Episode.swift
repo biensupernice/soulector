@@ -1,6 +1,6 @@
 import Foundation
 
-struct Episode: Identifiable, Equatable, Hashable, Decodable {
+struct Episode: Identifiable, Equatable, Hashable, Codable {
     let id: String
     let source: String
     let duration: Int // seconds
