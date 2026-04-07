@@ -241,9 +241,12 @@ final class PlayerStore: ObservableObject {
     }
 
     func seek(to time: Double) {
+        isSeeking = true
         let cmTime = CMTime(seconds: time, preferredTimescale: 600)
-        player?.seek(to: cmTime, toleranceBefore: .zero, toleranceAfter: .zero)
         currentTime = max(0, min(time, duration))
+        player?.seek(to: cmTime, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.isSeeking = false }
+        }
         updateNowPlayingInfo()
     }
 

@@ -144,6 +144,7 @@ private struct PlayerControlsSection: View {
 
     @State private var rewindTrigger = 0
     @State private var forwardTrigger = 0
+    @State private var scrubTime: Double? = nil
 
     private var isCurrentEpisode: Bool { playerStore.currentEpisode?.id == episode.id }
 
@@ -154,13 +155,17 @@ private struct PlayerControlsSection: View {
                 VStack(spacing: 4) {
                     ProgressSlider(
                         value: playerStore.progress,
-                        onEditingChanged: { playerStore.isSeeking = $0 },
-                        onSeek: { playerStore.seek(to: $0 * playerStore.duration) }
+                        onEditingChanged: { if $0 { playerStore.isSeeking = true } },
+                        onScrub: { scrubTime = $0 * playerStore.duration },
+                        onSeek: { pct in
+                            scrubTime = nil
+                            playerStore.seek(to: pct * playerStore.duration)
+                        }
                     )
                     .padding(.horizontal, 24)
 
                     HStack {
-                        Text(formatTime(playerStore.currentTime))
+                        Text(formatTime(scrubTime ?? playerStore.currentTime))
                         Spacer()
                         Text(formatTime(playerStore.duration))
                     }
@@ -303,9 +308,10 @@ private struct TrackRow: View {
 struct ProgressSlider: View {
     let value: Double
     let onEditingChanged: (Bool) -> Void
+    let onScrub: (Double) -> Void
     let onSeek: (Double) -> Void
 
-    @GestureState private var isDragging = false
+    @State private var isDragging = false
     @State private var dragValue: Double = 0
 
     var displayValue: Double { isDragging ? dragValue : value }
@@ -333,16 +339,19 @@ struct ProgressSlider: View {
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0)
-                    .updating($isDragging) { _, state, _ in state = true }
                     .onChanged { gesture in
                         let pct = max(0, min(1, gesture.location.x / geo.size.width))
+                        isDragging = true
                         dragValue = pct
                         onEditingChanged(true)
+                        onScrub(pct)
                     }
                     .onEnded { gesture in
                         let pct = max(0, min(1, gesture.location.x / geo.size.width))
+                        dragValue = pct
                         onSeek(pct)
                         onEditingChanged(false)
+                        isDragging = false
                     }
             )
         }
