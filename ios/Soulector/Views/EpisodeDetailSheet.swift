@@ -105,7 +105,7 @@ struct EpisodeDetailSheet: View {
                             .tint(.white)
                             .padding()
                     } else if !tracks.isEmpty {
-                        TracklistView(tracks: tracks, episode: episode, playerStore: playerStore)
+                        TracklistView(tracks: tracks, episode: episode)
                     }
 
                     Spacer(minLength: 32)
@@ -241,7 +241,7 @@ private struct PlayerControlsSection: View {
 struct TracklistView: View {
     let tracks: [EpisodeTrack]
     let episode: Episode
-    let playerStore: PlayerStore
+    @EnvironmentObject var playerStore: PlayerStore
 
     private var currentTrack: EpisodeTrack? {
         guard playerStore.currentEpisode?.id == episode.id else { return nil }
@@ -262,7 +262,7 @@ struct TracklistView: View {
 
             ForEach(tracks) { track in
                 let isCurrent = currentTrack?.id == track.id
-                TrackRow(track: track, isCurrent: isCurrent, playerStore: playerStore)
+                TrackRow(track: track, isCurrent: isCurrent)
                 Divider().background(Color.white.opacity(0.1)).padding(.horizontal, 20)
             }
         }
@@ -291,7 +291,7 @@ private struct PingRing: View {
 private struct TrackRow: View {
     let track: EpisodeTrack
     let isCurrent: Bool
-    let playerStore: PlayerStore
+    @EnvironmentObject var playerStore: PlayerStore
 
     var body: some View {
         Button(action: {
