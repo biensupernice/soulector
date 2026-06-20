@@ -35,6 +35,9 @@ yarn-error.log*
 
 /public/_test
 
+# generated episode data (tracked versions are fine, but ignore local fetch runs)
+/data/soulection-episodes.json
+
 # iOS / Xcode
 xcuserdata/
 *.xcuserstate

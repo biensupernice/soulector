@@ -1,0 +1,33 @@
+name: Fetch Soulection Episodes
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_episode:
+        description: "Starting episode number (inclusive)"
+        required: false
+        default: "650"
+        type: string
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Fetch episodes and tracks
+        env:
+          SOULECTOR_BASE_URL: https://soulector.app
+        run: node scripts/fetch-soulection-episodes.mjs ${{ inputs.start_episode }}
+
+      - name: Upload episodes JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: soulection-episodes-${{ inputs.start_episode }}-plus
+          path: data/soulection-episodes.json
+          retention-days: 90
