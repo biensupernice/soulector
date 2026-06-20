@@ -38,7 +38,5 @@ jobs:
       - name: Import episode tracks into soulector
         env:
           SOULECTOR_BASE_URL: https://soulector.app
-          INTERNAL_AUTH_USERNAME: ${{ secrets.INTERNAL_AUTH_USERNAME }}
-          INTERNAL_AUTH_PASSWORD: ${{ secrets.INTERNAL_AUTH_PASSWORD }}
           DRY_RUN: ${{ inputs.dry_run }}
         run: node scripts/import-episode-tracks.mjs data/soulection-episode-tracks.json

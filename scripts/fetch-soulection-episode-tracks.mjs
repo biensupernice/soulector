@@ -28,6 +28,15 @@ const SUPABASE_URL = "https://mojyoxufjnftdfqhdtsm.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vanlveHVmam5mdGRmcWhkdHNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUxMzQwMTEsImV4cCI6MjA1MDcxMDAxMX0.dCFeHmcB_de1cBl62qdBY1V1wHJpi9ETwvjj1FjpiG8";
 
+function normalizeTimestamp(ts) {
+  if (!ts) return undefined;
+  // Ensure each component is zero-padded to 2 digits: "1:02:3" → "01:02:03"
+  const parts = ts.split(":");
+  if (parts.length !== 3) return undefined;
+  const [h, m, s] = parts.map((p) => p.trim().padStart(2, "0"));
+  return `${h}:${m}:${s}`;
+}
+
 async function supabaseFetch(path) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     headers: {
@@ -134,7 +143,7 @@ async function main() {
         order: i + 1,
         name: row.songs.title,
         artist: row.songs.artists?.name ?? "Unknown Artist",
-        timestamp: row.timestamp ?? undefined,
+        timestamp: normalizeTimestamp(row.timestamp),
       }));
 
     process.stdout.write(`${tracks.length} tracks\n`);
