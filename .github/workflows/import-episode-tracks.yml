@@ -5,16 +5,9 @@ on:
     inputs:
       fetch_run_id:
         description: >
-          Run ID from a previous "Fetch Soulection Episodes" workflow run.
-          Leave empty to use data/soulection-episodes.json committed in the repo.
+          Run ID from a previous "Fetch Soulection Episode Tracks" workflow run.
+          Leave empty to use data/soulection-episode-tracks.json committed in the repo.
         required: false
-        type: string
-      start_episode:
-        description: >
-          Episode number used in the fetch run (needed to find the right artifact).
-          Only used when fetch_run_id is provided.
-        required: false
-        default: "650"
         type: string
       dry_run:
         description: "Preview which episodes would be imported without making any changes"
@@ -33,19 +26,19 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Download episodes artifact from fetch run
+      - name: Download episode tracks artifact from fetch run
         if: ${{ inputs.fetch_run_id != '' }}
         uses: actions/download-artifact@v4
         with:
-          name: soulection-episodes-${{ inputs.start_episode }}-plus
+          name: soulection-episode-tracks
           run-id: ${{ inputs.fetch_run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: data/
 
-      - name: Import episode tracks
+      - name: Import episode tracks into soulector
         env:
           SOULECTOR_BASE_URL: https://soulector.app
           INTERNAL_AUTH_USERNAME: ${{ secrets.INTERNAL_AUTH_USERNAME }}
           INTERNAL_AUTH_PASSWORD: ${{ secrets.INTERNAL_AUTH_PASSWORD }}
           DRY_RUN: ${{ inputs.dry_run }}
-        run: node scripts/import-episode-tracks.mjs data/soulection-episodes.json
+        run: node scripts/import-episode-tracks.mjs data/soulection-episode-tracks.json

@@ -2,9 +2,9 @@
 /**
  * Imports episode track data into the soulector database.
  *
- * Reads data/soulection-episodes.json (or a supplied path), then for every episode
- * that has a non-empty tracks array it calls the authenticated
- * internal.importEpisodeTrackInfo tRPC endpoint.
+ * Reads data/soulection-episode-tracks.json (or a supplied path) and for
+ * every episode calls the authenticated internal.importEpisodeTrackInfo
+ * tRPC endpoint on soulector.app.
  *
  * Usage:
  *   node scripts/import-episode-tracks.mjs [json-file-path]
@@ -28,52 +28,40 @@ const USERNAME = process.env.INTERNAL_AUTH_USERNAME;
 const PASSWORD = process.env.INTERNAL_AUTH_PASSWORD;
 const DRY_RUN = process.env.DRY_RUN === "true";
 
-const filePath = process.argv[2] ?? join(ROOT, "data", "soulection-episodes.json");
-
-function secondsToTimestamp(totalSeconds) {
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
-  return [h, m, s].map((n) => String(n).padStart(2, "0")).join(":");
-}
+const filePath =
+  process.argv[2] ?? join(ROOT, "data", "soulection-episode-tracks.json");
 
 async function importEpisodeTracks(episode) {
   const body = {
     json: {
-      streaming_urls: { soundcloud_url: episode.permalinkUrl },
+      streaming_urls: { soundcloud_url: episode.soulectorPermalinkUrl },
       tracks: episode.tracks.map((t) => ({
         track_number: t.order,
         song: t.name,
         artist: t.artist,
-        ...(t.timestamp != null
-          ? { timestamp: secondsToTimestamp(t.timestamp) }
-          : {}),
+        ...(t.timestamp ? { timestamp: t.timestamp } : {}),
       })),
     },
   };
 
   if (DRY_RUN) {
     console.log(
-      `  [DRY RUN] Would POST ${episode.tracks.length} tracks for "${episode.name}"`
+      `  [DRY RUN] Would import ${episode.tracks.length} tracks for Show #${episode.showNumber}`
     );
     return;
   }
 
   const credentials = Buffer.from(`${USERNAME}:${PASSWORD}`).toString("base64");
-  const res = await fetch(
-    `${BASE_URL}/api/trpc/internal.importEpisodeTrackInfo`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Basic ${credentials}`,
-      },
-      body: JSON.stringify(body),
-    }
-  );
+  const res = await fetch(`${BASE_URL}/api/trpc/internal.importEpisodeTrackInfo`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Basic ${credentials}`,
+    },
+    body: JSON.stringify(body),
+  });
 
   const data = await res.json();
-
   if (!res.ok || data.error) {
     const msg =
       data.error?.json?.message ??
@@ -93,21 +81,15 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`Reading episodes from ${filePath}...`);
+  console.log(`Reading from ${filePath} ...`);
   const raw = readFileSync(filePath, "utf8");
   const data = JSON.parse(raw);
 
   const episodes = data.episodes ?? [];
-  const pending = episodes.filter((e) => e.tracks && e.tracks.length > 0);
+  console.log(`Found ${episodes.length} episodes to import\n`);
 
-  console.log(
-    `Total episodes: ${episodes.length} | With tracks to import: ${pending.length}\n`
-  );
-
-  if (pending.length === 0) {
-    console.log(
-      "No episodes have tracks yet. Populate the tracks arrays in the JSON file, then re-run."
-    );
+  if (episodes.length === 0) {
+    console.log("Nothing to import.");
     return;
   }
 
@@ -116,9 +98,10 @@ async function main() {
   let imported = 0;
   let failed = 0;
 
-  for (const episode of pending) {
-    const label = `Show #${episode.showNumber ?? "?"} — ${episode.name}`;
-    process.stdout.write(`Importing ${label} (${episode.tracks.length} tracks)... `);
+  for (const episode of episodes) {
+    process.stdout.write(
+      `Importing Show #${episode.showNumber} (${episode.tracks.length} tracks)... `
+    );
     try {
       await importEpisodeTracks(episode);
       process.stdout.write("OK\n");

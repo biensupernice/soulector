@@ -1,10 +1,10 @@
-name: Fetch Soulection Episodes
+name: Fetch Soulection Episode Tracks
 
 on:
   workflow_dispatch:
     inputs:
       start_episode:
-        description: "Starting episode number (inclusive)"
+        description: "Only fetch tracks for episodes at or above this show number"
         required: false
         default: "650"
         type: string
@@ -20,14 +20,14 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Fetch episodes and tracks
+      - name: Fetch missing episode tracks from radio.soulection.com
         env:
           SOULECTOR_BASE_URL: https://soulector.app
-        run: node scripts/fetch-soulection-episodes.mjs ${{ inputs.start_episode }}
+        run: node scripts/fetch-soulection-episode-tracks.mjs ${{ inputs.start_episode }}
 
-      - name: Upload episodes JSON
+      - name: Upload episode tracks JSON
         uses: actions/upload-artifact@v4
         with:
-          name: soulection-episodes-${{ inputs.start_episode }}-plus
-          path: data/soulection-episodes.json
+          name: soulection-episode-tracks
+          path: data/soulection-episode-tracks.json
           retention-days: 90
