@@ -19,6 +19,8 @@ export type SearchResult = {
 type TrackEntry = {
   episode: EpisodeSearchProjection;
   track: EpisodeTrackProjection;
+  /** name + artist, so a query spanning both fields can match in one place. */
+  combined: string;
 };
 
 const EPISODE_FUSE_OPTIONS: Fuse.IFuseOptions<EpisodeSearchProjection> = {
@@ -27,20 +29,39 @@ const EPISODE_FUSE_OPTIONS: Fuse.IFuseOptions<EpisodeSearchProjection> = {
   ignoreLocation: true,
   minMatchCharLength: 2,
   includeScore: true,
+  useExtendedSearch: true,
 };
 
 const TRACK_FUSE_OPTIONS: Fuse.IFuseOptions<TrackEntry> = {
   keys: [
     { name: "track.name", weight: 2 },
     { name: "track.artist", weight: 1 },
+    { name: "combined", weight: 2 },
   ],
   threshold: 0.3,
   ignoreLocation: true,
   minMatchCharLength: 2,
   includeScore: true,
+  useExtendedSearch: true,
 };
 
 const MAX_RESULTS = 100;
+
+/**
+ * Turns a raw query into a Fuse extended-search pattern that ANDs each word as a
+ * fuzzy term. Punctuation (dashes, ampersands, etc.) is dropped so a query like
+ * "Missing You - Sharon & Marva" becomes `missing you sharon marva`, matching
+ * regardless of word order or separators and across the name/artist fields.
+ */
+function toExtendedQuery(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .split(/\s+/)
+    .filter((token) => token.length >= 2)
+    .join(" ");
+}
 
 /**
  * Fuzzy search over episodes and their tracks, returning results grouped by
@@ -63,7 +84,11 @@ export function useEpisodeSearch(
     const trackEntries: TrackEntry[] = [];
     for (const episode of scopedIndex) {
       for (const track of episode.tracks) {
-        trackEntries.push({ episode, track });
+        trackEntries.push({
+          episode,
+          track,
+          combined: `${track.name} ${track.artist}`,
+        });
       }
     }
 
@@ -74,12 +99,12 @@ export function useEpisodeSearch(
   }, [scopedIndex]);
 
   return useMemo(() => {
-    const trimmed = query.trim();
-    if (!trimmed) return [];
+    const pattern = toExtendedQuery(query);
+    if (!pattern) return [];
 
     const byEpisodeId = new Map<string, SearchResult>();
 
-    for (const { item, score = 1 } of episodeFuse.search(trimmed)) {
+    for (const { item, score = 1 } of episodeFuse.search(pattern)) {
       byEpisodeId.set(item.id, {
         episode: item,
         titleMatch: true,
@@ -88,7 +113,7 @@ export function useEpisodeSearch(
       });
     }
 
-    for (const { item, score = 1 } of trackFuse.search(trimmed)) {
+    for (const { item, score = 1 } of trackFuse.search(pattern)) {
       const existing = byEpisodeId.get(item.episode.id);
       if (existing) {
         existing.matchedTracks.push(item.track);
