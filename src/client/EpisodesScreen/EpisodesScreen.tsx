@@ -43,6 +43,9 @@ import { cn } from "@/lib/utils";
 import { useCollectiveSelectStore, useNavbarStore } from "./Navbar";
 import { EpisodeProjection } from "@/server/router";
 import { EpisodeListContext } from "@/pages";
+import { useSearchIndex } from "./useSearchIndex";
+import { useEpisodeSearch } from "./useEpisodeSearch";
+import { SearchResults } from "./SearchResults";
 
 type Props = {
   searchText: string;
@@ -72,6 +75,7 @@ export function EpisodesScreen({ searchText }: Props) {
   const {
     currentEpisodeId,
     onEpisodeClick,
+    onTrackClick,
     onRandomClick,
     currentEpisodeStreamUrls,
   } = useEpisodesScreenState();
@@ -126,6 +130,21 @@ export function EpisodesScreen({ searchText }: Props) {
 
   const activeEpisodes = deferredSelectedSection === "all" ? filteredEpisodes : favorites;
 
+  // Client-side fuzzy search over episodes AND their tracks. When the user is
+  // searching we show a dedicated results view (episodes with matching tracks
+  // nested within them) instead of the regular episode list.
+  const isSearching = searchText.trim().length > 0;
+  const searchIndex = useSearchIndex();
+  const searchResults = useEpisodeSearch(
+    searchIndex,
+    searchText,
+    selectedCollective,
+  );
+  const matchedTrackCount = useMemo(
+    () => searchResults.reduce((sum, r) => sum + r.matchedTracks.length, 0),
+    [searchResults],
+  );
+
   function onFavoriteClick(episode: EpisodeProjection) {
     if (isFavoriteFast(episode.id)) {
       removeFavorite(episode.id);
@@ -156,14 +175,35 @@ export function EpisodesScreen({ searchText }: Props) {
               <EpisodeListHeader
                 rightContent={
                   <div className="font-semibold text-gray-600">
-                    {activeEpisodes.length} Total
+                    {isSearching
+                      ? `${searchResults.length} ${
+                          searchResults.length === 1 ? "episode" : "episodes"
+                        }${
+                          matchedTrackCount > 0
+                            ? ` · ${matchedTrackCount} ${
+                                matchedTrackCount === 1 ? "track" : "tracks"
+                              }`
+                            : ""
+                        }`
+                      : `${activeEpisodes.length} Total`}
                   </div>
                 }
                 filterText={searchText}
                 activeSection={selectedSection}
                 onSectionClick={onSectionClick}
               />
-              {deferredSelectedSection === "favorites" ? (
+              {isSearching ? (
+                <SearchResults
+                  results={searchResults}
+                  loading={searchIndex === null}
+                  currentEpisodeId={currentEpisodeId}
+                  onEpisodeClick={onEpisodeClick}
+                  onTrackClick={onTrackClick}
+                  isFavorite={isFavoriteFast}
+                  onFavoriteClick={onFavoriteClick}
+                  onOptionsClick={setContextMenuEpisode}
+                />
+              ) : deferredSelectedSection === "favorites" ? (
                 <div>
                   {favorites.map((episode) => (
                     <Episode
@@ -271,6 +311,9 @@ export function EpisodeAudioPlayer({
   function onPlayerReady(audioDuration: number) {
     playerActions.setLoadingStatus("loaded");
     playerActions.setEpisodeDuration(audioDuration);
+    // If the episode was opened at a specific track timestamp, seek there now
+    // that the audio is ready to play.
+    playerActions.applyInitialSeek();
   }
 
   useEffect(() => {

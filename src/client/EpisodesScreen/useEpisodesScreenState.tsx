@@ -45,6 +45,30 @@ export function useEpisodesScreenState() {
     }
   }
 
+  async function onTrackClick(episodeId: string, timestampSecs?: number) {
+    if (episodes) {
+      const episode = episodes.find((e) => e.id === episodeId);
+      event("Track Search Play", {
+        category: "User",
+        label: episode && episode.name ? episode.name : episodeId,
+      });
+
+      episodeModalSheetActions.open();
+      playerActions.loadEpisode(
+        episodeId,
+        timestampSecs !== undefined ? timestampSecs * 1000 : undefined,
+      );
+
+      mutate(episodeId, {
+        onSuccess(data) {
+          if (data) {
+            playerActions.setCurrentEpisodeStreamUrls(data);
+          }
+        },
+      });
+    }
+  }
+
   function onRandomClick() {
     event("Play Random", {
       category: "Action",
@@ -74,6 +98,7 @@ export function useEpisodesScreenState() {
     volume,
     currentEpisodeId,
     onEpisodeClick,
+    onTrackClick,
     onRandomClick,
     currentEpisodeStreamUrls,
   };

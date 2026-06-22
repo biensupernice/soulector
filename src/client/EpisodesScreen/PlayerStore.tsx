@@ -20,6 +20,11 @@ export type PlayerStore = {
   lastVol: number;
   loadingStatus: PlayerLoadingStatus;
   currentEpisodeStreamUrls: StreamUrls | null;
+  /**
+   * When set, the player seeks here once the episode audio is ready. Used to
+   * start playback at a specific track timestamp (e.g. from search results).
+   */
+  initialSeekMillis: number | null;
   actions: {
     play: (episodeId: string) => void;
     pause: () => void;
@@ -35,7 +40,8 @@ export type PlayerStore = {
     forward: (secs: number) => void;
     rewind: (secs: number) => void;
     setEpisodeDuration: (duration: number) => void;
-    loadEpisode: (episodeId: string) => void;
+    loadEpisode: (episodeId: string, seekMillis?: number) => void;
+    applyInitialSeek: () => void;
     setLoadingStatus: (status: PlayerLoadingStatus) => void;
     setCurrentEpisodeStreamUrls: (urls: StreamUrls) => void;
   };
@@ -51,21 +57,24 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   cuePosition: 0,
   loadingStatus: "loading",
   currentEpisodeStreamUrls: null,
+  initialSeekMillis: null,
   actions: {
     setCurrentEpisodeStreamUrls(urls: StreamUrls) {
       set({
         currentEpisodeStreamUrls: urls,
       });
     },
-    loadEpisode(episodeId: string) {
+    loadEpisode(episodeId: string, seekMillis?: number) {
       const hasEpisodeLoaded = get().currentEpisodeId !== undefined;
       const isPlaying = get().playing;
+      const initialSeekMillis = seekMillis ?? null;
       if (!hasEpisodeLoaded || !isPlaying) {
         set({
           // We can play the new episode since we were already playing audio
           currentEpisodeId: episodeId,
           progress: 0,
           cuePosition: 0,
+          initialSeekMillis,
         });
       } else {
         set({
@@ -73,6 +82,16 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
           currentEpisodeId: episodeId,
           progress: 0,
           cuePosition: 0,
+          initialSeekMillis,
+        });
+      }
+    },
+    applyInitialSeek() {
+      const { initialSeekMillis } = get();
+      if (initialSeekMillis !== null) {
+        set({
+          cuePosition: initialSeekMillis,
+          initialSeekMillis: null,
         });
       }
     },

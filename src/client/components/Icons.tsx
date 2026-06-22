@@ -196,6 +196,14 @@ export function IconSearch(props: any) {
   );
 }
 
+export function IconMusicNote(props: any) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
+      <path d="M12 3v10.55A4 4 0 1014 17V7h4V3h-6zm-2 16a2 2 0 110-4 2 2 0 010 4z" />
+    </svg>
+  );
+}
+
 export function IconTimes(props: any) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
