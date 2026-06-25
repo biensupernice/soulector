@@ -16,9 +16,9 @@ export function EpisodeListHeader({
   rightContent,
 }: EpisodeListHeaderProps) {
   return (
-    <div className="item-center mt-4 mb-2 flex px-4">
-      <div className="mr-auto font-semibold">
-        <div className="-mx-2 space-x-1 md:space-x-4">
+    <div className="mt-4 mb-2 flex items-center gap-3 px-4">
+      <div className="min-w-0 flex-1 font-semibold">
+        <div className="-mx-2 flex flex-wrap items-center gap-y-1 space-x-1 md:space-x-4">
           <motion.button
             className={cx(
               "relative inline-flex rounded-full bg-gray-100 px-3 py-1",
@@ -59,7 +59,7 @@ export function EpisodeListHeader({
           )}
         </div>
       </div>
-      <div>{rightContent}</div>
+      <div className="flex-shrink-0 text-right">{rightContent}</div>
     </div>
   );
 }
