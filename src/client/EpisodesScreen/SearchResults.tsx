@@ -82,10 +82,10 @@ function MatchedTracks({
   onTrackClick: (timestampSecs?: number) => void;
 }) {
   return (
-    // Indented so matched tracks read as belonging to the episode above. The
-    // left padding lines them up roughly under the episode title on both
-    // mobile and desktop.
-    <div className="mb-1 ml-6 border-l-2 border-accent/20 pl-3 md:ml-[5.5rem]">
+    // The connector line sits under the center of the episode artwork (ml-11 =
+    // 44px ≈ p-3 + half of the 64px artwork) so it reads as descending from the
+    // episode, while the track text lines up with the episode title.
+    <div className="mb-1 ml-11 border-l-2 border-accent/20 pl-8">
       {tracks.map((track) => (
         <button
           key={track.order}
@@ -100,16 +100,11 @@ function MatchedTracks({
               : "Play episode"
           }
         >
-          <div className="flex min-w-0 items-center gap-3">
-            <IconMusicNote className="h-4 w-4 flex-shrink-0 fill-current text-accent" />
-            <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-gray-900">
-                {track.name}
-              </div>
-              <div className="truncate text-xs text-gray-500">
-                {track.artist}
-              </div>
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold text-gray-900">
+              {track.name}
             </div>
+            <div className="truncate text-xs text-gray-500">{track.artist}</div>
           </div>
           {track.timestamp !== undefined && (
             <div className="flex-shrink-0 rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 group-hover:bg-accent/10 group-hover:text-accent">
