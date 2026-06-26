@@ -72,6 +72,16 @@ export function episodeProjectionFromDb(e: WithId<DBEpisode>) {
   } as const;
 }
 
+export type EpisodeSearchProjection = ReturnType<
+  typeof episodeSearchProjectionFromDb
+>;
+export function episodeSearchProjectionFromDb(e: WithId<DBEpisode>) {
+  return {
+    ...episodeProjectionFromDb(e),
+    tracks: (e.tracks ?? []).map(episodeTrackProjection),
+  } as const;
+}
+
 export function episodeProjectionFromFromObj(
   e: DBEpisode & { id: string },
 ): EpisodeProjection {
@@ -328,6 +338,51 @@ export const episodeRouter = router({
           new Date(b.releasedAt).getTime() - new Date(a.releasedAt).getTime(),
       );
     }),
+  "episodes.searchIndex": publicProcedure.query(async ({ ctx }) => {
+    // Returns every episode across all collectives along with a lightweight
+    // projection of its tracks. The client caches this snapshot (IndexedDB) and
+    // builds a fuzzy search index from it, refreshing in the background as the
+    // API syncs new episodes/tracks.
+    const isLocalEnabled = ENABLE_LOCAL_SOURCE;
+    const localTracks = isLocalEnabled
+      ? localEpisodesCollection.map(episodeProjectionFromFromObj).map((e) => ({
+          ...e,
+          tracks: [] as EpisodeTrackProjection[],
+        }))
+      : [];
+
+    const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
+    const allDbTracks = await trackCollection
+      .find(
+        {},
+        {
+          projection: {
+            source: 1,
+            duration: 1,
+            created_time: 1,
+            release_date: 1,
+            key: 1,
+            name: 1,
+            url: 1,
+            picture_large: 1,
+            collective_slug: 1,
+            "tracks.order": 1,
+            "tracks.name": 1,
+            "tracks.artist": 1,
+            "tracks.timestamp": 1,
+          },
+        },
+      )
+      .sort({ created_time: -1 })
+      .toArray();
+
+    const dbProjections = allDbTracks.map(episodeSearchProjectionFromDb);
+
+    return [...localTracks, ...dbProjections].sort(
+      (a, b) =>
+        new Date(b.releasedAt).getTime() - new Date(a.releasedAt).getTime(),
+    );
+  }),
   "episode.getStreamUrl": publicProcedure
     .input(
       z.object({
