@@ -9,7 +9,9 @@ import {
 export type SearchResult = {
   episode: EpisodeSearchProjection;
   /** Whether the episode title itself matched the query. */
-  titleMatch: boolean;
+  episodeTitleMatch: boolean;
+  /** Fuse score of the title match (0 = perfect), when the title matched. */
+  episodeTitleScore?: number;
   /** Tracks within this episode that matched the query. */
   matchedTracks: EpisodeTrackProjection[];
   /** Best (lowest) Fuse score across the title/track matches. 0 = perfect. */
@@ -107,7 +109,8 @@ export function useEpisodeSearch(
     for (const { item, score = 1 } of episodeFuse.search(pattern)) {
       byEpisodeId.set(item.id, {
         episode: item,
-        titleMatch: true,
+        episodeTitleMatch: true,
+        episodeTitleScore: score,
         matchedTracks: [],
         score,
       });
@@ -121,7 +124,7 @@ export function useEpisodeSearch(
       } else {
         byEpisodeId.set(item.episode.id, {
           episode: item.episode,
-          titleMatch: false,
+          episodeTitleMatch: false,
           matchedTracks: [item.track],
           score,
         });
@@ -134,7 +137,19 @@ export function useEpisodeSearch(
       result.matchedTracks.sort((a, b) => a.order - b.order);
     }
 
-    results.sort((a, b) => a.score - b.score);
+    // Episodes whose title matches rank first (sorted by how well the title
+    // matched), followed by episodes matched only via their tracks (sorted by
+    // track score). This surfaces the episode itself ahead of episodes that
+    // merely contain a matching track.
+    results.sort((a, b) => {
+      if (a.episodeTitleMatch !== b.episodeTitleMatch) {
+        return a.episodeTitleMatch ? -1 : 1;
+      }
+      if (a.episodeTitleMatch && b.episodeTitleMatch) {
+        return (a.episodeTitleScore ?? 1) - (b.episodeTitleScore ?? 1);
+      }
+      return a.score - b.score;
+    });
 
     return results.slice(0, MAX_RESULTS);
   }, [query, episodeFuse, trackFuse]);
