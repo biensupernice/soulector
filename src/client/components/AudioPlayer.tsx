@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 
 export interface AudioPlayerProps {
   mp3StreamUrl: string | null;
@@ -22,47 +22,50 @@ export function AudioPlayer({
   cuePosition,
 }: AudioPlayerProps) {
   const ref = useRef<HTMLAudioElement>(null);
-  const [shouldPlay, setShouldPlay] = useState(false);
 
-  async function onCanPlayThrough() {
+  // Duration is known as soon as metadata arrives, well before enough audio
+  // has buffered to fire canplaythrough. Reporting ready here lets the UI
+  // (and any initial track seek) settle while the audio is still buffering.
+  function onLoadedMetadata() {
     const durationSecs = ref.current?.duration ?? 0;
-    const durationMillis = durationSecs * 1000;
-
-    onReady(durationMillis);
-
-    if (shouldPlay) {
-      ref.current
-        ?.play()
-        .then(() => setShouldPlay(false))
-        .catch((err) => console.error(`onCanPlay ${err}`));
-    }
+    onReady(durationSecs * 1000);
   }
 
   useEffect(() => {
-    if (ref.current && mp3StreamUrl) {
-      ref.current.src = mp3StreamUrl;
-      ref.current.load();
-      setShouldPlay(true);
+    const audio = ref.current;
+    if (!audio || !mp3StreamUrl) {
+      return;
     }
 
+    audio.preload = "auto";
+    audio.src = mp3StreamUrl;
+    audio.load();
+    // play() waits for enough data on its own, so playback starts the moment
+    // the browser can, instead of waiting for the canplaythrough estimate.
+    audio.play().catch((err) => console.error(`audio play failed: ${err}`));
+
     return () => {
-      ref.current?.pause();
+      audio.pause();
     };
   }, [mp3StreamUrl]);
 
   useEffect(() => {
-    if (ref.current) {
+    const audio = ref.current;
+    // Never seek an element without a source: it would throw away the seek
+    // and, worse, a stale cuePosition must not touch a tearing-down player.
+    if (audio && audio.currentSrc) {
       const cuePosMillis = cuePosition ?? 0;
-      ref.current.currentTime = cuePosMillis / 1000;
+      audio.currentTime = cuePosMillis / 1000;
     }
   }, [cuePosition]);
 
   useEffect(() => {
-    if (ref.current) {
+    const audio = ref.current;
+    if (audio && audio.currentSrc) {
       if (playing) {
-        ref.current.play();
+        audio.play().catch((err) => console.error(`audio play failed: ${err}`));
       } else {
-        ref.current.pause();
+        audio.pause();
       }
     }
   }, [playing]);
@@ -74,23 +77,18 @@ export function AudioPlayer({
   }, [volume]);
 
   return (
-    <>
-      <audio
-        className="block h-px scale-y-0"
-        ref={ref}
-        onPlay={onPlay}
-        onTimeUpdate={() => {
-          if (ref.current) {
-            const currentTime = ref.current.currentTime;
-            onPlayProgressChange(currentTime * 1000);
-          }
-        }}
-        onPause={onPause}
-        // controls
-        onCanPlayThrough={onCanPlayThrough}
-        // src={mp3StreamUrl}
-        // autoPlay
-      ></audio>
-    </>
+    <audio
+      className="block h-px scale-y-0"
+      ref={ref}
+      onPlay={onPlay}
+      onPause={onPause}
+      onLoadedMetadata={onLoadedMetadata}
+      onTimeUpdate={() => {
+        if (ref.current) {
+          const currentTime = ref.current.currentTime;
+          onPlayProgressChange(currentTime * 1000);
+        }
+      }}
+    ></audio>
   );
 }
