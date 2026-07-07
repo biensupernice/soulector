@@ -6,7 +6,7 @@ on:
       fetch_run_id:
         description: >
           Run ID from a previous "Fetch Soulection Episode Tracks" workflow run.
-          Leave empty to use data/soulection-episode-tracks.json committed in the repo.
+          Leave empty to automatically use the latest successful fetch run.
         required: false
         type: string
       dry_run:
@@ -26,12 +26,34 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Resolve fetch run ID
+        id: resolve_run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "${{ inputs.fetch_run_id }}" ]; then
+            echo "run_id=${{ inputs.fetch_run_id }}" >> $GITHUB_OUTPUT
+          else
+            RUN_ID=$(gh run list \
+              --repo ${{ github.repository }} \
+              --workflow=fetch-soulection-episode-tracks.yml \
+              --status=success \
+              --limit=1 \
+              --json databaseId \
+              --jq '.[0].databaseId')
+            if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+              echo "No successful fetch run found. Run the Fetch workflow first." >&2
+              exit 1
+            fi
+            echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+            echo "Auto-resolved fetch run ID: $RUN_ID"
+          fi
+
       - name: Download episode tracks artifact from fetch run
-        if: ${{ inputs.fetch_run_id != '' }}
         uses: actions/download-artifact@v4
         with:
           name: soulection-episode-tracks
-          run-id: ${{ inputs.fetch_run_id }}
+          run-id: ${{ steps.resolve_run.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: data/
 
