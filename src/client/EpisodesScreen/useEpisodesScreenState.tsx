@@ -38,7 +38,7 @@ export function useEpisodesScreenState() {
       mutate(episodeId, {
         onSuccess(data) {
           if (data) {
-            playerActions.setCurrentEpisodeStreamUrls(data);
+            playerActions.setCurrentEpisodeStreamUrls(episodeId, data);
           }
         },
       });
@@ -62,7 +62,7 @@ export function useEpisodesScreenState() {
       mutate(episodeId, {
         onSuccess(data) {
           if (data) {
-            playerActions.setCurrentEpisodeStreamUrls(data);
+            playerActions.setCurrentEpisodeStreamUrls(episodeId, data);
           }
         },
       });
@@ -81,12 +81,13 @@ export function useEpisodesScreenState() {
 
     let episode = sample(eps);
     if (episode) {
-      playerActions.loadEpisode(episode.id);
+      const episodeId = episode.id;
+      playerActions.loadEpisode(episodeId);
       episodeModalSheetActions.open();
-      mutate(episode.id, {
+      mutate(episodeId, {
         onSuccess(data) {
           if (data) {
-            playerActions.setCurrentEpisodeStreamUrls(data);
+            playerActions.setCurrentEpisodeStreamUrls(episodeId, data);
           }
         },
       });

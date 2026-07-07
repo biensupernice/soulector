@@ -43,7 +43,7 @@ export type PlayerStore = {
     loadEpisode: (episodeId: string, seekMillis?: number) => void;
     applyInitialSeek: () => void;
     setLoadingStatus: (status: PlayerLoadingStatus) => void;
-    setCurrentEpisodeStreamUrls: (urls: StreamUrls) => void;
+    setCurrentEpisodeStreamUrls: (episodeId: string, urls: StreamUrls) => void;
   };
 };
 
@@ -59,32 +59,50 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   currentEpisodeStreamUrls: null,
   initialSeekMillis: null,
   actions: {
-    setCurrentEpisodeStreamUrls(urls: StreamUrls) {
+    setCurrentEpisodeStreamUrls(episodeId: string, urls: StreamUrls) {
+      // Stream urls resolve asynchronously; if the user has since switched to
+      // a different episode this response is stale and must not be played.
+      if (get().currentEpisodeId !== episodeId) {
+        return;
+      }
       set({
         currentEpisodeStreamUrls: urls,
       });
     },
     loadEpisode(episodeId: string, seekMillis?: number) {
-      const hasEpisodeLoaded = get().currentEpisodeId !== undefined;
-      const isPlaying = get().playing;
+      const { currentEpisodeId, currentEpisodeStreamUrls } = get();
       const initialSeekMillis = seekMillis ?? null;
-      if (!hasEpisodeLoaded || !isPlaying) {
-        set({
-          // We can play the new episode since we were already playing audio
-          currentEpisodeId: episodeId,
-          progress: 0,
-          cuePosition: 0,
-          initialSeekMillis,
-        });
-      } else {
-        set({
-          playing: true,
-          currentEpisodeId: episodeId,
-          progress: 0,
-          cuePosition: 0,
-          initialSeekMillis,
-        });
+
+      // The episode is already loaded (e.g. clicking a track of the episode
+      // that's playing): just seek, no need to reload the audio.
+      if (episodeId === currentEpisodeId && currentEpisodeStreamUrls) {
+        if (initialSeekMillis !== null) {
+          set({
+            playing: true,
+            initialSeekMillis: null,
+            cuePosition: initialSeekMillis,
+            progress: initialSeekMillis,
+          });
+        } else {
+          set({ playing: true, initialSeekMillis: null });
+        }
+        return;
       }
+
+      set({
+        playing: true,
+        currentEpisodeId: episodeId,
+        // Clearing the stream urls unmounts the old <audio> element right
+        // away, so the previous episode goes silent immediately instead of
+        // playing on (and reacting to the resets below) while the new
+        // episode's audio loads.
+        currentEpisodeStreamUrls: null,
+        loadingStatus: "loading",
+        progress: initialSeekMillis ?? 0,
+        cuePosition: 0,
+        episodeDuration: 0,
+        initialSeekMillis,
+      });
     },
     applyInitialSeek() {
       const { initialSeekMillis } = get();

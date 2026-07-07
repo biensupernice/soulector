@@ -258,6 +258,9 @@ export function EpisodesScreen({ searchText }: Props) {
           {currentEpisodeId && <Player currentEpisodeId={currentEpisodeId} />}
           {USE_NEW_PLAYER && currentEpisodeId && currentEpisodeStreamUrls && (
             <EpisodeAudioPlayer
+              // Remount the <audio> element per episode so events from the
+              // previous episode's element can't leak into the new one.
+              key={currentEpisodeId}
               currentEpisodeId={currentEpisodeId}
               currentEpisodeStreamUrls={currentEpisodeStreamUrls}
             />
