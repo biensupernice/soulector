@@ -31,3 +31,13 @@ jobs:
           name: soulection-episode-tracks
           path: data/soulection-episode-tracks.json
           retention-days: 90
+
+      - name: Print run ID for import step
+        run: |
+          echo ""
+          echo "========================================"
+          echo "  Run ID: ${{ github.run_id }}"
+          echo "  Pass this to the Import workflow's"
+          echo "  fetch_run_id input (or leave blank"
+          echo "  to auto-use the latest fetch run)."
+          echo "========================================"
