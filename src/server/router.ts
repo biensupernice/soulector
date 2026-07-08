@@ -51,6 +51,7 @@ export type DBEpisode = {
     | "the-love-below-hour"
     | "local";
   tracks?: EpisodeTrack[];
+  archive_url?: string;
 };
 
 export type EpisodeProjection = ReturnType<typeof episodeProjectionFromDb>;
@@ -284,6 +285,30 @@ export const episodeRouter = router({
       timestamp: new Date().toISOString(),
     };
   }),
+  "internal.bulkSetArchiveUrls": authenticatedProcedure
+    .input(
+      z.array(
+        z.object({
+          episodeId: z.string(),
+          archiveUrl: z.string().url(),
+        }),
+      ),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
+      const result = await trackCollection.bulkWrite(
+        input.map(({ episodeId, archiveUrl }) => ({
+          updateOne: {
+            filter: { _id: new ObjectId(episodeId) },
+            update: { $set: { archive_url: archiveUrl } },
+          },
+        })),
+      );
+      return {
+        matched: result.matchedCount,
+        modified: result.modifiedCount,
+      };
+    }),
   "episodes.all": publicProcedure
     .input(
       z.optional(
@@ -413,6 +438,16 @@ export const episodeRouter = router({
 
       if (!episode) {
         return null;
+      }
+
+      if (episode.source === "MIXCLOUD") {
+        if (!episode.archive_url) return null;
+        return {
+          http_mp3_128_url: episode.archive_url,
+          hls_mp3_128_url: episode.archive_url,
+          hls_opus_64_url: episode.archive_url,
+          preview_mp3_128_url: episode.archive_url,
+        } satisfies GetStreamUrlsDTO;
       }
 
       const scTrackId = `${episode.key}`;
