@@ -287,17 +287,19 @@ export const episodeRouter = router({
   }),
   "internal.bulkSetArchiveUrls": authenticatedProcedure
     .input(
-      z.array(
-        z.object({
-          episodeId: z.string(),
-          archiveUrl: z.string().url(),
-        }),
-      ),
+      z.object({
+        episodes: z.array(
+          z.object({
+            episodeId: z.string(),
+            archiveUrl: z.string().url(),
+          }),
+        ),
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
       const result = await trackCollection.bulkWrite(
-        input.map(({ episodeId, archiveUrl }) => ({
+        input.episodes.map(({ episodeId, archiveUrl }) => ({
           updateOne: {
             filter: { _id: new ObjectId(episodeId) },
             update: { $set: { archive_url: archiveUrl } },
