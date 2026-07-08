@@ -285,26 +285,29 @@ export const episodeRouter = router({
       timestamp: new Date().toISOString(),
     };
   }),
-  "internal.setArchiveUrl": authenticatedProcedure
+  "internal.bulkSetArchiveUrls": authenticatedProcedure
     .input(
-      z.object({
-        episodeId: z.string(),
-        archiveUrl: z.string().url(),
-      }),
+      z.array(
+        z.object({
+          episodeId: z.string(),
+          archiveUrl: z.string().url(),
+        }),
+      ),
     )
     .mutation(async ({ ctx, input }) => {
       const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
-      const result = await trackCollection.updateOne(
-        { _id: new ObjectId(input.episodeId) },
-        { $set: { archive_url: input.archiveUrl } },
+      const result = await trackCollection.bulkWrite(
+        input.map(({ episodeId, archiveUrl }) => ({
+          updateOne: {
+            filter: { _id: new ObjectId(episodeId) },
+            update: { $set: { archive_url: archiveUrl } },
+          },
+        })),
       );
-      if (result.matchedCount === 0) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: `Episode ${input.episodeId} not found`,
-        });
-      }
-      return { success: true, episodeId: input.episodeId };
+      return {
+        matched: result.matchedCount,
+        modified: result.modifiedCount,
+      };
     }),
   "episodes.all": publicProcedure
     .input(
