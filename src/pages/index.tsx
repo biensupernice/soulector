@@ -1,5 +1,6 @@
-import { RefObject, createContext, useRef, useState } from "react";
+import { RefObject, createContext, useRef } from "react";
 import { EpisodesScreen } from "@/client/EpisodesScreen/EpisodesScreen";
+import { useSearchUrlSync } from "@/client/EpisodesScreen/useSearchUrlSync";
 import { useShortcutHandlers } from "@/client/useKeyboardHandlers";
 import Navbar from "@/client/EpisodesScreen/Navbar";
 import "react-spring-bottom-sheet/dist/style.css";
@@ -17,7 +18,7 @@ export const EpisodeListContext = createContext<EpisodeListContext>(
 );
 
 export default function Home() {
-  const [searchText, setSearchText] = useState("");
+  const { searchText, setSearchText } = useSearchUrlSync();
 
   const episodeListContextRef = useRef<EpisodeListHandle>(null);
   const focusEpisode = (episodeId: string) => {
