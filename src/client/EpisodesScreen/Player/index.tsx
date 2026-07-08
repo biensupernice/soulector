@@ -1,5 +1,4 @@
 import React from "react";
-import { EmbedPlayer } from "../../components/EmbedPlayer";
 import {
   usePlayerActions,
   usePlayerPlaying,
@@ -51,15 +50,12 @@ export default function Player({ currentEpisodeId }: PlayerProps) {
     episodeModalSheetActions.open();
   }
 
-  const isSouncCloudSrc = currentEpisode.source === "SOUNDCLOUD";
-
   const isBiggerScreen = useMedia("(min-width: 768px)");
 
   const preferMiniPlayer = true;
-  const showEmbed = !isBiggerScreen && !preferMiniPlayer && isSouncCloudSrc;
 
-  const showMini = !isBiggerScreen && preferMiniPlayer && isSouncCloudSrc;
-  const showFullControls = isBiggerScreen && isSouncCloudSrc;
+  const showMini = !isBiggerScreen && preferMiniPlayer;
+  const showFullControls = isBiggerScreen;
 
   return (
     <>
@@ -73,16 +69,11 @@ export default function Player({ currentEpisodeId }: PlayerProps) {
           showMini && "h-0",
         )}
       >
-        {currentEpisode.source === "MIXCLOUD" && (
-          <div className="m-auto max-w-4xl">
-            <EmbedPlayer episode={currentEpisode} />
-          </div>
-        )}
         {!USE_NEW_PLAYER && (
           <SoundCloudPlayer
             key={currentEpisode.id}
             onReady={onSoundCloudPlayerReady}
-            showNative={showEmbed}
+            showNative={false}
             episode={currentEpisode}
             position={cuePosition}
             playing={playing}
