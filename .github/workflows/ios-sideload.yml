@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - claude/mobile-app-expiration-remote-build-wsf3of
     paths:
       - "ios/**"
       - ".github/workflows/ios-sideload.yml"
