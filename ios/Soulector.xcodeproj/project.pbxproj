@@ -19,6 +19,9 @@
 		AA000010 /* EpisodeRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000010 /* EpisodeRowView.swift */; };
 		AA000011 /* EpisodeDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000011 /* EpisodeDetailSheet.swift */; };
 		AA000012 /* MiniPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000012 /* MiniPlayerView.swift */; };
+		AA000020 /* SearchIndexEpisode.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000020 /* SearchIndexEpisode.swift */; };
+		AA000021 /* EpisodeSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000021 /* EpisodeSearch.swift */; };
+		AA000022 /* SearchResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000022 /* SearchResultsView.swift */; };
 		AA000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000014 /* Assets.xcassets */; };
 		AA000015 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000015 /* Preview Assets.xcassets */; };
 /* End PBXBuildFile section */
@@ -37,6 +40,9 @@
 		AB000010 /* EpisodeRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeRowView.swift; sourceTree = "<group>"; };
 		AB000011 /* EpisodeDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeDetailSheet.swift; sourceTree = "<group>"; };
 		AB000012 /* MiniPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniPlayerView.swift; sourceTree = "<group>"; };
+		AB000020 /* SearchIndexEpisode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchIndexEpisode.swift; sourceTree = "<group>"; };
+		AB000021 /* EpisodeSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeSearch.swift; sourceTree = "<group>"; };
+		AB000022 /* SearchResultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchResultsView.swift; sourceTree = "<group>"; };
 		AB000014 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AB000015 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		AB000016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -82,6 +88,7 @@
 			children = (
 				AB000003 /* Episode.swift */,
 				AB000004 /* EpisodeTrack.swift */,
+				AB000020 /* SearchIndexEpisode.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -107,6 +114,7 @@
 			isa = PBXGroup;
 			children = (
 				AB000008 /* EpisodesViewModel.swift */,
+				AB000021 /* EpisodeSearch.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -119,6 +127,7 @@
 				AB000010 /* EpisodeRowView.swift */,
 				AB000011 /* EpisodeDetailSheet.swift */,
 				AB000012 /* MiniPlayerView.swift */,
+				AB000022 /* SearchResultsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -221,6 +230,9 @@
 				AA000010 /* EpisodeRowView.swift in Sources */,
 				AA000011 /* EpisodeDetailSheet.swift in Sources */,
 				AA000012 /* MiniPlayerView.swift in Sources */,
+				AA000020 /* SearchIndexEpisode.swift in Sources */,
+				AA000021 /* EpisodeSearch.swift in Sources */,
+				AA000022 /* SearchResultsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -127,4 +127,12 @@ final class APIClient {
         let url = try makeURL(procedure: "episode.getTracks", input: ["episodeId": episodeId])
         return try await fetch(url)
     }
+
+    /// Full search index: every episode across all collectives with its tracks.
+    /// The procedure takes no input, so — like the web calling it with
+    /// `undefined` — we send no `input` query param at all.
+    func fetchSearchIndex() async throws -> [SearchIndexEpisode] {
+        guard let url = URL(string: "\(baseURL)/episodes.searchIndex") else { throw APIError.badURL }
+        return try await fetch(url)
+    }
 }

@@ -32,11 +32,21 @@ final class EpisodesViewModel: ObservableObject {
     @Published var selectedCollective: CollectiveFilter = .soulection
     @Published var searchText = ""
 
+    /// Full episodes+tracks index that drives track-aware search. Populated from
+    /// disk at init (instant search on launch) and refreshed from the network.
+    @Published private(set) var searchIndex: [SearchIndexEpisode] = []
+    private var isLoadingSearchIndex = false
+
     private let persistedCollectiveKey = "soulector.selectedCollective"
 
     private static let cacheURL: URL? = FileManager.default
         .urls(for: .cachesDirectory, in: .userDomainMask).first?
         .appendingPathComponent("episodes_cache.json")
+
+    // Versioned filename so a shape change never decodes a stale snapshot.
+    private static let searchIndexCacheURL: URL? = FileManager.default
+        .urls(for: .cachesDirectory, in: .userDomainMask).first?
+        .appendingPathComponent("search_index_cache_v1.json")
 
     init() {
         // Restore last-used collective
@@ -50,6 +60,11 @@ final class EpisodesViewModel: ObservableObject {
            let cached = try? JSONDecoder().decode([Episode].self, from: data) {
             episodes = cached
         }
+        if let url = Self.searchIndexCacheURL,
+           let data = try? Data(contentsOf: url),
+           let cached = try? JSONDecoder().decode([SearchIndexEpisode].self, from: data) {
+            searchIndex = cached
+        }
     }
 
     private func persistCache(_ episodes: [Episode]) {
@@ -59,8 +74,18 @@ final class EpisodesViewModel: ObservableObject {
         try? data.write(to: url, options: .atomic)
     }
 
+    private func persistSearchIndexCache(_ index: [SearchIndexEpisode]) {
+        guard let url = Self.searchIndexCacheURL,
+              let data = try? JSONEncoder().encode(index)
+        else { return }
+        try? data.write(to: url, options: .atomic)
+    }
+
     // MARK: Derived lists
 
+    /// Collective-scoped episode list (search is handled separately, see
+    /// `searchResults`). Used for the regular list, shuffle scope, and
+    /// auto-advance.
     var filteredEpisodes: [Episode] {
         applyFilters(to: episodes)
     }
@@ -70,15 +95,19 @@ final class EpisodesViewModel: ObservableObject {
     }
 
     private func applyFilters(to list: [Episode]) -> [Episode] {
-        var result = list
-        if selectedCollective != .all {
-            result = result.filter { $0.collectiveSlug == selectedCollective.rawValue }
-        }
-        if !searchText.trimmingCharacters(in: .whitespaces).isEmpty {
-            result = result.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
-        }
-        return result
+        guard selectedCollective != .all else { return list }
+        return list.filter { $0.collectiveSlug == selectedCollective.rawValue }
     }
+
+    // MARK: Track-aware search
+
+    var searchResults: [EpisodeSearchResult] {
+        EpisodeSearch.search(index: searchIndex, query: searchText, collective: selectedCollective)
+    }
+
+    /// True until the search index has been loaded (from cache or network) at
+    /// least once, used to show a "loading library" state instead of "no matches".
+    var isSearchIndexLoading: Bool { searchIndex.isEmpty }
 
     // MARK: Collective selection
 
@@ -102,5 +131,21 @@ final class EpisodesViewModel: ObservableObject {
             if episodes.isEmpty { self.error = error }
         }
         isLoading = false
+    }
+
+    /// Refreshes the search index from the network. Safe to call repeatedly; a
+    /// fetch in flight short-circuits. Failures are swallowed — cached data (if
+    /// any) keeps search working.
+    func refreshSearchIndex() async {
+        guard !isLoadingSearchIndex else { return }
+        isLoadingSearchIndex = true
+        defer { isLoadingSearchIndex = false }
+        do {
+            let fetched = try await APIClient.shared.fetchSearchIndex()
+            searchIndex = fetched
+            persistSearchIndexCache(fetched)
+        } catch {
+            // Ignore; cached index (if present) still serves search this session.
+        }
     }
 }
