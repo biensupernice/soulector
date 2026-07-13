@@ -254,7 +254,7 @@ struct TracklistView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Tracklist")
+            Text("\(tracks.count) Tracks")
                 .font(.headline)
                 .foregroundColor(.white.opacity(0.7))
                 .padding(.horizontal, 20)
