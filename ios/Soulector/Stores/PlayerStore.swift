@@ -51,6 +51,7 @@ final class PlayerStore: ObservableObject {
     private var accentColorTask: Task<Void, Never>?
     private var loadedArtwork: MPMediaItemArtwork?
     private var loadedArtworkEpisodeId: String?
+    private var pendingSeek: Double?
 
     // MARK: Init
 
@@ -118,11 +119,14 @@ final class PlayerStore: ObservableObject {
     // MARK: Playback control
 
     /// Main entry point: sets loading state, fetches the stream URL, and starts playback.
-    func play(episode: Episode) async {
+    /// `startingAt` seeds an initial seek applied once the audio is ready to play; while
+    /// loading we reflect it in `currentTime` so the UI points at the target track immediately.
+    func play(episode: Episode, startingAt seconds: Double? = nil) async {
         tearDown()
 
         currentEpisode = episode
-        currentTime = 0
+        currentTime = seconds ?? 0
+        pendingSeek = seconds
         duration = 0
         currentTracks = []
         state = .loading
@@ -179,9 +183,13 @@ final class PlayerStore: ObservableObject {
                 guard let self else { return }
                 switch status {
                 case .readyToPlay:
+                    self.updateDuration()
+                    if let seek = self.pendingSeek {
+                        self.pendingSeek = nil
+                        self.seek(to: seek)
+                    }
                     self.player?.play()
                     self.state = .playing
-                    self.updateDuration()
                     self.updateNowPlayingInfo()
                 case .failed:
                     self.state = .error(item.error?.localizedDescription ?? "Playback failed")
@@ -296,6 +304,7 @@ final class PlayerStore: ObservableObject {
         accentColor = .black
         loadedArtwork = nil
         loadedArtworkEpisodeId = nil
+        pendingSeek = nil
     }
 
     // MARK: Now Playing Info

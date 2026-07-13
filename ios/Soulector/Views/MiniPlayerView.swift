@@ -26,17 +26,13 @@ struct MiniPlayerView: View {
 
                 // Episode name + date
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(episode.name)
-                        .font(.system(size: 14, weight: .semibold))
+                    MarqueeText(text: episode.name)
                         .foregroundColor(.white)
-                        .lineLimit(1)
                     Text(episode.formattedDate)
                         .font(.system(size: 12))
                         .foregroundColor(.white.opacity(0.5))
                         .lineLimit(1)
                 }
-
-                Spacer()
 
                 // Loading indicator or controls
                 if playerStore.isLoading {
@@ -91,5 +87,86 @@ struct MiniPlayerView: View {
                     }
                 }
         )
+    }
+}
+
+// MARK: - Marquee text
+
+/// Auto-scrolls the text when it overflows the available width, mirroring the
+/// web MarqueeText (src/client/EpisodesScreen/Player/MiniPlayerControls.tsx):
+/// two copies separated by `gap` scroll left at `speed` pt/s and loop
+/// seamlessly. Falls back to plain truncated text when it fits.
+private struct MarqueeText: View {
+    let text: String
+    var font: Font = .system(size: 14, weight: .semibold)
+    var gap: CGFloat = 40
+    var speed: CGFloat = 30 // points per second
+
+    @State private var textWidth: CGFloat = 0
+    @State private var containerWidth: CGFloat = 0
+    @State private var offset: CGFloat = 0
+
+    private var shouldMarquee: Bool { containerWidth > 0 && textWidth > containerWidth }
+
+    var body: some View {
+        content
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .clipped()
+            .background(
+                // Measure the available container width.
+                GeometryReader { proxy in
+                    Color.clear
+                        .onAppear { containerWidth = proxy.size.width }
+                        .onChange(of: proxy.size.width) { containerWidth = $0 }
+                }
+            )
+            .overlay(
+                // Off-layout copy that reports the text's natural width.
+                Text(text)
+                    .font(font)
+                    .fixedSize()
+                    .background(
+                        GeometryReader { proxy in
+                            Color.clear
+                                .onAppear { textWidth = proxy.size.width }
+                                .onChange(of: proxy.size.width) { textWidth = $0 }
+                        }
+                    )
+                    .hidden()
+                    .frame(width: 0, height: 0),
+                alignment: .leading
+            )
+            .onChange(of: text) { _ in restart() }
+            .onChange(of: textWidth) { _ in restart() }
+            .onChange(of: containerWidth) { _ in restart() }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if shouldMarquee {
+            HStack(spacing: gap) {
+                Text(text).font(font).fixedSize()
+                Text(text).font(font).fixedSize()
+            }
+            .offset(x: offset)
+        } else {
+            Text(text)
+                .font(font)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+    }
+
+    private func restart() {
+        // Cancel any running loop and reset before (re)starting.
+        var noAnim = Transaction()
+        noAnim.disablesAnimations = true
+        withTransaction(noAnim) { offset = 0 }
+
+        guard shouldMarquee, textWidth > 0 else { return }
+        let distance = textWidth + gap
+        withAnimation(.linear(duration: Double(distance / speed)).repeatForever(autoreverses: false)) {
+            offset = -distance
+        }
     }
 }

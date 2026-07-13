@@ -91,17 +91,72 @@ struct EpisodeRowView: View {
     private var playingOverlay: some View {
         ZStack {
             Color.black.opacity(0.4)
-            if #available(iOS 17.0, *) {
-                Image(systemName: "waveform")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(.white)
-                    .symbolEffect(.variableColor.iterative, options: .repeating)
-            } else {
-                Image(systemName: "waveform")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(.white)
-            }
+            EqualizerBars()
         }
         .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+}
+
+// MARK: - Playing indicator (equalizer bars)
+
+/// Mirrors the web PlayingAnimation (src/client/components/Episode.tsx): three
+/// bottom-anchored bars that oscillate while playing and freeze low when paused.
+private struct EqualizerBars: View {
+    @EnvironmentObject var playerStore: PlayerStore
+
+    // Slightly different durations/phases per bar, matching the web timings.
+    private let bars: [(duration: Double, delay: Double)] = [
+        (0.50, 0.0),
+        (0.42, 0.07),
+        (0.58, 0.20),
+    ]
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 3) {
+            ForEach(bars.indices, id: \.self) { i in
+                EqualizerBar(
+                    duration: bars[i].duration,
+                    delay: bars[i].delay,
+                    isPlaying: playerStore.isPlaying
+                )
+            }
+        }
+        .frame(height: 20)
+    }
+}
+
+private struct EqualizerBar: View {
+    let duration: Double
+    let delay: Double
+    let isPlaying: Bool
+
+    private let minScale: CGFloat = 1.0 / 6.0
+    @State private var scale: CGFloat = 1.0 / 6.0
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 1)
+            .fill(Color.white)
+            .frame(width: 3, height: 20)
+            .scaleEffect(y: scale, anchor: .bottom)
+            .onAppear { apply(playing: isPlaying) }
+            .onChange(of: isPlaying) { apply(playing: $0) }
+    }
+
+    private func apply(playing: Bool) {
+        if playing {
+            scale = 1.0
+            withAnimation(
+                .easeInOut(duration: duration)
+                    .repeatForever(autoreverses: true)
+                    .delay(delay)
+            ) {
+                scale = minScale
+            }
+        } else {
+            // Finite animation cancels the repeating one and settles low.
+            withAnimation(.easeInOut(duration: 0.2)) {
+                scale = minScale
+            }
+        }
     }
 }

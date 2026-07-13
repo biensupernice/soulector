@@ -22,6 +22,10 @@ struct EpisodesView: View {
             : episodesVM.favoriteEpisodes(favoritesStore: favoritesStore)
     }
 
+    private var isSearching: Bool {
+        !episodesVM.searchText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     var body: some View {
         ZStack(alignment: .bottom) {
             Color.black.ignoresSafeArea()
@@ -116,7 +120,14 @@ struct EpisodesView: View {
                 }
 
                 // Search toggle
-                Button(action: { withAnimation(.easeInOut(duration: 0.2)) { showSearch.toggle() } }) {
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.2)) { showSearch.toggle() }
+                    if showSearch {
+                        Task { await episodesVM.refreshSearchIndex() }
+                    } else {
+                        episodesVM.searchText = ""
+                    }
+                }) {
                     Image(systemName: showSearch ? "xmark" : "magnifyingglass")
                         .font(.system(size: 18))
                         .foregroundColor(.white)
@@ -138,7 +149,7 @@ struct EpisodesView: View {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.white.opacity(0.5))
 
-            TextField("Search episodes...", text: $episodesVM.searchText)
+            TextField("Search episodes and tracks...", text: $episodesVM.searchText)
                 .foregroundColor(.white)
                 .tint(.white)
                 .autocorrectionDisabled()
@@ -175,12 +186,24 @@ struct EpisodesView: View {
 
             Spacer()
 
-            Text("\(displayedEpisodes.count) Total")
+            Text(countText)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.white.opacity(0.4))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+    }
+
+    private var countText: String {
+        guard isSearching else { return "\(displayedEpisodes.count) Total" }
+        let results = episodesVM.searchResults
+        let episodeWord = results.count == 1 ? "episode" : "episodes"
+        var text = "\(results.count) \(episodeWord)"
+        let trackCount = results.reduce(0) { $0 + $1.matchedTracks.count }
+        if trackCount > 0 {
+            text += " · \(trackCount) \(trackCount == 1 ? "track" : "tracks")"
+        }
+        return text
     }
 
     private var collectiveDropdown: some View {
@@ -268,7 +291,24 @@ struct EpisodesView: View {
 
     @ViewBuilder
     private var episodeListContent: some View {
-        if episodesVM.isLoading && episodesVM.episodes.isEmpty {
+        if isSearching {
+            SearchResultsView(
+                results: episodesVM.searchResults,
+                loading: episodesVM.isSearchIndexLoading,
+                currentEpisodeId: playerStore.currentEpisode?.id,
+                bottomPadding: playerStore.hasEpisode ? 70 : 0,
+                isFavorite: { favoritesStore.isFavorite($0) },
+                onEpisodeTap: { episode in
+                    selectedEpisode = episode
+                    Task { await playerStore.play(episode: episode) }
+                },
+                onTrackTap: { episode, timestamp in
+                    selectedEpisode = episode
+                    Task { await playerStore.play(episode: episode, startingAt: timestamp.map(Double.init)) }
+                },
+                onFavorite: { favoritesStore.toggleFavorite($0.id) }
+            )
+        } else if episodesVM.isLoading && episodesVM.episodes.isEmpty {
             VStack {
                 Spacer()
                 ProgressView("Loading episodes…")

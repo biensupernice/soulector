@@ -105,7 +105,7 @@ struct EpisodeDetailSheet: View {
                             .tint(.white)
                             .padding()
                     } else if !tracks.isEmpty {
-                        TracklistView(tracks: tracks, playerStore: playerStore)
+                        TracklistView(tracks: tracks, episode: episode)
                     }
 
                     Spacer(minLength: 32)
@@ -180,9 +180,9 @@ private struct PlayerControlsSection: View {
                 if isCurrentEpisode {
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        playerStore.rewind()
+                        playerStore.rewind(30)
                     }) {
-                        Image(systemName: "gobackward.15")
+                        Image(systemName: "gobackward.30")
                             .font(.system(size: 26))
                             .foregroundColor(.white)
                     }
@@ -217,9 +217,9 @@ private struct PlayerControlsSection: View {
                 if isCurrentEpisode {
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        playerStore.forward()
+                        playerStore.forward(30)
                     }) {
-                        Image(systemName: "goforward.15")
+                        Image(systemName: "goforward.30")
                             .font(.system(size: 26))
                             .foregroundColor(.white)
                     }
@@ -240,63 +240,117 @@ private struct PlayerControlsSection: View {
 
 struct TracklistView: View {
     let tracks: [EpisodeTrack]
-    let playerStore: PlayerStore
+    let episode: Episode
+    @EnvironmentObject var playerStore: PlayerStore
+
+    private var currentTrack: EpisodeTrack? {
+        guard playerStore.currentEpisode?.id == episode.id else { return nil }
+        let t = playerStore.currentTime
+        return tracks.filter { track in
+            guard let ts = track.timestamp else { return false }
+            return t >= Double(ts)
+        }.last
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Tracklist")
+            Text("\(tracks.count) Tracks")
                 .font(.headline)
                 .foregroundColor(.white.opacity(0.7))
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)
 
             ForEach(tracks) { track in
-                TrackRow(track: track, playerStore: playerStore)
+                let isCurrent = currentTrack?.id == track.id
+                TrackRow(track: track, episode: episode, isCurrent: isCurrent)
                 Divider().background(Color.white.opacity(0.1)).padding(.horizontal, 20)
             }
         }
     }
 }
 
+private struct PingRing: View {
+    @State private var scale: CGFloat = 1.0
+    @State private var opacity: Double = 0.5
+
+    var body: some View {
+        Circle()
+            .stroke(Color.white, lineWidth: 1.5)
+            .frame(width: 20, height: 20)
+            .scaleEffect(scale)
+            .opacity(opacity)
+            .onAppear {
+                withAnimation(.easeOut(duration: 1.5).repeatForever(autoreverses: false)) {
+                    scale = 2.0
+                    opacity = 0
+                }
+            }
+    }
+}
+
 private struct TrackRow: View {
     let track: EpisodeTrack
-    let playerStore: PlayerStore
+    let episode: Episode
+    let isCurrent: Bool
+    @EnvironmentObject var playerStore: PlayerStore
 
     var body: some View {
         Button(action: {
-            if let ts = track.timestamp {
+            guard let ts = track.timestamp else { return }
+            if playerStore.currentEpisode?.id == episode.id {
                 playerStore.seek(to: Double(ts))
+            } else {
+                Task { await playerStore.play(episode: episode, startingAt: Double(ts)) }
             }
         }) {
-            HStack(alignment: .center, spacing: 12) {
-                // Track number or timestamp
-                if let ts = track.formattedTimestamp {
-                    Text(ts)
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.4))
-                        .frame(width: 52, alignment: .leading)
-                } else {
-                    Text("\(track.order)")
-                        .font(.system(size: 12))
-                        .foregroundColor(.white.opacity(0.4))
-                        .frame(width: 24, alignment: .center)
-                }
+            ZStack(alignment: .leading) {
+                // Left current-track bar
+                Rectangle()
+                    .fill(Color.white)
+                    .frame(width: 2)
+                    .opacity(isCurrent ? 1 : 0)
+                    .animation(.easeInOut(duration: 0.3), value: isCurrent)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(track.name)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                    Text(track.artist)
-                        .font(.system(size: 12))
-                        .foregroundColor(.white.opacity(0.55))
-                        .lineLimit(1)
-                }
+                HStack(alignment: .center, spacing: 12) {
+                    // Track number / timestamp with current indicator
+                    ZStack {
+                        if isCurrent {
+                            PingRing()
+                            Circle()
+                                .fill(Color.white)
+                                .frame(width: 20, height: 20)
+                            Text("\(track.order)")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.black)
+                        } else if let ts = track.formattedTimestamp {
+                            Text(ts)
+                                .font(.system(size: 12, design: .monospaced))
+                                .foregroundColor(.white.opacity(0.4))
+                        } else {
+                            Text("\(track.order)")
+                                .font(.system(size: 12))
+                                .foregroundColor(.white.opacity(0.4))
+                        }
+                    }
+                    .frame(width: 52, alignment: .leading)
 
-                Spacer()
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(track.name)
+                            .font(.system(size: 13, weight: isCurrent ? .bold : .medium))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                        Text(track.artist)
+                            .font(.system(size: 12))
+                            .foregroundColor(.white.opacity(isCurrent ? 1.0 : 0.55))
+                            .lineLimit(1)
+                    }
+                    .animation(.easeInOut(duration: 0.3), value: isCurrent)
+
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 10)
         }
         .buttonStyle(.plain)
         .disabled(track.timestamp == nil)
