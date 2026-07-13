@@ -180,9 +180,9 @@ private struct PlayerControlsSection: View {
                 if isCurrentEpisode {
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        playerStore.rewind()
+                        playerStore.rewind(30)
                     }) {
-                        Image(systemName: "gobackward.15")
+                        Image(systemName: "gobackward.30")
                             .font(.system(size: 26))
                             .foregroundColor(.white)
                     }
@@ -217,9 +217,9 @@ private struct PlayerControlsSection: View {
                 if isCurrentEpisode {
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        playerStore.forward()
+                        playerStore.forward(30)
                     }) {
-                        Image(systemName: "goforward.15")
+                        Image(systemName: "goforward.30")
                             .font(.system(size: 26))
                             .foregroundColor(.white)
                     }
@@ -262,7 +262,7 @@ struct TracklistView: View {
 
             ForEach(tracks) { track in
                 let isCurrent = currentTrack?.id == track.id
-                TrackRow(track: track, isCurrent: isCurrent)
+                TrackRow(track: track, episode: episode, isCurrent: isCurrent)
                 Divider().background(Color.white.opacity(0.1)).padding(.horizontal, 20)
             }
         }
@@ -290,13 +290,17 @@ private struct PingRing: View {
 
 private struct TrackRow: View {
     let track: EpisodeTrack
+    let episode: Episode
     let isCurrent: Bool
     @EnvironmentObject var playerStore: PlayerStore
 
     var body: some View {
         Button(action: {
-            if let ts = track.timestamp {
+            guard let ts = track.timestamp else { return }
+            if playerStore.currentEpisode?.id == episode.id {
                 playerStore.seek(to: Double(ts))
+            } else {
+                Task { await playerStore.play(episode: episode, startingAt: Double(ts)) }
             }
         }) {
             ZStack(alignment: .leading) {

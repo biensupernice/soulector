@@ -62,6 +62,14 @@ final class APIClient {
     static let shared = APIClient()
     private init() {}
 
+    /// Stream URLs are effectively immutable per episode, so cache them for the app session.
+    private actor StreamUrlCache {
+        private var entries: [String: StreamUrls] = [:]
+        func get(_ id: String) -> StreamUrls? { entries[id] }
+        func set(_ id: String, _ urls: StreamUrls) { entries[id] = urls }
+    }
+    private let streamUrlCache = StreamUrlCache()
+
     private let baseURL = "https://soulector.app/api/trpc"
     private let session: URLSession = {
         let config = URLSessionConfiguration.default
@@ -103,8 +111,11 @@ final class APIClient {
 
     /// Returns nil when the episode is not found.
     func fetchStreamUrl(episodeId: String) async throws -> StreamUrls? {
+        if let cached = await streamUrlCache.get(episodeId) { return cached }
         let url = try makeURL(procedure: "episode.getStreamUrl", input: ["episodeId": episodeId])
-        return try await fetch(url)
+        let urls: StreamUrls? = try await fetch(url)
+        if let urls { await streamUrlCache.set(episodeId, urls) }
+        return urls
     }
 
     func fetchAccentColor(episodeId: String) async throws -> AccentColor {
