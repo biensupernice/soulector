@@ -1,0 +1,63 @@
+name: iOS Sideload Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - claude/mobile-app-expiration-remote-build-wsf3of
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios-sideload.yml"
+
+concurrency:
+  group: ios-sideload
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build unsigned IPA
+    runs-on: macos-15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build archive (unsigned)
+        run: |
+          xcodebuild archive \
+            -project ios/Soulector.xcodeproj \
+            -scheme Soulector \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/Soulector.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Package IPA
+        run: |
+          mkdir -p build/Payload
+          cp -R "build/Soulector.xcarchive/Products/Applications/Soulector.app" build/Payload/
+          cd build
+          zip -qry Soulector.ipa Payload
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Soulector-ipa
+          path: build/Soulector.ipa
+
+      - name: Publish rolling release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: sideload-latest
+          name: Soulector iOS (latest sideload build)
+          body: |
+            Unsigned IPA for sideloading with SideStore.
+
+            Built from `${{ github.sha }}` on `${{ github.ref_name }}`.
+
+            **Install on iPhone:** download `Soulector.ipa` below in Safari,
+            then open SideStore → My Apps → + → pick the downloaded file.
+          files: build/Soulector.ipa
