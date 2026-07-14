@@ -270,10 +270,13 @@ function EpisodeSheetStackedContent({
 }
 
 /**
- * "Morph" variant: same layout as "Half", but scrolling the tracks list
- * collapses the episode details (big artwork + title) into a compact
- * thumbnail row, and the tracks area grows into the freed space. The
- * player and action buttons stay put.
+ * "Morph" variant: same layout as "Half", but the user scrolling the
+ * tracks list collapses the episode details (big artwork + title) into
+ * a compact thumbnail row, and the tracks area grows into the freed
+ * space. The player and action buttons stay put. Driven by user scroll
+ * direction only: scrolling down collapses, scrolling up (or reaching
+ * the top) expands, and the list's own programmatic active-track
+ * centering never toggles it.
  */
 function EpisodeSheetMorphDetailsContent({
   episodeId,
@@ -284,11 +287,37 @@ function EpisodeSheetMorphDetailsContent({
 }) {
   const episode = useGetEpisode(episodeId);
   const [collapsed, setCollapsed] = useState(false);
+  const lastScrollTopRef = useRef(0);
+  const scrollAccumRef = useRef(0);
 
   function onTracksScroll(e: React.UIEvent<HTMLDivElement>) {
-    const top = e.currentTarget.scrollTop;
-    // hysteresis so the details don't flicker around the threshold
-    setCollapsed((c) => (c ? top > 24 : top > 64));
+    const el = e.currentTarget;
+    const top = el.scrollTop;
+    const delta = top - lastScrollTopRef.current;
+    lastScrollTopRef.current = top;
+
+    if (isProgrammaticScroll(el)) {
+      scrollAccumRef.current = 0;
+      return;
+    }
+
+    if (top <= 8) {
+      scrollAccumRef.current = 0;
+      setCollapsed(false);
+      return;
+    }
+
+    // accumulate travel in one direction; a direction flip starts over
+    if (Math.sign(delta) !== Math.sign(scrollAccumRef.current)) {
+      scrollAccumRef.current = 0;
+    }
+    scrollAccumRef.current += delta;
+
+    if (scrollAccumRef.current > 48) {
+      setCollapsed(true);
+    } else if (scrollAccumRef.current < -48) {
+      setCollapsed(false);
+    }
   }
 
   return (
@@ -351,6 +380,20 @@ export function useEpisodeTracks(episodeId: string, enabled: boolean = true) {
   };
 }
 
+/**
+ * The tracks list auto-scrolls to center the active track, and those
+ * programmatic scrolls must be distinguishable from user scrolling so
+ * layouts like the Morph variant only react to the user. The container
+ * gets stamped with a timestamp covering the smooth-scroll duration.
+ */
+function markProgrammaticScroll(container: HTMLElement) {
+  container.dataset.programmaticScrollUntil = String(Date.now() + 800);
+}
+
+function isProgrammaticScroll(container: HTMLElement) {
+  return Date.now() < Number(container.dataset.programmaticScrollUntil ?? 0);
+}
+
 function getScrollParent(el: HTMLElement): HTMLElement | null {
   let node = el.parentElement;
   while (node) {
@@ -410,6 +453,7 @@ export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
         elRect.top -
         containerRect.top -
         (container.clientHeight - elRect.height) / 2;
+      markProgrammaticScroll(container);
       container.scrollTo({
         top: container.scrollTop + delta,
         behavior,
