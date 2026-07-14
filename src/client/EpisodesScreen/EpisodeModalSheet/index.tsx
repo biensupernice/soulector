@@ -19,7 +19,7 @@ import {
 } from "../PlayerStore";
 import { useGetEpisode } from "../useEpisodeHooks";
 import Sheet from "react-modal-sheet";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import create from "zustand";
 import { trpc } from "@/utils/trpc";
 import { cn } from "@/lib/utils";
@@ -74,25 +74,72 @@ export function EpisodeModalSheet({
   );
 }
 
+type TracksAreaVariant = "fit" | "half" | "full";
+
+const tracksAreaVariants: { id: TracksAreaVariant; label: string }[] = [
+  { id: "fit", label: "Fit" },
+  { id: "half", label: "Half" },
+  { id: "full", label: "Full" },
+];
+
+const tracksAreaVariantStorageKey = "soulector:tracks-area-variant";
+
+function useTracksAreaVariant() {
+  const [variant, setVariant] = useState<TracksAreaVariant>("fit");
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(tracksAreaVariantStorageKey);
+    if (tracksAreaVariants.some((v) => v.id === saved)) {
+      setVariant(saved as TracksAreaVariant);
+    }
+  }, []);
+
+  function changeVariant(next: TracksAreaVariant) {
+    setVariant(next);
+    window.localStorage.setItem(tracksAreaVariantStorageKey, next);
+  }
+
+  return [variant, changeVariant] as const;
+}
+
 function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
   const episode = useGetEpisode(episodeId);
   const { hasTracks } = useEpisodeTracks(episodeId);
+  const [tracksVariant, setTracksVariant] = useTracksAreaVariant();
+
+  const showCompactHeader = hasTracks && tracksVariant === "full";
 
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-between space-y-3 overflow-auto pb-safe-top">
-      <div className="w-full flex-col space-y-3 px-4 md:px-6 pt-6">
-        <img
-          className="min-h-40 min-w-40 mx-auto w-full max-w-sm rounded-lg object-fill"
-          src={episode.artworkUrl}
-          alt={episode.name}
-        />
-        <div className="flex w-full flex-col text-center">
-          <div className="font-bold text-white">{episode.name}</div>
-          <div className="text-sm text-white/80">
-            {formatDate(episode.releasedAt)}
+      {showCompactHeader ? (
+        <div className="flex w-full items-center space-x-3 px-4 pt-6">
+          <img
+            className="h-14 w-14 shrink-0 rounded-lg object-cover"
+            src={episode.artworkUrl}
+            alt={episode.name}
+          />
+          <div className="min-w-0 flex-1 text-left">
+            <div className="truncate font-bold text-white">{episode.name}</div>
+            <div className="text-sm text-white/80">
+              {formatDate(episode.releasedAt)}
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="w-full flex-col space-y-3 px-4 md:px-6 pt-6">
+          <img
+            className="min-h-40 min-w-40 mx-auto w-full max-w-sm rounded-lg object-fill"
+            src={episode.artworkUrl}
+            alt={episode.name}
+          />
+          <div className="flex w-full flex-col text-center">
+            <div className="font-bold text-white">{episode.name}</div>
+            <div className="text-sm text-white/80">
+              {formatDate(episode.releasedAt)}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="w-full px-6">
         <EpisodeSheetPlayer episodeId={episodeId} />
       </div>
@@ -112,12 +159,40 @@ function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
         <EpisodeSheetFavoriteToggle episodeId={episodeId} />
       </div>
       {hasTracks && (
-        <div className="xs:slide-in-from-bottom-3 md:fade-in animate-in rounded-lg duration-600 relative mx-3 flex min-h-[10rem] flex-col self-stretch">
-          <div className="absolute rounded-lg inset-0 bg-black/20"></div>
-          <div className="relative min-h-0 overflow-y-auto">
-            <EpisodeTracksList episodeId={episodeId} />
+        <>
+          <div className="flex w-full items-center justify-between px-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-white/70">
+              Tracks layout
+            </div>
+            <div className="flex rounded-full bg-black/20 p-0.5">
+              {tracksAreaVariants.map((v) => (
+                <button
+                  key={v.id}
+                  onClick={() => setTracksVariant(v.id)}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-semibold text-white/70",
+                    tracksVariant === v.id && "bg-white !text-accent",
+                  )}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+          <div
+            className={cn(
+              "xs:slide-in-from-bottom-3 md:fade-in animate-in rounded-lg duration-600 relative mx-3 flex flex-col self-stretch",
+              tracksVariant === "fit" && "min-h-[12rem]",
+              tracksVariant === "half" && "h-1/2 min-h-[14rem] shrink-0",
+              tracksVariant === "full" && "min-h-[16rem] flex-1",
+            )}
+          >
+            <div className="absolute rounded-lg inset-0 bg-black/20"></div>
+            <div className="relative min-h-0 overflow-y-auto">
+              <EpisodeTracksList key={tracksVariant} episodeId={episodeId} />
+            </div>
+          </div>
+        </>
       )}
       <br />
     </div>
