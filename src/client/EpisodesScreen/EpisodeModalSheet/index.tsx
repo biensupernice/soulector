@@ -19,6 +19,7 @@ import {
 } from "../PlayerStore";
 import { useGetEpisode } from "../useEpisodeHooks";
 import Sheet from "react-modal-sheet";
+import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import create from "zustand";
 import { trpc } from "@/utils/trpc";
@@ -131,48 +132,6 @@ function TracksVariantSwitcher({
   );
 }
 
-function EpisodeSheetCompactTitle({ episodeId }: { episodeId: string }) {
-  const episode = useGetEpisode(episodeId);
-  return (
-    <div className="flex w-full items-center space-x-3 px-4">
-      <img
-        className="h-12 w-12 shrink-0 rounded-md object-cover"
-        src={episode.artworkUrl}
-        alt={episode.name}
-      />
-      <div className="min-w-0 flex-1 text-left">
-        <div className="truncate font-bold text-white">{episode.name}</div>
-        <div className="text-sm text-white/80">
-          {formatDate(episode.releasedAt)}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Collapses its content to zero height (animating grid-template-rows so
- * siblings in the flex column reflow smoothly as it opens/closes).
- */
-function CollapsibleSection({
-  collapsed,
-  children,
-}: {
-  collapsed: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className={cn(
-        "grid w-full transition-[grid-template-rows,opacity] duration-300 ease-out",
-        collapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100",
-      )}
-    >
-      <div className="min-h-0 w-full overflow-hidden">{children}</div>
-    </div>
-  );
-}
-
 function EpisodeSheetActionButtons({ episodeId }: { episodeId: string }) {
   const episode = useGetEpisode(episodeId);
   return (
@@ -269,14 +228,22 @@ function EpisodeSheetStackedContent({
   );
 }
 
+const detailsMorphTransition = {
+  type: "spring",
+  bounce: 0.15,
+  duration: 0.45,
+} as const;
+
 /**
  * "Morph" variant: same layout as "Half", but the user scrolling the
- * tracks list collapses the episode details (big artwork + title) into
- * a compact thumbnail row, and the tracks area grows into the freed
- * space. The player and action buttons stay put. Driven by user scroll
- * direction only: scrolling down collapses, scrolling up (or reaching
- * the top) expands, and the list's own programmatic active-track
- * centering never toggles it.
+ * tracks list collapses the episode details into a compact thumbnail
+ * row, and the tracks area grows into the freed space. The artwork and
+ * title are shared elements (framer-motion layoutId) that travel
+ * between their expanded and compact positions, while the player,
+ * buttons, and tracks glide along via position layout animations.
+ * Driven by user scroll direction only: scrolling down collapses,
+ * scrolling up (or reaching the top) expands, and the list's own
+ * programmatic active-track centering never toggles it.
  */
 function EpisodeSheetMorphDetailsContent({
   episodeId,
@@ -322,32 +289,75 @@ function EpisodeSheetMorphDetailsContent({
 
   return (
     <div className="relative flex h-full w-full flex-col items-center space-y-3 overflow-hidden pb-safe-top">
-      <CollapsibleSection collapsed={collapsed}>
-        <div className="w-full flex-col space-y-3 px-4 pt-6">
-          <img
-            className="min-h-40 min-w-40 mx-auto w-full max-w-sm rounded-lg object-fill"
+      {collapsed ? (
+        <div className="flex w-full items-center space-x-3 px-4 pt-4">
+          <motion.img
+            layoutId="episode-sheet-details-artwork"
+            transition={detailsMorphTransition}
+            style={{ borderRadius: 6 }}
+            className="h-12 w-12 shrink-0 object-cover"
             src={episode.artworkUrl}
             alt={episode.name}
           />
-          <div className="flex w-full flex-col text-center">
+          <motion.div
+            layoutId="episode-sheet-details-title"
+            transition={detailsMorphTransition}
+            className="min-w-0 flex-1 text-left"
+          >
+            <div className="truncate font-bold text-white">{episode.name}</div>
+            <div className="text-sm text-white/80">
+              {formatDate(episode.releasedAt)}
+            </div>
+          </motion.div>
+        </div>
+      ) : (
+        <div className="w-full flex-col space-y-3 px-4 pt-6">
+          <motion.img
+            layoutId="episode-sheet-details-artwork"
+            transition={detailsMorphTransition}
+            style={{ borderRadius: 8 }}
+            className="min-h-40 min-w-40 mx-auto w-full max-w-sm object-fill"
+            src={episode.artworkUrl}
+            alt={episode.name}
+          />
+          <motion.div
+            layoutId="episode-sheet-details-title"
+            transition={detailsMorphTransition}
+            className="flex w-full flex-col text-center"
+          >
             <div className="font-bold text-white">{episode.name}</div>
             <div className="text-sm text-white/80">
               {formatDate(episode.releasedAt)}
             </div>
-          </div>
+          </motion.div>
         </div>
-      </CollapsibleSection>
-      <CollapsibleSection collapsed={!collapsed}>
-        <div className="pt-4">
-          <EpisodeSheetCompactTitle episodeId={episodeId} />
-        </div>
-      </CollapsibleSection>
-      <div className="w-full px-6">
+      )}
+      <motion.div
+        layout="position"
+        transition={detailsMorphTransition}
+        className="w-full px-6"
+      >
         <EpisodeSheetPlayer episodeId={episodeId} />
-      </div>
-      <EpisodeSheetActionButtons episodeId={episodeId} />
-      {switcher}
-      <div className="relative mx-3 flex min-h-[10rem] flex-1 flex-col self-stretch rounded-lg">
+      </motion.div>
+      <motion.div
+        layout="position"
+        transition={detailsMorphTransition}
+        className="w-full"
+      >
+        <EpisodeSheetActionButtons episodeId={episodeId} />
+      </motion.div>
+      <motion.div
+        layout="position"
+        transition={detailsMorphTransition}
+        className="w-full"
+      >
+        {switcher}
+      </motion.div>
+      <motion.div
+        layout="position"
+        transition={detailsMorphTransition}
+        className="relative mx-3 flex min-h-[10rem] flex-1 flex-col self-stretch rounded-lg"
+      >
         <div className="absolute rounded-lg inset-0 bg-black/20"></div>
         <div
           onScroll={onTracksScroll}
@@ -355,7 +365,7 @@ function EpisodeSheetMorphDetailsContent({
         >
           <EpisodeTracksList episodeId={episodeId} />
         </div>
-      </div>
+      </motion.div>
       <br />
     </div>
   );
