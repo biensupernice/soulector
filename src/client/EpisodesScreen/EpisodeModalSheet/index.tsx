@@ -19,6 +19,7 @@ import {
 } from "../PlayerStore";
 import { useGetEpisode } from "../useEpisodeHooks";
 import Sheet from "react-modal-sheet";
+import { useEffect, useRef } from "react";
 import create from "zustand";
 import { trpc } from "@/utils/trpc";
 import { cn } from "@/lib/utils";
@@ -75,6 +76,7 @@ export function EpisodeModalSheet({
 
 function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
   const episode = useGetEpisode(episodeId);
+  const { hasTracks } = useEpisodeTracks(episodeId);
 
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-between space-y-3 overflow-auto pb-safe-top">
@@ -109,10 +111,14 @@ function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
         </a>
         <EpisodeSheetFavoriteToggle episodeId={episodeId} />
       </div>
-      <div className="xs:slide-in-from-bottom-3 md:fade-in animate-in rounded-lg duration-600 relative mx-3">
-        <div className="absolute rounded-lg inset-0 bg-black/20"></div>
-        <EpisodeTracksList episodeId={episodeId} />
-      </div>
+      {hasTracks && (
+        <div className="xs:slide-in-from-bottom-3 md:fade-in animate-in rounded-lg duration-600 relative mx-3 flex min-h-[10rem] flex-col self-stretch">
+          <div className="absolute rounded-lg inset-0 bg-black/20"></div>
+          <div className="relative min-h-0 overflow-y-auto">
+            <EpisodeTracksList episodeId={episodeId} />
+          </div>
+        </div>
+      )}
       <br />
     </div>
   );
@@ -135,6 +141,21 @@ export function useEpisodeTracks(episodeId: string, enabled: boolean = true) {
     loaded: status === "success",
     hasTracks: status === "success" && data.length > 0,
   };
+}
+
+function getScrollParent(el: HTMLElement): HTMLElement | null {
+  let node = el.parentElement;
+  while (node) {
+    const overflowY = getComputedStyle(node).overflowY;
+    if (
+      (overflowY === "auto" || overflowY === "scroll") &&
+      node.scrollHeight > node.clientHeight
+    ) {
+      return node;
+    }
+    node = node.parentElement;
+  }
+  return null;
 }
 
 export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
@@ -160,6 +181,45 @@ export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
   );
 
   const currentTrack = possibleTracks.at(-1);
+  const currentTrackOrder = currentTrack?.order;
+
+  const currentTrackRef = useRef<HTMLButtonElement | null>(null);
+  const hasCenteredRef = useRef(false);
+
+  useEffect(() => {
+    if (currentTrackOrder == null) {
+      return;
+    }
+
+    function centerCurrentTrack(behavior: ScrollBehavior) {
+      const el = currentTrackRef.current;
+      if (!el) return;
+      const container = getScrollParent(el);
+      if (!container) return;
+      const containerRect = container.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const delta =
+        elRect.top -
+        containerRect.top -
+        (container.clientHeight - elRect.height) / 2;
+      container.scrollTo({
+        top: container.scrollTop + delta,
+        behavior,
+      });
+    }
+
+    const isFirstCenter = !hasCenteredRef.current;
+    hasCenteredRef.current = true;
+    centerCurrentTrack(isFirstCenter ? "auto" : "smooth");
+
+    // on desktop the tracks panel animates open, so the container may not
+    // have its final height yet on first render; re-center once it settles
+    let timeout: number | undefined;
+    if (isFirstCenter) {
+      timeout = window.setTimeout(() => centerCurrentTrack("auto"), 350);
+    }
+    return () => window.clearTimeout(timeout);
+  }, [currentTrackOrder]);
 
   function onTrackClick(t: EpisodeTrackProjection) {
     if (t.timestamp) {
@@ -180,6 +240,8 @@ export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
             const isCurrent = currentTrack?.order === t.order;
             return (
               <button
+                key={`${t.order}-${i}`}
+                ref={isCurrent ? currentTrackRef : undefined}
                 onClick={() => onTrackClick(t)}
                 className={cn("w-full relative hover:bg-white/10")}
               >
