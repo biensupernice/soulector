@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import Fuse from "fuse.js";
+import Fuse, { type IFuseOptions } from "fuse.js";
 import {
   EpisodeSearchProjection,
   EpisodeTrackProjection,
@@ -25,7 +25,7 @@ type TrackEntry = {
   combined: string;
 };
 
-const EPISODE_FUSE_OPTIONS: Fuse.IFuseOptions<EpisodeSearchProjection> = {
+const EPISODE_FUSE_OPTIONS: IFuseOptions<EpisodeSearchProjection> = {
   keys: ["name"],
   threshold: 0.3,
   ignoreLocation: true,
@@ -34,7 +34,7 @@ const EPISODE_FUSE_OPTIONS: Fuse.IFuseOptions<EpisodeSearchProjection> = {
   useExtendedSearch: true,
 };
 
-const TRACK_FUSE_OPTIONS: Fuse.IFuseOptions<TrackEntry> = {
+const TRACK_FUSE_OPTIONS: IFuseOptions<TrackEntry> = {
   keys: [
     { name: "track.name", weight: 2 },
     { name: "track.artist", weight: 1 },
