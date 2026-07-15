@@ -188,6 +188,52 @@ export function IconBackThirty(props: any) {
   );
 }
 
+// The circular-arrow shape shared with IconSkipThirty/IconBackThirty, but with
+// the baked-in "30" glyphs removed so we can render the current skip interval
+// as live text instead.
+const SKIP_RING =
+  "M10.54.43v2.93h-.26A10.09 10.09 0 00.43 13.42c0 5.56 4.53 10.07 10.1 10.07 5.59 0 10.11-4.5 10.11-10.07h-2.52a7.57 7.57 0 01-15.16 0 7.56 7.56 0 017.32-7.55h.26v3.3l4.8-4.3-4.8-4.44z";
+const BACK_RING =
+  "M10.55.43v2.93h.26c5.46.13 9.85 4.58 9.85 10.06 0 5.56-4.53 10.07-10.1 10.07C4.96 23.5.44 19 .44 13.42h2.52a7.57 7.57 0 0015.16 0 7.56 7.56 0 00-7.32-7.55h-.26v3.3l-4.8-4.3 4.8-4.44z";
+
+function SkipSecondsIcon({
+  seconds,
+  ring,
+  ...props
+}: { seconds: number; ring: string } & React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 21 24" {...props}>
+      <path fillRule="evenodd" d={ring} clipRule="evenodd" />
+      <text
+        x="10.5"
+        y="16.5"
+        textAnchor="middle"
+        fontSize={seconds >= 100 ? 6.5 : 8}
+        fontWeight={700}
+        fill="currentColor"
+        stroke="none"
+        style={{ fontFamily: "inherit" }}
+      >
+        {seconds}
+      </text>
+    </svg>
+  );
+}
+
+export function IconSkipSeconds({
+  seconds,
+  ...props
+}: { seconds: number } & React.SVGProps<SVGSVGElement>) {
+  return <SkipSecondsIcon seconds={seconds} ring={SKIP_RING} {...props} />;
+}
+
+export function IconBackSeconds({
+  seconds,
+  ...props
+}: { seconds: number } & React.SVGProps<SVGSVGElement>) {
+  return <SkipSecondsIcon seconds={seconds} ring={BACK_RING} {...props} />;
+}
+
 export function IconSearch(props: any) {
   return (
     <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" {...props}>
