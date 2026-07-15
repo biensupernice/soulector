@@ -1,6 +1,6 @@
 import React from "react";
 import cx from "classnames";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { IconBroadcast, IconShuffle } from "../components/Icons";
 
 const spring = { type: "spring", bounce: 0.18, duration: 0.45 } as const;

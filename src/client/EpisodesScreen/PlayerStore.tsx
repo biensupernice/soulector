@@ -1,4 +1,4 @@
-import create from "zustand";
+import { create } from "zustand";
 import { clamp } from "../helpers";
 
 type PlayerLoadingStatus = "loading" | "loaded" | "error";
@@ -47,7 +47,7 @@ export type PlayerStore = {
   };
 };
 
-export const usePlayerStore = create<PlayerStore>((set, get) => ({
+export const usePlayerStore = create<PlayerStore>()((set, get) => ({
   playing: false,
   currentEpisodeId: undefined,
   volume: 100,

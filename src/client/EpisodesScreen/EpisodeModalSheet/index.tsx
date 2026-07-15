@@ -18,9 +18,9 @@ import {
   usePlayerCuePosition,
 } from "../PlayerStore";
 import { useGetEpisode } from "../useEpisodeHooks";
-import Sheet from "react-modal-sheet";
+import { Sheet } from "react-modal-sheet";
 import { useEffect, useRef } from "react";
-import create from "zustand";
+import { create } from "zustand";
 import { trpc } from "@/utils/trpc";
 import { cn } from "@/lib/utils";
 import { EpisodeTrackProjection } from "@/server/router";
@@ -32,7 +32,7 @@ interface EpisodeModalSheetStore {
     close: () => void;
   };
 }
-export const useEpisodeModalSheetStore = create<EpisodeModalSheetStore>(
+export const useEpisodeModalSheetStore = create<EpisodeModalSheetStore>()(
   (set) => ({
     isOpen: false,
     actions: {
