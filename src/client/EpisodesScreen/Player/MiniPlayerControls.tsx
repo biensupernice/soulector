@@ -1,6 +1,6 @@
 import React, { useRef, useLayoutEffect, useState } from "react";
 import { formatDate } from "../../helpers";
-import { IconPause, IconPlay, IconSkipThirty } from "../../components/Icons";
+import { IconPause, IconPlay, IconSkipSeconds } from "../../components/Icons";
 import cx from "classnames";
 import { motion } from "framer-motion";
 import { PlayerControlsProps } from "./PlayerControls";
@@ -86,6 +86,7 @@ export function MiniPlayerControls({
   onForward,
   onRewind,
   loading,
+  skipInterval,
   onClick,
 }: MiniPlayerControlsPromps) {
   return (
@@ -124,8 +125,8 @@ export function MiniPlayerControls({
         <div className="flex items-center justify-center space-x-4">
           <motion.button
             whileTap={{ scale: 0.9 }}
-            title="Forward 30 seconds"
-            onClick={() => onForward(30)}
+            title={`Forward ${skipInterval} seconds`}
+            onClick={() => onForward(skipInterval)}
             className={cx(
               "rounded-fullp-1 text-gray-700",
               "transition-all duration-200 ease-in-out",
@@ -133,7 +134,7 @@ export function MiniPlayerControls({
               "focus:bg-gray-200 focus:outline-none"
             )}
           >
-            <IconSkipThirty className="h-8 w-8 fill-current" />
+            <IconSkipSeconds seconds={skipInterval} className="h-8 w-8 fill-current" />
           </motion.button>
           <motion.button
             whileTap={{ scale: 0.9 }}

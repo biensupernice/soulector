@@ -3,8 +3,8 @@ import { formatDate, formatTime } from "../../helpers";
 import {
   IconPause,
   IconPlay,
-  IconBackThirty,
-  IconSkipThirty,
+  IconBackSeconds,
+  IconSkipSeconds,
   IconSoundcloud,
   IconSpeaker,
 } from "../../components/Icons";
@@ -30,6 +30,7 @@ export type PlayerControlsProps = {
   onRewind: (secs: number) => void;
   episodeDuration: number;
   loading: boolean;
+  skipInterval: number;
 };
 export function PlayerControls({
   episode,
@@ -47,6 +48,7 @@ export function PlayerControls({
   onForward,
   onRewind,
   loading,
+  skipInterval,
 }: PlayerControlsProps) {
   const [seeking, setSeeking] = useState(false);
   const [seekPosition, setSeekPosition] = useState(progress);
@@ -109,8 +111,8 @@ export function PlayerControls({
         <div className="flex items-center justify-center space-x-4">
           <motion.button
             whileTap={{ scale: 0.9 }}
-            title="Rewind 30 seconds"
-            onClick={() => onRewind(30)}
+            title={`Rewind ${skipInterval} seconds`}
+            onClick={() => onRewind(skipInterval)}
             className={cx(
               "rounded-full bg-transparent p-2 text-gray-700",
               "transition-all duration-200 ease-in-out",
@@ -118,7 +120,7 @@ export function PlayerControls({
               "focus:bg-gray-200 focus:outline-none",
             )}
           >
-            <IconBackThirty className="h-8 w-8 fill-current" />
+            <IconBackSeconds seconds={skipInterval} className="h-8 w-8 fill-current" />
           </motion.button>
           <motion.button
             whileTap={{ scale: 0.9 }}
@@ -164,8 +166,8 @@ export function PlayerControls({
 
           <motion.button
             whileTap={{ scale: 0.9 }}
-            title="Forward 30 seconds"
-            onClick={() => onForward(30)}
+            title={`Forward ${skipInterval} seconds`}
+            onClick={() => onForward(skipInterval)}
             className={cx(
               "rounded-full bg-transparent p-2 text-gray-700",
               "transition-all duration-200 ease-in-out",
@@ -173,7 +175,7 @@ export function PlayerControls({
               "focus:bg-gray-200 focus:outline-none",
             )}
           >
-            <IconSkipThirty className="h-8 w-8 fill-current" />
+            <IconSkipSeconds seconds={skipInterval} className="h-8 w-8 fill-current" />
           </motion.button>
         </div>
         <div className="w-full max-w-3xl">

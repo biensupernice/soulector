@@ -16,6 +16,7 @@ import {
   usePlayerLoadingStatus,
   usePlayerActions,
   usePlayerCuePosition,
+  usePlayerSkipInterval,
 } from "../PlayerStore";
 import { useGetEpisode } from "../useEpisodeHooks";
 import Sheet from "react-modal-sheet";
@@ -340,6 +341,7 @@ export function EpisodeSheetPlayer({ episodeId }: EpisodeSheetPlayerProps) {
   const progress = usePlayerProgress();
   const episodeDuration = usePlayerEpisodeDuration();
   const loadingStatus = usePlayerLoadingStatus();
+  const skipInterval = usePlayerSkipInterval();
   const currentEpisode = useGetEpisode(episodeId);
 
   const playerActions = usePlayerActions();
@@ -361,6 +363,7 @@ export function EpisodeSheetPlayer({ episodeId }: EpisodeSheetPlayerProps) {
       onRewind={playerActions.rewind}
       episodeDuration={episodeDuration}
       loading={loadingStatus === "loading"}
+      skipInterval={skipInterval}
     />
   );
 }

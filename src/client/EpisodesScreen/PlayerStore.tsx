@@ -3,6 +3,21 @@ import { clamp } from "../helpers";
 
 type PlayerLoadingStatus = "loading" | "loaded" | "error";
 
+/**
+ * The skip amount (in seconds) used by the forward/back buttons and arrow-key
+ * shortcuts. Shift+arrow on an episode without tracks steps through these,
+ * "incrementing" the jump each press, and the current value is what the 30s
+ * player buttons display.
+ */
+export const SKIP_INTERVALS = [30, 60, 90, 120] as const;
+export const DEFAULT_SKIP_INTERVAL = SKIP_INTERVALS[0];
+
+function nextSkipInterval(current: number): number {
+  const idx = SKIP_INTERVALS.indexOf(current as (typeof SKIP_INTERVALS)[number]);
+  const nextIdx = (idx + 1) % SKIP_INTERVALS.length;
+  return SKIP_INTERVALS[nextIdx];
+}
+
 export type StreamUrls = {
   http_mp3_128_url: string;
   hls_mp3_128_url: string;
@@ -18,6 +33,7 @@ export type PlayerStore = {
   episodeDuration: number;
   cuePosition: number;
   lastVol: number;
+  skipInterval: number;
   loadingStatus: PlayerLoadingStatus;
   currentEpisodeStreamUrls: StreamUrls | null;
   /**
@@ -39,6 +55,8 @@ export type PlayerStore = {
     setCuePosition: (cuePos: number) => void;
     forward: (secs: number) => void;
     rewind: (secs: number) => void;
+    skipForwardIncrementing: () => void;
+    skipBackwardIncrementing: () => void;
     setEpisodeDuration: (duration: number) => void;
     loadEpisode: (episodeId: string, seekMillis?: number) => void;
     applyInitialSeek: () => void;
@@ -55,6 +73,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   progress: 0,
   episodeDuration: 0,
   cuePosition: 0,
+  skipInterval: DEFAULT_SKIP_INTERVAL,
   loadingStatus: "loading",
   currentEpisodeStreamUrls: null,
   initialSeekMillis: null,
@@ -158,6 +177,16 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
         cuePosition: get().progress - secs * 1000,
       });
     },
+    skipForwardIncrementing() {
+      const next = nextSkipInterval(get().skipInterval);
+      set({ skipInterval: next });
+      get().actions.forward(next);
+    },
+    skipBackwardIncrementing() {
+      const next = nextSkipInterval(get().skipInterval);
+      set({ skipInterval: next });
+      get().actions.rewind(next);
+    },
     setVolume(vol: number) {
       set({
         volume: clamp(vol, 0, 100),
@@ -201,6 +230,9 @@ export const usePlayerLoadingStatus = () =>
   usePlayerStore((s) => s.loadingStatus);
 export const usePlayerEpisodeDuration = () =>
   usePlayerStore((s) => s.episodeDuration);
+
+export const usePlayerSkipInterval = () =>
+  usePlayerStore((s) => s.skipInterval);
 
 export const usePlayerCurrentEpisodeId = () =>
   usePlayerStore((s) => s.currentEpisodeId);
