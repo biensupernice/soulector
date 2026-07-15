@@ -30,7 +30,7 @@ export function EpisodeOptionsModal() {
   const { addFavorite, removeFavorite } = useFavorites();
   const isFavoriteFast = useIsFavoriteFast();
 
-  const isPlaying = currentEpisodeId === episode?.id ?? false;
+  const isPlaying = currentEpisodeId === episode?.id;
   const isFavorited = isFavoriteFast(episode?.id ?? "");
 
   return (

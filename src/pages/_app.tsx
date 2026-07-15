@@ -1,7 +1,6 @@
-import { AppProps } from "next/dist/shared/lib/router/router";
+import type { AppProps } from "next/app";
 import "../styles/globals.css";
-import { loggerLink } from "@trpc/client/links/loggerLink";
-import { httpBatchLink } from "@trpc/client/links/httpBatchLink";
+import { loggerLink, httpBatchLink } from "@trpc/client";
 import Head from "next/head";
 import { withTRPC } from "@trpc/next";
 import { GoogleAnalytics } from "nextjs-google-analytics";
