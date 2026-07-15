@@ -115,7 +115,7 @@ function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
         <div className="relative mx-3 flex h-1/2 min-h-[14rem] shrink-0 flex-col self-stretch rounded-lg">
           <div className="absolute rounded-lg inset-0 bg-black/20"></div>
           <div className="relative min-h-0 overflow-y-auto">
-            <EpisodeTracksList episodeId={episodeId} />
+            <EpisodeTracksList key={episodeId} episodeId={episodeId} />
           </div>
         </div>
       )}
@@ -163,18 +163,8 @@ export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
   const playerActions = usePlayerActions();
   const progressSecs = progress / 1000;
 
-  const { data, status } = trpc["episode.getTracks"].useQuery(
-    {
-      episodeId,
-    },
-    {
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-    },
-  );
-
-  const loaded = status === "success";
-  const loadedData = loaded ? (data ? data : []) : [];
+  const { data, loaded } = useEpisodeTracks(episodeId);
+  const loadedData = loaded ? (data ?? []) : [];
 
   const possibleTracks = loadedData.filter((t) =>
     t.timestamp ? progressSecs >= t.timestamp : false,
@@ -198,6 +188,11 @@ export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
       if (!container) return;
       const containerRect = container.getBoundingClientRect();
       const elRect = el.getBoundingClientRect();
+      // Already fully visible: leave it be, so we don't fight the user's
+      // scroll position or yank a short list that fits without scrolling.
+      if (elRect.top >= containerRect.top && elRect.bottom <= containerRect.bottom) {
+        return;
+      }
       const delta =
         elRect.top -
         containerRect.top -
@@ -236,11 +231,11 @@ export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
           {loadedData.length} Tracks
         </div>
         <div className="relative space-y">
-          {loadedData.map((t, i) => {
+          {loadedData.map((t) => {
             const isCurrent = currentTrack?.order === t.order;
             return (
               <button
-                key={`${t.order}-${i}`}
+                key={t.order}
                 ref={isCurrent ? currentTrackRef : undefined}
                 onClick={() => onTrackClick(t)}
                 className={cn("w-full relative hover:bg-white/10")}
