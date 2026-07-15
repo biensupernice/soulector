@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { event } from "nextjs-google-analytics";
+import { event } from "../analytics";
 import { radioSlotAt, radioStationKey } from "@/lib/radioSchedule";
 import { EpisodeProjection } from "@/server/router";
 import { usePlayerActions, usePlayerStore } from "./PlayerStore";

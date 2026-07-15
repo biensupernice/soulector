@@ -3,10 +3,30 @@ import "../styles/globals.css";
 import { loggerLink, httpBatchLink } from "@trpc/client";
 import Head from "next/head";
 import { withTRPC } from "@trpc/next";
-import { GoogleAnalytics } from "nextjs-google-analytics";
+import { GoogleAnalytics, sendGAEvent } from "@next/third-parties/google";
+import { useRouter } from "next/router";
+import { useEffect } from "react";
 import { EpisodeRouter } from "@/server/router";
 
+const GA_MEASUREMENT_ID = "G-L570W5HKLD";
+
 function MyApp({ Component, pageProps }: AppProps) {
+  const router = useRouter();
+
+  // @next/third-parties only fires the initial page_view; track SPA route
+  // changes ourselves to preserve the old `trackPageViews` behavior.
+  useEffect(() => {
+    const handleRouteChange = (url: string) => {
+      sendGAEvent("event", "page_view", {
+        page_path: url,
+        page_location: window.location.href,
+        page_title: document.title,
+      });
+    };
+    router.events.on("routeChangeComplete", handleRouteChange);
+    return () => router.events.off("routeChangeComplete", handleRouteChange);
+  }, [router.events]);
+
   return (
     <>
       <Head>
@@ -166,7 +186,7 @@ function MyApp({ Component, pageProps }: AppProps) {
         <link rel="icon" href="/favicon.ico" />
         <meta name="theme-color" content="#FFFFFF" />
       </Head>
-      <GoogleAnalytics gaMeasurementId="G-L570W5HKLD" trackPageViews />
+      <GoogleAnalytics gaId={GA_MEASUREMENT_ID} />
       <Component {...pageProps} />
     </>
   );
