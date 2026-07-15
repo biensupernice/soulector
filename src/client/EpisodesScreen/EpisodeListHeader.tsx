@@ -1,6 +1,6 @@
 import React from "react";
 import cx from "classnames";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 
 export type EpisodeListHeaderProps = {
   filterText?: string;
