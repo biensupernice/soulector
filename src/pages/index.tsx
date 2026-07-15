@@ -7,7 +7,7 @@ import { motion, useScroll, useTransform } from "motion/react";
 import { EpisodeListHandle } from "@/client/EpisodesScreen/EpisodeList";
 
 export type EpisodeListContext = {
-  ref: RefObject<EpisodeListHandle>;
+  ref: RefObject<EpisodeListHandle | null>;
   focusEpisode: (episodeId: string) => void;
 };
 
