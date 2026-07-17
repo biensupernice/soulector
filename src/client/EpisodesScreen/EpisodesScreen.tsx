@@ -6,8 +6,12 @@ import React, {
   useDeferredValue,
 } from "react";
 import Player, { USE_NEW_PLAYER } from "./Player";
-import { ShuffleButton } from "../components/ShuffleButton";
-import { RadioButton } from "../components/RadioButton";
+import {
+  DesktopPlayerFabs,
+  FabVariantSwitcher,
+  MobilePlayerFabs,
+  useFabVariantStore,
+} from "./PlayerFabs";
 import { useRadio } from "./useRadio";
 import { useRadioStore } from "./RadioStore";
 import EpisodeListSpinner from "./EpisodeList/EpisodeListSpinner";
@@ -71,8 +75,11 @@ export function EpisodesScreen({ searchText }: Props) {
 
   const { ref: episodeListRef } = useContext(EpisodeListContext);
 
+  const loadPersistedFabVariant = useFabVariantStore((s) => s.loadPersisted);
+
   useEffect(() => {
     loadPersistedCollective();
+    loadPersistedFabVariant();
   }, []);
 
   const {
@@ -242,29 +249,42 @@ export function EpisodesScreen({ searchText }: Props) {
         </div>
         <div className="fixed bottom-0 right-0 z-20 w-full bg-white pb-safe-bottom">
           {shouldShowSuffleButton || searchOpen ? (
-            <div className="absolute bottom-full right-0 mb-2 flex flex-col items-end justify-end space-y-2 pr-3 md:mb-4">
-              <button
-                onClick={openSearch}
-                className={cn(
-                  "border border-accent/30 bg-white font-semibold text-accent transition-all hover:bg-gray-50 ",
-                  "items-center space-x-1 px-4 py-3",
-                  "rounded-full",
-                  "shadow-md",
-                  "hidden focus:outline-none",
-                  !searchOpen && "flex sm:hidden",
+            <>
+              <div className="absolute bottom-full right-0 mb-2 flex flex-col items-end justify-end space-y-2 pr-3 md:mb-4">
+                <button
+                  onClick={openSearch}
+                  className={cn(
+                    "border border-accent/30 bg-white font-semibold text-accent transition-all hover:bg-gray-50 ",
+                    "items-center space-x-1 px-4 py-3",
+                    "rounded-full",
+                    "shadow-md",
+                    "hidden focus:outline-none",
+                    !searchOpen && "flex sm:hidden",
+                  )}
+                >
+                  <IconSearch className="h-5 w-5 fill-current" />
+                  <div>Search</div>
+                </button>
+                {isWideScreen ? (
+                  <DesktopPlayerFabs
+                    on={radio.isOn}
+                    onRadioClick={radio.isOn ? radio.tuneOut : radio.tuneIn}
+                    onShuffleClick={onRandomClick}
+                  />
+                ) : (
+                  <MobilePlayerFabs
+                    on={radio.isOn}
+                    onRadioClick={radio.isOn ? radio.tuneOut : radio.tuneIn}
+                    onShuffleClick={onRandomClick}
+                  />
                 )}
-              >
-                <IconSearch className="h-5 w-5 fill-current" />
-                <div>Search</div>
-              </button>
-              <div className="flex items-center space-x-2">
-                <RadioButton
-                  on={radio.isOn}
-                  onClick={radio.isOn ? radio.tuneOut : radio.tuneIn}
-                />
-                <ShuffleButton onClick={onRandomClick} />
               </div>
-            </div>
+              {!isWideScreen && (
+                <div className="absolute bottom-full left-0 mb-2 ml-3">
+                  <FabVariantSwitcher />
+                </div>
+              )}
+            </>
           ) : null}
           {currentEpisodeId && <Player currentEpisodeId={currentEpisodeId} />}
           {USE_NEW_PLAYER && currentEpisodeId && currentEpisodeStreamUrls && (
