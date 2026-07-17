@@ -7,6 +7,9 @@ import React, {
 } from "react";
 import Player, { USE_NEW_PLAYER } from "./Player";
 import { ShuffleButton } from "../components/ShuffleButton";
+import { RadioButton } from "../components/RadioButton";
+import { useRadio } from "./useRadio";
+import { useRadioStore } from "./RadioStore";
 import EpisodeListSpinner from "./EpisodeList/EpisodeListSpinner";
 import { EpisodeList } from "./EpisodeList";
 import { useEpisodesScreenState } from "./useEpisodesScreenState";
@@ -155,6 +158,8 @@ export function EpisodesScreen({ searchText }: Props) {
 
   const isWideScreen = useMedia("(min-width: 768px)");
 
+  const radio = useRadio();
+
   const shouldShowSuffleButton = !searchText && episodes;
 
   function onSectionClick(section: "all" | "favorites") {
@@ -252,7 +257,13 @@ export function EpisodesScreen({ searchText }: Props) {
                 <IconSearch className="h-5 w-5 fill-current" />
                 <div>Search</div>
               </button>
-              <ShuffleButton onClick={onRandomClick} />
+              <div className="flex items-center space-x-2">
+                <RadioButton
+                  on={radio.isOn}
+                  onClick={radio.isOn ? radio.tuneOut : radio.tuneIn}
+                />
+                <ShuffleButton onClick={onRandomClick} />
+              </div>
             </div>
           ) : null}
           {currentEpisodeId && <Player currentEpisodeId={currentEpisodeId} />}
@@ -334,6 +345,16 @@ export function EpisodeAudioPlayer({
     setNavigatorMediaMetadata(episode);
   }
 
+  function onEnded() {
+    // Stored durations can slightly overshoot the real audio, so the audio
+    // may run out before the scheduled slot boundary. Flag it so the radio
+    // advances at the boundary instead of treating this as a user pause.
+    const radio = useRadioStore.getState();
+    if (radio.isOn) {
+      radio.actions.markPlaybackEnded();
+    }
+  }
+
   return (
     <AudioPlayer
       playing={playing}
@@ -342,6 +363,7 @@ export function EpisodeAudioPlayer({
       onPlayProgressChange={onPlayProgressChange}
       onPause={onPause}
       onPlay={onPlay}
+      onEnded={onEnded}
       volume={volume}
       cuePosition={cuePosition}
     />

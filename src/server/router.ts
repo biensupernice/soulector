@@ -70,6 +70,10 @@ export function episodeProjectionFromDb(e: WithId<DBEpisode>) {
     permalinkUrl: e.url,
     collectiveSlug: e.collective_slug,
     artworkUrl: e.picture_large,
+    // MIXCLOUD episodes are only playable through their archive mirror, so
+    // without one getStreamUrl has nothing to return. Radio mode uses this to
+    // keep unplayable episodes out of the broadcast schedule.
+    hasStreamableAudio: e.source !== "MIXCLOUD" || !!e.archive_url,
   } as const;
 }
 
@@ -99,6 +103,7 @@ export function episodeProjectionFromFromObj(
     permalinkUrl: e.url,
     collectiveSlug: e.collective_slug,
     artworkUrl: e.picture_large,
+    hasStreamableAudio: true,
   } as const;
 }
 
@@ -350,6 +355,7 @@ export const episodeRouter = router({
             url: 1,
             picture_large: 1,
             collective_slug: 1,
+            archive_url: 1,
           },
         })
         .sort({
@@ -393,6 +399,7 @@ export const episodeRouter = router({
             url: 1,
             picture_large: 1,
             collective_slug: 1,
+            archive_url: 1,
             "tracks.order": 1,
             "tracks.name": 1,
             "tracks.artist": 1,

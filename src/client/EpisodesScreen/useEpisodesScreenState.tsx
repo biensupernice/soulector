@@ -2,6 +2,7 @@ import { trpc } from "@/utils/trpc";
 import { sample } from "lodash-es";
 import { event } from "nextjs-google-analytics";
 import { usePlayerActions, usePlayerStore } from "./PlayerStore";
+import { useRadioStore } from "./RadioStore";
 import { useEpisodes } from "./useEpisodeHooks";
 import { useCustomMutation } from "../infra/useCustomMutation";
 import { useEpisodeModalSheetActions } from "./EpisodeModalSheet";
@@ -26,6 +27,9 @@ export function useEpisodesScreenState() {
 
   async function onEpisodeClick(episodeId: string) {
     if (episodes) {
+      // Picking an episode by hand takes over from the radio broadcast.
+      useRadioStore.getState().actions.tuneOut();
+
       const episode = episodes.find((e) => e.id === episodeId);
       event("Track Click", {
         category: "User",
@@ -47,6 +51,8 @@ export function useEpisodesScreenState() {
 
   async function onTrackClick(episodeId: string, timestampSecs?: number) {
     if (episodes) {
+      useRadioStore.getState().actions.tuneOut();
+
       const episode = episodes.find((e) => e.id === episodeId);
       event("Track Search Play", {
         category: "User",
@@ -70,6 +76,8 @@ export function useEpisodesScreenState() {
   }
 
   function onRandomClick() {
+    useRadioStore.getState().actions.tuneOut();
+
     event("Play Random", {
       category: "Action",
     });
