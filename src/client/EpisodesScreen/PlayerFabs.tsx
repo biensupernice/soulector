@@ -3,13 +3,10 @@ import create from "zustand";
 import cx from "classnames";
 import { motion } from "framer-motion";
 import { IconBroadcast, IconShuffle } from "../components/Icons";
-import { ShuffleButton } from "../components/ShuffleButton";
 
 /**
- * The floating radio/shuffle actions.
- *
- * Desktop keeps two stacked pills. On mobile the pair renders as a FAB
- * cluster where "on air" swaps which control gets the expanded treatment.
+ * The floating radio/shuffle actions: a FAB cluster (all screen sizes)
+ * where "on air" swaps which control gets the expanded treatment.
  * Several visual variants are in trial — flip through them with the
  * floating style switcher (persisted per device). Once one wins, the
  * others and the switcher go away.
@@ -85,27 +82,7 @@ type FabActionProps = {
   onShuffleClick: () => void;
 };
 
-/** Desktop: inverted radio pill stacked above the shuffle pill. */
-export function DesktopPlayerFabs({
-  on,
-  onRadioClick,
-  onShuffleClick,
-}: FabActionProps) {
-  return (
-    <div className="flex flex-col items-end space-y-2">
-      <button
-        onClick={onRadioClick}
-        className={cx(fabBase, "px-5 py-3", on ? filledStyle : invertedStyle)}
-      >
-        {on ? <PulseDot /> : <IconBroadcast className="h-5 w-5" />}
-        <span className="ml-2">{on ? "On Air" : "Radio"}</span>
-      </button>
-      <ShuffleButton onClick={onShuffleClick} />
-    </div>
-  );
-}
-
-export function MobilePlayerFabs(props: FabActionProps) {
+export function PlayerFabs(props: FabActionProps) {
   const variant = useFabVariantStore((s) => s.variant);
   switch (variant) {
     case "swap":
@@ -129,6 +106,7 @@ function SwapFabs({ on, onRadioClick, onShuffleClick }: FabActionProps) {
         layout
         transition={spring}
         onClick={onRadioClick}
+        aria-label={on ? "On Air" : "Radio"}
         className={cx(
           fabBase,
           on ? cx(filledStyle, "px-5 py-3") : cx(invertedStyle, "p-3"),
@@ -147,6 +125,7 @@ function SwapFabs({ on, onRadioClick, onShuffleClick }: FabActionProps) {
         layout
         transition={spring}
         onClick={onShuffleClick}
+        aria-label="Play Random"
         className={cx(
           fabBase,
           on ? cx(invertedStyle, "p-3") : cx(filledStyle, "px-5 py-3"),
@@ -175,6 +154,7 @@ function CompactFabs({ on, onRadioClick, onShuffleClick }: FabActionProps) {
       <span className="relative inline-flex">
         <button
           onClick={onRadioClick}
+          aria-label={on ? "On Air" : "Radio"}
           className={cx(fabBase, "p-3", on ? filledStyle : invertedStyle)}
         >
           <IconBroadcast className="h-6 w-6" />
@@ -188,6 +168,7 @@ function CompactFabs({ on, onRadioClick, onShuffleClick }: FabActionProps) {
       </span>
       <button
         onClick={onShuffleClick}
+        aria-label="Play Random"
         className={cx(fabBase, "p-3", filledStyle)}
       >
         <IconShuffle className="h-6 w-6 fill-current" />
@@ -212,6 +193,7 @@ function ClusterFabs({ on, onRadioClick, onShuffleClick }: FabActionProps) {
         layout
         transition={spring}
         onClick={onRadioClick}
+        aria-label={on ? "On Air" : "Radio"}
         className={cx(
           "flex items-center justify-center font-semibold focus:outline-none",
           on
@@ -233,6 +215,7 @@ function ClusterFabs({ on, onRadioClick, onShuffleClick }: FabActionProps) {
         layout
         transition={spring}
         onClick={onShuffleClick}
+        aria-label="Play Random"
         className={cx(
           "flex items-center justify-center font-semibold text-accent hover:bg-gray-50 focus:outline-none",
           on ? "px-4 py-3" : "px-5 py-3",

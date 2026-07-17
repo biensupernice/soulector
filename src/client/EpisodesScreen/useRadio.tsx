@@ -7,7 +7,6 @@ import { useRadioStore } from "./RadioStore";
 import { useEpisodes } from "./useEpisodeHooks";
 import { usePlayEpisodeMutation } from "./useEpisodesScreenState";
 import { useCollectiveSelectStore } from "./Navbar";
-import { useEpisodeModalSheetActions } from "./EpisodeModalSheet";
 
 /**
  * Playback naturally lags the schedule a little (stream load time, timer
@@ -52,7 +51,6 @@ export function useRadio() {
   const radioActions = useRadioStore((s) => s.actions);
   const playing = usePlayerStore((s) => s.playing);
   const playerActions = usePlayerActions();
-  const episodeModalSheetActions = useEpisodeModalSheetActions();
   const { mutate } = usePlayEpisodeMutation();
 
   const tuneToNow = useCallback(() => {
@@ -81,12 +79,12 @@ export function useRadio() {
     return true;
   }, [episodes, selectedCollective, playerActions, radioActions, mutate]);
 
+  // Unlike manual plays, tuning in doesn't open the episode sheet — the
+  // mini player picking up the broadcast is the feedback.
   const tuneIn = useCallback(() => {
     event("Radio Tune In", { category: "Action" });
-    if (tuneToNow()) {
-      episodeModalSheetActions.open();
-    }
-  }, [tuneToNow, episodeModalSheetActions]);
+    tuneToNow();
+  }, [tuneToNow]);
 
   // Leaves the current episode playing; only the "follow the broadcast"
   // behavior stops.

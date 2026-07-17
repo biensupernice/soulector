@@ -7,9 +7,8 @@ import React, {
 } from "react";
 import Player, { USE_NEW_PLAYER } from "./Player";
 import {
-  DesktopPlayerFabs,
   FabVariantSwitcher,
-  MobilePlayerFabs,
+  PlayerFabs,
   useFabVariantStore,
 } from "./PlayerFabs";
 import { useRadio } from "./useRadio";
@@ -265,25 +264,15 @@ export function EpisodesScreen({ searchText }: Props) {
                   <IconSearch className="h-5 w-5 fill-current" />
                   <div>Search</div>
                 </button>
-                {isWideScreen ? (
-                  <DesktopPlayerFabs
-                    on={radio.isOn}
-                    onRadioClick={radio.isOn ? radio.tuneOut : radio.tuneIn}
-                    onShuffleClick={onRandomClick}
-                  />
-                ) : (
-                  <MobilePlayerFabs
-                    on={radio.isOn}
-                    onRadioClick={radio.isOn ? radio.tuneOut : radio.tuneIn}
-                    onShuffleClick={onRandomClick}
-                  />
-                )}
+                <PlayerFabs
+                  on={radio.isOn}
+                  onRadioClick={radio.isOn ? radio.tuneOut : radio.tuneIn}
+                  onShuffleClick={onRandomClick}
+                />
               </div>
-              {!isWideScreen && (
-                <div className="absolute bottom-full left-0 mb-2 ml-3">
-                  <FabVariantSwitcher />
-                </div>
-              )}
+              <div className="absolute bottom-full left-0 mb-2 ml-3">
+                <FabVariantSwitcher />
+              </div>
             </>
           ) : null}
           {currentEpisodeId && <Player currentEpisodeId={currentEpisodeId} />}
