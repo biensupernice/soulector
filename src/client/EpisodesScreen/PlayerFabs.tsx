@@ -92,19 +92,15 @@ export function DesktopPlayerFabs({
   onShuffleClick,
 }: FabActionProps) {
   return (
-    <div className="flex flex-col items-stretch space-y-2">
+    <div className="flex flex-col items-end space-y-2">
       <button
         onClick={onRadioClick}
-        className={cx(
-          fabBase,
-          "px-5 py-3 md:px-12",
-          on ? filledStyle : invertedStyle,
-        )}
+        className={cx(fabBase, "px-5 py-3", on ? filledStyle : invertedStyle)}
       >
         {on ? <PulseDot /> : <IconBroadcast className="h-5 w-5" />}
         <span className="ml-2">{on ? "On Air" : "Radio"}</span>
       </button>
-      <ShuffleButton className="justify-center" onClick={onShuffleClick} />
+      <ShuffleButton onClick={onShuffleClick} />
     </div>
   );
 }
