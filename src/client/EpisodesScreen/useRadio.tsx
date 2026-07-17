@@ -16,6 +16,18 @@ import { useEpisodeModalSheetActions } from "./EpisodeModalSheet";
  */
 const LIVE_DRIFT_TOLERANCE_MS = 10_000;
 
+/**
+ * Drift correction: the tune-in seek targets the live offset computed at
+ * click time, but stream resolution and buffering delay actual playback by
+ * a device-dependent few seconds, leaving every device behind live by a
+ * different amount. While on air, playback that has drifted beyond this is
+ * snapped back to the live position.
+ */
+const DRIFT_CORRECTION_MIN_MS = 4_000;
+const DRIFT_CHECK_INTERVAL_MS = 5_000;
+/** Don't bother re-syncing into the last moments of a slot. */
+const SLOT_END_GUARD_MS = 8_000;
+
 type Collective = ReturnType<typeof useCollectiveSelectStore.getState>["selected"];
 
 function radioPool(episodes: EpisodeProjection[], collective: Collective) {
@@ -120,6 +132,44 @@ export function useRadio() {
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [isOn, slot, waitingForBoundary, tuneToNow]);
+
+  // Keep playback pinned to the live position. Each seek costs a re-buffer,
+  // so a correction raises the threshold for the next one (reset per slot):
+  // fast connections converge in one hop, slow ones settle at an honest lag
+  // instead of seeking in a loop.
+  const driftThresholdRef = useRef(DRIFT_CORRECTION_MIN_MS);
+  useEffect(() => {
+    if (!isOn || !slot) return;
+    driftThresholdRef.current = DRIFT_CORRECTION_MIN_MS;
+
+    const interval = window.setInterval(() => {
+      const player = usePlayerStore.getState();
+      if (
+        !player.playing ||
+        player.loadingStatus !== "loaded" ||
+        player.initialSeekMillis !== null ||
+        player.currentEpisodeId !== slot.episodeId
+      ) {
+        return;
+      }
+
+      const liveOffsetMs = Date.now() - slot.startsAtMs;
+      if (liveOffsetMs >= slot.endsAtMs - slot.startsAtMs - SLOT_END_GUARD_MS) {
+        return;
+      }
+
+      const driftMs = liveOffsetMs - player.progress;
+      if (Math.abs(driftMs) > driftThresholdRef.current) {
+        driftThresholdRef.current = Math.min(
+          driftThresholdRef.current * 2,
+          60_000,
+        );
+        playerActions.setCuePosition(liveOffsetMs);
+      }
+    }, DRIFT_CHECK_INTERVAL_MS);
+
+    return () => window.clearInterval(interval);
+  }, [isOn, slot, playerActions]);
 
   // Radio semantics for resume: catch back up with the live broadcast
   // instead of continuing from where playback was paused.
