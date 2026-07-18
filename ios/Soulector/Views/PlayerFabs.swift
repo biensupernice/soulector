@@ -98,14 +98,14 @@ private struct PulseDot: View {
                 .frame(width: 10, height: 10)
                 .scaleEffect(pulsing ? 2.2 : 1)
                 .opacity(pulsing ? 0 : 0.75)
+                // Scoped to this circle. A withAnimation in onAppear would
+                // fire inside the cluster's morph spring transaction and leak
+                // the repeatForever onto the rest of the screen's layout.
+                .animation(.easeOut(duration: 1).repeatForever(autoreverses: false), value: pulsing)
             Circle()
                 .fill(Color.white)
                 .frame(width: 10, height: 10)
         }
-        .onAppear {
-            withAnimation(.easeOut(duration: 1).repeatForever(autoreverses: false)) {
-                pulsing = true
-            }
-        }
+        .onAppear { pulsing = true }
     }
 }

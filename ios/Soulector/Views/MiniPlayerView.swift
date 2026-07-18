@@ -105,6 +105,7 @@ private struct MarqueeText: View {
     @State private var textWidth: CGFloat = 0
     @State private var containerWidth: CGFloat = 0
     @State private var offset: CGFloat = 0
+    @State private var generation = 0
 
     private var shouldMarquee: Bool { containerWidth > 0 && textWidth > containerWidth }
 
@@ -163,10 +164,19 @@ private struct MarqueeText: View {
         noAnim.disablesAnimations = true
         withTransaction(noAnim) { offset = 0 }
 
+        generation += 1
         guard shouldMarquee, textWidth > 0 else { return }
         let distance = textWidth + gap
-        withAnimation(.linear(duration: Double(distance / speed)).repeatForever(autoreverses: false)) {
-            offset = -distance
+        let started = generation
+        // Deferred a tick: restart() fires during layout (width measurement,
+        // the mini player's slide-in), and a repeatForever started inside an
+        // in-flight transaction leaks onto every view animating in it —
+        // sending the whole screen sliding by the marquee distance forever.
+        DispatchQueue.main.async {
+            guard started == generation else { return }
+            withAnimation(.linear(duration: Double(distance / speed)).repeatForever(autoreverses: false)) {
+                offset = -distance
+            }
         }
     }
 }
