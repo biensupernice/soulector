@@ -90,8 +90,7 @@ export function useRadio() {
   }, [tuneToNow]);
 
   // Leaves the current episode playing; only the "follow the broadcast"
-  // behavior stops. The analytics event lives in the store action so
-  // manual-takeover tune-outs are counted too.
+  // behavior stops.
   const tuneOut = useCallback(() => {
     radioActions.tuneOut();
   }, [radioActions]);
