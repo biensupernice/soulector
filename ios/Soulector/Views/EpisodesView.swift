@@ -9,6 +9,7 @@ struct EpisodesView: View {
     @EnvironmentObject var episodesVM: EpisodesViewModel
     @EnvironmentObject var playerStore: PlayerStore
     @EnvironmentObject var favoritesStore: FavoritesStore
+    @EnvironmentObject var radioStore: RadioStore
 
     @State private var selectedTab: EpisodeTab = .all
     @State private var showSearch = false
@@ -65,6 +66,35 @@ struct EpisodesView: View {
                     .presentationDragIndicator(.hidden)
             }
 
+            // Floating radio/shuffle cluster (mirrors the web PlayerFabs),
+            // tucked into the bottom-right corner above the mini player.
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    PlayerFabs(
+                        on: radioStore.isOn,
+                        onRadioTap: {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            if radioStore.isOn {
+                                radioStore.tuneOut()
+                            } else {
+                                radioStore.tuneIn()
+                            }
+                        },
+                        onShuffleTap: {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            radioStore.tuneOut()
+                            if let episode = episodesVM.filteredEpisodes.randomElement() {
+                                Task { await playerStore.play(episode: episode) }
+                            }
+                        }
+                    )
+                }
+            }
+            .padding(.trailing, 16)
+            .padding(.bottom, playerStore.hasEpisode ? 76 : 16)
+
             // Mini player pinned to bottom
             if playerStore.hasEpisode {
                 MiniPlayerView(onTap: { selectedEpisode = playerStore.currentEpisode })
@@ -74,8 +104,22 @@ struct EpisodesView: View {
         .animation(.spring(duration: 0.3), value: playerStore.hasEpisode)
         .task { await episodesVM.fetchEpisodes() }
         .onAppear {
-            playerStore.onEpisodeEnded = { [weak episodesVM] finished in
+            radioStore.configure(player: playerStore, episodesVM: episodesVM)
+            playerStore.onEpisodeEnded = { [weak episodesVM, weak playerStore, weak radioStore] finished in
+                // While on air the schedule decides what plays next, not the
+                // list order. A natural end keeps the radio waiting for the
+                // slot boundary; "next track" from the lock screen while
+                // audio is still playing is the user taking over.
+                if let radioStore, radioStore.isOn {
+                    if playerStore?.isPlaying == true {
+                        radioStore.tuneOut()
+                    } else {
+                        radioStore.handlePlaybackEnded()
+                        return
+                    }
+                }
                 guard let vm = episodesVM,
+                      let playerStore,
                       let idx = vm.filteredEpisodes.firstIndex(where: { $0.id == finished.id }),
                       idx + 1 < vm.filteredEpisodes.count
                 else { return }
@@ -107,19 +151,7 @@ struct EpisodesView: View {
             Spacer()
 
             HStack(spacing: 4) {
-                // Shuffle
-                Button(action: {
-                    if let episode = episodesVM.filteredEpisodes.randomElement() {
-                        Task { await playerStore.play(episode: episode) }
-                    }
-                }) {
-                    Image(systemName: "shuffle")
-                        .font(.system(size: 18))
-                        .foregroundColor(.white)
-                        .frame(width: 40, height: 40)
-                }
-
-                // Search toggle
+                // Search toggle (shuffle lives in the floating cluster below)
                 Button(action: {
                     withAnimation(.easeInOut(duration: 0.2)) { showSearch.toggle() }
                     if showSearch {
@@ -299,10 +331,12 @@ struct EpisodesView: View {
                 bottomPadding: playerStore.hasEpisode ? 70 : 0,
                 isFavorite: { favoritesStore.isFavorite($0) },
                 onEpisodeTap: { episode in
+                    radioStore.tuneOut()
                     selectedEpisode = episode
                     Task { await playerStore.play(episode: episode) }
                 },
                 onTrackTap: { episode, timestamp in
+                    radioStore.tuneOut()
                     selectedEpisode = episode
                     Task { await playerStore.play(episode: episode, startingAt: timestamp.map(Double.init)) }
                 },
@@ -355,6 +389,8 @@ struct EpisodesView: View {
                         isPlaying: playerStore.currentEpisode?.id == episode.id,
                         isFavorite: favoritesStore.isFavorite(episode.id),
                         onTap: {
+                            // Manual plays take over from the radio (web parity).
+                            radioStore.tuneOut()
                             selectedEpisode = episode
                             Task { await playerStore.play(episode: episode) }
                         },

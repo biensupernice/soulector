@@ -31,6 +31,12 @@ final class PlayerStore: ObservableObject {
     /// Called when an episode plays to completion. Set by the view layer to implement auto-advance.
     var onEpisodeEnded: ((Episode) -> Void)?
 
+    /// Emits the target time (seconds) of every user-initiated seek — slider,
+    /// skip buttons, lock-screen scrubbing. Programmatic seeks (the initial
+    /// cue on load, radio drift corrections) don't emit, so subscribers can
+    /// treat every event as the user taking control of playback.
+    let userSeeks = PassthroughSubject<Double, Never>()
+
     var isPlaying: Bool { state == .playing }
     var isLoading: Bool { state == .loading }
     var hasEpisode: Bool { currentEpisode != nil }
@@ -186,7 +192,7 @@ final class PlayerStore: ObservableObject {
                     self.updateDuration()
                     if let seek = self.pendingSeek {
                         self.pendingSeek = nil
-                        self.seek(to: seek)
+                        self.seek(to: seek, userInitiated: false)
                     }
                     self.player?.play()
                     self.state = .playing
@@ -248,7 +254,10 @@ final class PlayerStore: ObservableObject {
         isPlaying ? pause() : resume()
     }
 
-    func seek(to time: Double) {
+    func seek(to time: Double, userInitiated: Bool = true) {
+        if userInitiated {
+            userSeeks.send(time)
+        }
         isSeeking = true
         let cmTime = CMTime(seconds: time, preferredTimescale: 600)
         currentTime = max(0, min(time, duration))
