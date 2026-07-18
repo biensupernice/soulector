@@ -25,6 +25,12 @@
 		AA000023 /* RadioSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000023 /* RadioSchedule.swift */; };
 		AA000024 /* RadioStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000024 /* RadioStore.swift */; };
 		AA000025 /* PlayerFabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000025 /* PlayerFabs.swift */; };
+		AA000026 /* AppFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000026 /* AppFont.swift */; };
+		AA000027 /* SpaceGrotesk-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000027 /* SpaceGrotesk-Light.ttf */; };
+		AA000028 /* SpaceGrotesk-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000028 /* SpaceGrotesk-Regular.ttf */; };
+		AA000029 /* SpaceGrotesk-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000029 /* SpaceGrotesk-Medium.ttf */; };
+		AA000030 /* SpaceGrotesk-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000030 /* SpaceGrotesk-SemiBold.ttf */; };
+		AA000031 /* SpaceGrotesk-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000031 /* SpaceGrotesk-Bold.ttf */; };
 		AA000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000014 /* Assets.xcassets */; };
 		AA000015 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000015 /* Preview Assets.xcassets */; };
 /* End PBXBuildFile section */
@@ -49,6 +55,12 @@
 		AB000023 /* RadioSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioSchedule.swift; sourceTree = "<group>"; };
 		AB000024 /* RadioStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioStore.swift; sourceTree = "<group>"; };
 		AB000025 /* PlayerFabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerFabs.swift; sourceTree = "<group>"; };
+		AB000026 /* AppFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppFont.swift; sourceTree = "<group>"; };
+		AB000027 /* SpaceGrotesk-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Light.ttf"; sourceTree = "<group>"; };
+		AB000028 /* SpaceGrotesk-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Regular.ttf"; sourceTree = "<group>"; };
+		AB000029 /* SpaceGrotesk-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Medium.ttf"; sourceTree = "<group>"; };
+		AB000030 /* SpaceGrotesk-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-SemiBold.ttf"; sourceTree = "<group>"; };
+		AB000031 /* SpaceGrotesk-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Bold.ttf"; sourceTree = "<group>"; };
 		AB000014 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AB000015 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		AB000016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -77,8 +89,10 @@
 			isa = PBXGroup;
 			children = (
 				AB000001 /* SoulectorApp.swift */,
+				AB000026 /* AppFont.swift */,
 				AB000016 /* Info.plist */,
 				AB000014 /* Assets.xcassets */,
+				AD000011 /* Fonts */,
 				AD000010 /* Preview Content */,
 				AD000003 /* Models */,
 				AD000004 /* Networking */,
@@ -149,6 +163,18 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		AD000011 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				AB000027 /* SpaceGrotesk-Light.ttf */,
+				AB000028 /* SpaceGrotesk-Regular.ttf */,
+				AB000029 /* SpaceGrotesk-Medium.ttf */,
+				AB000030 /* SpaceGrotesk-SemiBold.ttf */,
+				AB000031 /* SpaceGrotesk-Bold.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
 		AD000010 /* Preview Content */ = {
 			isa = PBXGroup;
 			children = (
@@ -217,6 +243,11 @@
 			files = (
 				AA000014 /* Assets.xcassets in Resources */,
 				AA000015 /* Preview Assets.xcassets in Resources */,
+				AA000027 /* SpaceGrotesk-Light.ttf in Resources */,
+				AA000028 /* SpaceGrotesk-Regular.ttf in Resources */,
+				AA000029 /* SpaceGrotesk-Medium.ttf in Resources */,
+				AA000030 /* SpaceGrotesk-SemiBold.ttf in Resources */,
+				AA000031 /* SpaceGrotesk-Bold.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -245,6 +276,7 @@
 				AA000023 /* RadioSchedule.swift in Sources */,
 				AA000024 /* RadioStore.swift in Sources */,
 				AA000025 /* PlayerFabs.swift in Sources */,
+				AA000026 /* AppFont.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

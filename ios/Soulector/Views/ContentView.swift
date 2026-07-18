@@ -12,6 +12,9 @@ struct ContentView: View {
             .environmentObject(favoritesStore)
             .environmentObject(episodesVM)
             .environmentObject(radioStore)
+            // Anything without an explicit font (text fields, plain buttons)
+            // falls back to Space Grotesk at the body size.
+            .environment(\.font, .app(size: 17))
             .preferredColorScheme(.dark)
     }
 }

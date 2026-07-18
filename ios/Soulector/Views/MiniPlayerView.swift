@@ -29,7 +29,7 @@ struct MiniPlayerView: View {
                     MarqueeText(text: episode.name)
                         .foregroundColor(.white)
                     Text(episode.formattedDate)
-                        .font(.system(size: 12))
+                        .font(.app(size: 12))
                         .foregroundColor(.white.opacity(0.5))
                         .lineLimit(1)
                 }
@@ -98,7 +98,7 @@ struct MiniPlayerView: View {
 /// seamlessly. Falls back to plain truncated text when it fits.
 private struct MarqueeText: View {
     let text: String
-    var font: Font = .system(size: 14, weight: .semibold)
+    var font: Font = .app(size: 14, weight: .semibold)
     var gap: CGFloat = 40
     var speed: CGFloat = 30 // points per second
 

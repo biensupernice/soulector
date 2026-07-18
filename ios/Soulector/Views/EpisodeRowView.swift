@@ -28,21 +28,21 @@ struct EpisodeRowView: View {
                 // Text info
                 VStack(alignment: .leading, spacing: 3) {
                     Text(episode.name)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.app(size: 14, weight: .semibold))
                         .foregroundColor(.white)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
 
                     HStack(spacing: 6) {
                         Text(episode.formattedDate)
-                            .font(.system(size: 12))
+                            .font(.app(size: 12))
                             .foregroundColor(.white.opacity(0.5))
 
                         Text("·")
                             .foregroundColor(.white.opacity(0.3))
 
                         Text(episode.formattedDuration)
-                            .font(.system(size: 12))
+                            .font(.app(size: 12))
                             .foregroundColor(.white.opacity(0.5))
                     }
                 }

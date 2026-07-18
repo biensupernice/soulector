@@ -62,18 +62,18 @@ struct SearchResultsView: View {
                         HStack(spacing: 8) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(track.name)
-                                    .font(.system(size: 14, weight: .semibold))
+                                    .font(.app(size: 14, weight: .semibold))
                                     .foregroundColor(.white)
                                     .lineLimit(1)
                                 Text(track.artist)
-                                    .font(.system(size: 12))
+                                    .font(.app(size: 12))
                                     .foregroundColor(.white.opacity(0.5))
                                     .lineLimit(1)
                             }
                             Spacer(minLength: 0)
                             if let ts = track.formattedTimestamp {
                                 Text(ts)
-                                    .font(.system(size: 11, weight: .medium))
+                                    .font(.app(size: 11, weight: .medium))
                                     .foregroundColor(.white.opacity(0.7))
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
@@ -98,7 +98,7 @@ struct SearchResultsView: View {
             Spacer()
             if loading {
                 Text("Loading library…")
-                    .font(.system(size: 14))
+                    .font(.app(size: 14))
                     .foregroundColor(.white.opacity(0.5))
             } else {
                 Image(systemName: "music.note")
@@ -106,10 +106,10 @@ struct SearchResultsView: View {
                     .foregroundColor(.white.opacity(0.3))
                     .padding(.bottom, 4)
                 Text("No matches found")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.app(size: 15, weight: .semibold))
                     .foregroundColor(.white)
                 Text("Try a different track, artist, or episode name.")
-                    .font(.system(size: 13))
+                    .font(.app(size: 13))
                     .foregroundColor(.white.opacity(0.5))
                     .multilineTextAlignment(.center)
             }

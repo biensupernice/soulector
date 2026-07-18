@@ -39,7 +39,7 @@ struct PlayerFabs: View {
                     HStack(spacing: 8) {
                         PulseDot()
                         Text("On Air")
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.app(size: 15, weight: .semibold))
                             .foregroundColor(.white)
                     }
                     .padding(.horizontal, 20)
@@ -71,7 +71,7 @@ struct PlayerFabs: View {
                         Image(systemName: "shuffle")
                             .font(.system(size: 15, weight: .semibold))
                         Text("Play Random")
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.app(size: 15, weight: .semibold))
                     }
                     .padding(.horizontal, 20)
                 }

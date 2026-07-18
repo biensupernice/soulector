@@ -139,7 +139,7 @@ struct EpisodesView: View {
             }) {
                 HStack(spacing: 5) {
                     Text(episodesVM.selectedCollective.displayName)
-                        .font(.system(size: 22, weight: .bold))
+                        .font(.app(size: 22, weight: .bold))
                         .foregroundColor(.white)
                     Image(systemName: showCollectivePicker ? "chevron.up" : "chevron.down")
                         .font(.system(size: 13, weight: .semibold))
@@ -206,7 +206,7 @@ struct EpisodesView: View {
             ForEach(EpisodeTab.allCases, id: \.self) { tab in
                 Button(action: { selectedTab = tab }) {
                     Text(tab.rawValue)
-                        .font(.system(size: 14, weight: selectedTab == tab ? .semibold : .regular))
+                        .font(.app(size: 14, weight: selectedTab == tab ? .semibold : .regular))
                         .foregroundColor(selectedTab == tab ? .black : .white.opacity(0.6))
                         .padding(.horizontal, 14)
                         .padding(.vertical, 7)
@@ -286,7 +286,7 @@ struct EpisodesView: View {
                     .frame(width: 28)
                     .foregroundColor(.white)
                 Text("All Collectives")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.app(size: 18, weight: .bold))
                     .foregroundColor(.white)
             }
         case .soulection:
@@ -298,12 +298,12 @@ struct EpisodesView: View {
                     .frame(width: 28, height: 19)
                     .foregroundColor(.white)
                 Text("Soulection")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.app(size: 18, weight: .bold))
                     .foregroundColor(.white)
             }
         case .sashaMarieRadio:
             Text("SASHA MARIE RADIO")
-                .font(.system(size: 16, weight: .bold))
+                .font(.app(size: 16, weight: .bold))
                 .tracking(1.5)
                 .foregroundColor(.white)
         case .theLoveBelowHour:
@@ -315,7 +315,7 @@ struct EpisodesView: View {
                     .frame(width: 26, height: 26)
                     .foregroundColor(.white)
                 Text("The Love Below Hour")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.app(size: 18, weight: .bold))
                     .foregroundColor(.white)
             }
         }
@@ -357,10 +357,10 @@ struct EpisodesView: View {
                     .font(.system(size: 40))
                     .foregroundColor(.white.opacity(0.5))
                 Text("Couldn't load episodes")
-                    .font(.headline)
+                    .font(.app(size: 17, weight: .semibold))
                     .foregroundColor(.white)
                 Text(error.localizedDescription)
-                    .font(.caption)
+                    .font(.app(size: 12))
                     .foregroundColor(.white.opacity(0.5))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)

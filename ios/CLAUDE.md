@@ -27,6 +27,8 @@ SwiftUI app, iOS 16+, no third-party dependencies.
 ```
 ios/Soulector/
 ├── SoulectorApp.swift          # App entry point
+├── AppFont.swift               # Font.app(size:weight:) → Space Grotesk (web parity)
+├── Fonts/                      # Space Grotesk TTFs (converted from public/fonts woff2)
 ├── ContentView.swift           # Root, injects @StateObject stores
 ├── Views/
 │   ├── EpisodesView.swift      # Main list screen; also wires playerStore.onEpisodeEnded + radioStore
@@ -55,6 +57,7 @@ ios/Soulector/
 - **Auto-advance:** `PlayerStore.onEpisodeEnded` closure — wired in `EpisodesView.onAppear`
 - **Single sheet:** Mini player tap and episode row tap both set `selectedEpisode`; `EpisodeDetailSheet` handles both browse and active playback
 - **Haptics:** `UIImpactFeedbackGenerator` (no iOS 17 requirement)
+- **Typography:** Space Grotesk everywhere via `Font.app(size:weight:)` (plus a root `.environment(\.font, ...)` default). SF Symbols keep `.system` fonts — symbols don't render in custom fonts
 - **Radio mode:** `RadioStore` (wired in `EpisodesView.onAppear` via `configure`) owns tune-in/out, the slot-boundary timer, drift correction, and resume re-sync. `Models/RadioSchedule.swift` computes what's on air and must stay semantically identical to the web's `src/lib/radioSchedule.ts` (same hash, ordering, epoch) — change them together or iOS and web broadcasts diverge
 
 ## API

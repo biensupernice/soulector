@@ -50,13 +50,13 @@ struct EpisodeDetailSheet: View {
                     // Title + date
                     VStack(spacing: 6) {
                         Text(episode.name)
-                            .font(.title3.bold())
+                            .font(.app(size: 20, weight: .bold))
                             .foregroundColor(.white)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 20)
 
                         Text("\(episode.collectiveName) · \(episode.formattedDate)")
-                            .font(.subheadline)
+                            .font(.app(size: 15))
                             .foregroundColor(.white.opacity(0.6))
                     }
 
@@ -73,7 +73,7 @@ struct EpisodeDetailSheet: View {
                             HStack(spacing: 8) {
                                 Image(systemName: isFavorite ? "heart.fill" : "heart")
                                 Text(isFavorite ? "Unfavorite" : "Favorite")
-                                    .font(.system(size: 14, weight: .medium))
+                                    .font(.app(size: 14, weight: .medium))
                             }
                             .foregroundColor(isFavorite ? .red : .white)
                             .padding(.horizontal, 16)
@@ -88,7 +88,7 @@ struct EpisodeDetailSheet: View {
                                 HStack(spacing: 8) {
                                     Image(systemName: "link")
                                     Text("SoundCloud")
-                                        .font(.system(size: 14, weight: .medium))
+                                        .font(.app(size: 14, weight: .medium))
                                 }
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 16)
@@ -169,7 +169,7 @@ private struct PlayerControlsSection: View {
                         Spacer()
                         Text(formatTime(playerStore.duration))
                     }
-                    .font(.caption)
+                    .font(.app(size: 12))
                     .foregroundColor(.white.opacity(0.5))
                     .padding(.horizontal, 24)
                 }
@@ -255,7 +255,7 @@ struct TracklistView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("\(tracks.count) Tracks")
-                .font(.headline)
+                .font(.app(size: 17, weight: .semibold))
                 .foregroundColor(.white.opacity(0.7))
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)
@@ -320,7 +320,7 @@ private struct TrackRow: View {
                                 .fill(Color.white)
                                 .frame(width: 20, height: 20)
                             Text("\(track.order)")
-                                .font(.system(size: 10, weight: .bold))
+                                .font(.app(size: 10, weight: .bold))
                                 .foregroundColor(.black)
                         } else if let ts = track.formattedTimestamp {
                             Text(ts)
@@ -328,7 +328,7 @@ private struct TrackRow: View {
                                 .foregroundColor(.white.opacity(0.4))
                         } else {
                             Text("\(track.order)")
-                                .font(.system(size: 12))
+                                .font(.app(size: 12))
                                 .foregroundColor(.white.opacity(0.4))
                         }
                     }
@@ -336,11 +336,11 @@ private struct TrackRow: View {
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(track.name)
-                            .font(.system(size: 13, weight: isCurrent ? .bold : .medium))
+                            .font(.app(size: 13, weight: isCurrent ? .bold : .medium))
                             .foregroundColor(.white)
                             .lineLimit(1)
                         Text(track.artist)
-                            .font(.system(size: 12))
+                            .font(.app(size: 12))
                             .foregroundColor(.white.opacity(isCurrent ? 1.0 : 0.55))
                             .lineLimit(1)
                     }
