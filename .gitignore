@@ -46,3 +46,5 @@ xcuserdata/
 DerivedData/
 *.xcarchive
 *.ipa
+# TypeScript incremental build cache
+*.tsbuildinfo

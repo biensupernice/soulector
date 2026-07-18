@@ -8,6 +8,7 @@ export interface AudioPlayerProps {
   onPlayProgressChange: (position: number) => void;
   onPause: () => void;
   onPlay: () => void;
+  onEnded?: () => void;
   cuePosition?: number;
 }
 
@@ -18,6 +19,7 @@ export function AudioPlayer({
   onPlayProgressChange,
   onPause,
   onPlay,
+  onEnded,
   volume = 100,
   cuePosition,
 }: AudioPlayerProps) {
@@ -82,6 +84,7 @@ export function AudioPlayer({
       ref={ref}
       onPlay={onPlay}
       onPause={onPause}
+      onEnded={onEnded}
       onLoadedMetadata={onLoadedMetadata}
       onTimeUpdate={() => {
         if (ref.current) {
