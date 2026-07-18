@@ -1,4 +1,5 @@
 import create from "zustand";
+import { event } from "nextjs-google-analytics";
 
 export type RadioSlotState = {
   episodeId: string;
@@ -24,13 +25,20 @@ export type RadioStore = {
   };
 };
 
-export const useRadioStore = create<RadioStore>((set) => ({
+export const useRadioStore = create<RadioStore>((set, get) => ({
   isOn: false,
   slot: null,
   waitingForBoundary: false,
   actions: {
     tuneIn: (slot) => set({ isOn: true, slot, waitingForBoundary: false }),
-    tuneOut: () => set({ isOn: false, slot: null, waitingForBoundary: false }),
+    tuneOut: () => {
+      // Emitted here rather than at the call sites so every way a radio
+      // session ends (pill click, manual play, seeking away) is counted.
+      if (get().isOn) {
+        event("Radio Tune Out", { category: "Action" });
+      }
+      set({ isOn: false, slot: null, waitingForBoundary: false });
+    },
     markPlaybackEnded: () => set({ waitingForBoundary: true }),
   },
 }));

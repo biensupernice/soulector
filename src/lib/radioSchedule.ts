@@ -21,7 +21,10 @@
  * Tradeoff: when the episode set changes (weekly syncs) the ring length
  * changes, so the modulo arithmetic lands somewhere new and the "broadcast"
  * jumps. Listeners mid-episode aren't interrupted — clients only re-evaluate
- * the schedule at slot boundaries.
+ * the schedule at slot boundaries. For the same reason the shared broadcast
+ * is best-effort: two clients only agree while they hold the same episode
+ * list, and a tab left open across a sync computes against its cached list
+ * until it refreshes.
  */
 
 export type RadioEpisodeInput = {
@@ -47,13 +50,22 @@ export function radioStationKey(collective: string) {
   return `soulector-radio:v1:${collective}`;
 }
 
-/** FNV-1a 32-bit — small, stable, and plenty for ordering a playlist. */
+/** FNV-1a 32-bit with a murmur3-style finalizer. */
 export function hash32(str: string): number {
   let h = 0x811c9dc5;
   for (let i = 0; i < str.length; i++) {
     h ^= str.charCodeAt(i);
     h = Math.imul(h, 0x01000193);
   }
+  // FNV-1a alone has weak avalanche on trailing-character differences, and
+  // Mongo ObjectIds minted in the same sync batch differ mainly in their
+  // trailing counter — without further mixing, a week's episodes cluster
+  // into near-consecutive ring positions. The finalizer scatters them.
+  h ^= h >>> 16;
+  h = Math.imul(h, 0x85ebca6b);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35);
+  h ^= h >>> 16;
   return h >>> 0;
 }
 

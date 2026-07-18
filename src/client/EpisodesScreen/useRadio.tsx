@@ -63,12 +63,15 @@ export function useRadio() {
     );
     if (!next) return false;
 
-    playerActions.loadEpisode(next.episodeId, next.offsetMs);
+    // Update the radio store before touching the player: the seek-detection
+    // subscription reacts to the player changes below, and it must judge
+    // them against the slot being tuned to, not the previous one.
     radioActions.tuneIn({
       episodeId: next.episodeId,
       startsAtMs: next.startsAtMs,
       endsAtMs: next.endsAtMs,
     });
+    playerActions.loadEpisode(next.episodeId, next.offsetMs);
     mutate(next.episodeId, {
       onSuccess(data) {
         if (data) {
@@ -87,9 +90,9 @@ export function useRadio() {
   }, [tuneToNow]);
 
   // Leaves the current episode playing; only the "follow the broadcast"
-  // behavior stops.
+  // behavior stops. The analytics event lives in the store action so
+  // manual-takeover tune-outs are counted too.
   const tuneOut = useCallback(() => {
-    event("Radio Tune Out", { category: "Action" });
     radioActions.tuneOut();
   }, [radioActions]);
 
@@ -103,7 +106,11 @@ export function useRadio() {
       const { playing } = usePlayerStore.getState();
       const { waitingForBoundary } = useRadioStore.getState();
       if (!playing && !waitingForBoundary) return;
-      tuneToNow();
+      if (!tuneToNow()) {
+        // No next slot to tune to (episodes unavailable, pool emptied):
+        // tune out rather than wedge in a permanently stalled on-air state.
+        radioActions.tuneOut();
+      }
     };
 
     const msUntilEnd = slot.endsAtMs - Date.now();
@@ -129,7 +136,7 @@ export function useRadio() {
       window.clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [isOn, slot, waitingForBoundary, tuneToNow]);
+  }, [isOn, slot, waitingForBoundary, tuneToNow, radioActions]);
 
   // Keep playback pinned to the live position. Each seek costs a re-buffer,
   // so a correction raises the threshold for the next one (reset per slot):
@@ -176,6 +183,9 @@ export function useRadio() {
     const wasPlaying = prevPlayingRef.current;
     prevPlayingRef.current = playing;
     if (!isOn || !playing || wasPlaying || !episodes || !slot) return;
+    // During the ended-early gap the live offset is past the real audio end;
+    // seeking there would just re-fire `ended`. The boundary timer advances.
+    if (useRadioStore.getState().waitingForBoundary) return;
 
     const now = radioSlotAt(
       radioPool(episodes, selectedCollective),
