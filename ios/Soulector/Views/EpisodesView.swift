@@ -225,21 +225,21 @@ struct EpisodesView: View {
                             Text(name).tag(name)
                         }
                     }
-                    .pickerStyle(.menu)
+                    .pickerStyle(.inline)
 
                     Picker("Text on Accent", selection: $textOnAccentRaw) {
                         ForEach(TextOnAccent.allCases) { option in
                             Text(option.label).tag(option.rawValue)
                         }
                     }
-                    .pickerStyle(.menu)
+                    .pickerStyle(.inline)
 
                     Picker("FAB Style", selection: $fabStyleRaw) {
                         ForEach(FabStyle.allCases) { option in
                             Text(option.label).tag(option.rawValue)
                         }
                     }
-                    .pickerStyle(.menu)
+                    .pickerStyle(.inline)
                 } label: {
                     Image(systemName: "paintpalette")
                         .font(.system(size: 18))

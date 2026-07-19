@@ -26,9 +26,9 @@ struct PlayerFabs: View {
 
     private var pillBackground: Color {
         switch style {
-        case .whiteAccent: return .white
+        case .whiteAccent, .whiteBlack, .whiteBlackAccentAir: return .white
         case .accentWhite: return accentOnLight
-        case .blackAccent: return Self.nearBlack
+        case .blackAccent, .blackWhiteAccentAir, .blackWhite: return Self.nearBlack
         }
     }
 
@@ -36,15 +36,17 @@ struct PlayerFabs: View {
     private var content: Color {
         switch style {
         case .whiteAccent: return accentOnLight
-        case .accentWhite: return .white
+        case .whiteBlack, .whiteBlackAccentAir: return Self.nearBlack
+        case .accentWhite, .blackWhiteAccentAir, .blackWhite: return .white
         case .blackAccent: return accentOnDark
         }
     }
 
     private var onAirFill: Color {
         switch style {
-        case .whiteAccent: return accentOnLight
-        case .accentWhite: return .white
+        case .whiteAccent, .whiteBlackAccentAir, .blackWhiteAccentAir: return accentOnLight
+        case .whiteBlack: return Self.nearBlack
+        case .accentWhite, .blackWhite: return .white
         case .blackAccent: return accentOnDark
         }
     }
@@ -52,9 +54,10 @@ struct PlayerFabs: View {
     /// Text/dot inside the On Air fill.
     private var onAirContent: Color {
         switch style {
-        case .whiteAccent: return onAirText
+        case .whiteAccent, .whiteBlackAccentAir, .blackWhiteAccentAir: return onAirText
+        case .whiteBlack: return .white
         case .accentWhite: return accentOnLight
-        case .blackAccent: return Self.nearBlack
+        case .blackAccent, .blackWhite: return Self.nearBlack
         }
     }
 

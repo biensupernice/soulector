@@ -37,14 +37,23 @@ enum TextOnAccent: String, CaseIterable, Identifiable {
     }
 }
 
-/// Color combinations for the floating radio/shuffle cluster.
+/// Color combinations for the floating radio/shuffle cluster, roughly
+/// "pill · content" (with the On Air fill noted where it differs).
 enum FabStyle: String, CaseIterable, Identifiable {
-    /// White pill, accent content (the web look; current default).
+    /// White pill, accent content, accent On Air fill (the web look; default).
     case whiteAccent
-    /// Accent-filled pill, white content.
+    /// White pill, near-black content, black On Air fill (pre-accent look).
+    case whiteBlack
+    /// White pill, near-black content; accent appears only as the On Air fill.
+    case whiteBlackAccentAir
+    /// Accent-filled pill, white content, white On Air fill with accent text.
     case accentWhite
-    /// Near-black pill, lifted (on-dark) accent content.
+    /// Near-black pill, lifted (on-dark) accent content and On Air fill.
     case blackAccent
+    /// Near-black pill, white content; accent appears only as the On Air fill.
+    case blackWhiteAccentAir
+    /// Near-black pill, white content, white On Air fill (monochrome dark).
+    case blackWhite
 
     static let storageKey = "soulector.fabStyle"
 
@@ -53,8 +62,12 @@ enum FabStyle: String, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .whiteAccent: return "White · Accent"
+        case .whiteBlack: return "White · Black"
+        case .whiteBlackAccentAir: return "White · Black · Accent Air"
         case .accentWhite: return "Accent · White"
         case .blackAccent: return "Black · Accent"
+        case .blackWhiteAccentAir: return "Black · White · Accent Air"
+        case .blackWhite: return "Black · White"
         }
     }
 }
