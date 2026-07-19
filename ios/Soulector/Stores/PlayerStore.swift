@@ -57,16 +57,20 @@ final class PlayerStore: ObservableObject {
         accentColorTask = Task { await loadAccentColor(for: id) }
     }
 
+    func setAccentSwatch(_ name: String?) {
+        accentSwatchOverride = name
+        UserDefaults.standard.set(name, forKey: Self.accentSwatchKey)
+    }
+
     /// Steps default → each extracted swatch → back to default.
     func cycleAccentSwatch() {
         let names = accent?.palette?.map(\.name) ?? []
         guard !names.isEmpty else { return }
         if let current = accentSwatchOverride, let idx = names.firstIndex(of: current) {
-            accentSwatchOverride = idx + 1 < names.count ? names[idx + 1] : nil
+            setAccentSwatch(idx + 1 < names.count ? names[idx + 1] : nil)
         } else {
-            accentSwatchOverride = names.first
+            setAccentSwatch(names.first)
         }
-        UserDefaults.standard.set(accentSwatchOverride, forKey: Self.accentSwatchKey)
     }
 
     /// Called when an episode plays to completion. Set by the view layer to implement auto-advance.

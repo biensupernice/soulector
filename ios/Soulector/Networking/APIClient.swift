@@ -51,6 +51,14 @@ struct AccentColor: Decodable, Equatable {
         color { $0 }
     }
 
+    /// Whether dark text reads better than white on this swatch
+    /// (perceived-luminance threshold on the raw RGB).
+    var prefersDarkText: Bool {
+        guard rgb.count >= 3 else { return false }
+        let luminance = 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]
+        return luminance > 150
+    }
+
     /// The swatch roughly as the web uses it, for accent elements on light
     /// surfaces (the white FAB pill). The server extracts a dark-leaning
     /// swatch (DarkVibrant) precisely so it reads well against white and can

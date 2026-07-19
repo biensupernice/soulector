@@ -21,6 +21,8 @@ struct EpisodesView: View {
     @AppStorage(APIClient.baseURLOverrideKey) private var apiBaseOverride = ""
     @State private var showAPIOverridePrompt = false
     @State private var apiOverrideDraft = ""
+    @AppStorage(TextOnAccent.storageKey) private var textOnAccentRaw = TextOnAccent.white.rawValue
+    @AppStorage(FabStyle.storageKey) private var fabStyleRaw = FabStyle.whiteAccent.rawValue
 
     private var displayedEpisodes: [Episode] {
         selectedTab == .all
@@ -90,7 +92,11 @@ struct EpisodesView: View {
                     Spacer()
                     PlayerFabs(
                         on: radioStore.isOn,
-                        accent: playerStore.accentOnLight,
+                        style: FabStyle(rawValue: fabStyleRaw) ?? .whiteAccent,
+                        accentOnLight: playerStore.accentOnLight,
+                        accentOnDark: playerStore.accentOnDark,
+                        onAirText: (TextOnAccent(rawValue: textOnAccentRaw) ?? .white)
+                            .color(over: playerStore.effectiveAccent),
                         onRadioTap: {
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             if radioStore.isOn {
@@ -208,6 +214,39 @@ struct EpisodesView: View {
             Spacer()
 
             HStack(spacing: 4) {
+                // Temporary variant menu for auditioning accent treatments
+                Menu {
+                    Picker("Accent Swatch", selection: Binding(
+                        get: { playerStore.accentSwatchOverride ?? "" },
+                        set: { playerStore.setAccentSwatch($0.isEmpty ? nil : $0) }
+                    )) {
+                        Text("Default (DarkVibrant)").tag("")
+                        ForEach(swatchNames, id: \.self) { name in
+                            Text(name).tag(name)
+                        }
+                    }
+                    .pickerStyle(.menu)
+
+                    Picker("Text on Accent", selection: $textOnAccentRaw) {
+                        ForEach(TextOnAccent.allCases) { option in
+                            Text(option.label).tag(option.rawValue)
+                        }
+                    }
+                    .pickerStyle(.menu)
+
+                    Picker("FAB Style", selection: $fabStyleRaw) {
+                        ForEach(FabStyle.allCases) { option in
+                            Text(option.label).tag(option.rawValue)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                } label: {
+                    Image(systemName: "paintpalette")
+                        .font(.system(size: 18))
+                        .foregroundColor(.white)
+                        .frame(width: 40, height: 40)
+                }
+
                 // Search toggle (shuffle lives in the floating cluster below)
                 Button(action: {
                     withAnimation(.easeInOut(duration: 0.2)) { showSearch.toggle() }
@@ -231,6 +270,15 @@ struct EpisodesView: View {
                 Color.clear.onAppear { navBarHeight = geo.size.height }
             }
         )
+    }
+
+    /// Palette names for the variant menu; falls back to the standard Vibrant
+    /// swatch names before any accent (with palette data) has been fetched.
+    private var swatchNames: [String] {
+        let fetched = playerStore.accent?.palette?.map(\.name) ?? []
+        return fetched.isEmpty
+            ? ["Vibrant", "DarkVibrant", "LightVibrant", "Muted", "DarkMuted", "LightMuted"]
+            : fetched
     }
 
     private var apiOverrideBanner: some View {

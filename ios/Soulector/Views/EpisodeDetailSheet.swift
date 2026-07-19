@@ -15,6 +15,7 @@ struct EpisodeDetailSheet: View {
     @State private var episodeAccent: AccentColor?
     @State private var showAccentChip = false
     @State private var accentChipGeneration = 0
+    @AppStorage(TextOnAccent.storageKey) private var textOnAccentRaw = TextOnAccent.white.rawValue
 
     private var tracks: [EpisodeTrack] { detailTracks }
     private var isLoadingTracks: Bool { isLoadingDetailTracks }
@@ -26,6 +27,10 @@ struct EpisodeDetailSheet: View {
     }
     /// Web paints the sheet container with the raw accent (`bg-accent`).
     private var accentBackground: Color { sheetAccent?.raw ?? Color(white: 0.09) }
+    /// Text color over the accent background (the text-on-accent variant).
+    private var fg: Color {
+        (TextOnAccent(rawValue: textOnAccentRaw) ?? .white).color(over: sheetAccent)
+    }
 
     var body: some View {
         ZStack {
@@ -45,7 +50,7 @@ struct EpisodeDetailSheet: View {
                 VStack(spacing: 20) {
                     // Drag handle
                     Capsule()
-                        .fill(Color.white.opacity(0.3))
+                        .fill(fg.opacity(0.3))
                         .frame(width: 40, height: 4)
                         .padding(.top, 12)
 
@@ -76,17 +81,17 @@ struct EpisodeDetailSheet: View {
                     VStack(spacing: 4) {
                         Text(episode.name)
                             .font(.app(size: 17, weight: .bold))
-                            .foregroundColor(.white)
+                            .foregroundColor(fg)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 20)
 
                         Text(episode.formattedDate)
                             .font(.app(size: 14))
-                            .foregroundColor(.white.opacity(0.8))
+                            .foregroundColor(fg.opacity(0.8))
                     }
 
                     // Player controls
-                    PlayerControlsSection(episode: episode, accent: accentBackground)
+                    PlayerControlsSection(episode: episode, accent: accentBackground, textColor: fg)
 
                     // Action buttons (web: 2-col grid of white-outlined buttons)
                     HStack(spacing: 8) {
@@ -111,10 +116,10 @@ struct EpisodeDetailSheet: View {
                     // Tracklist in a translucent panel (web: bg-black/20)
                     if isLoadingTracks {
                         ProgressView()
-                            .tint(.white)
+                            .tint(fg)
                             .padding()
                     } else if !tracks.isEmpty {
-                        TracklistView(tracks: tracks, episode: episode, accent: accentBackground)
+                        TracklistView(tracks: tracks, episode: episode, accent: accentBackground, textColor: fg)
                             .background(Color.black.opacity(0.2))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                             .padding(.horizontal, 12)
@@ -158,10 +163,10 @@ struct EpisodeDetailSheet: View {
             Text(text)
                 .font(.app(size: 12, weight: .semibold))
         }
-        .foregroundColor(.white)
+        .foregroundColor(fg)
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
-        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.white, lineWidth: 2))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(fg, lineWidth: 2))
     }
 
     private func flashAccentChip() {
@@ -198,6 +203,8 @@ private struct PlayerControlsSection: View {
     /// The sheet's accent — the web colors the play glyph with it
     /// (`text-accent` on the white circle).
     let accent: Color
+    /// Text/glyph color over the accent background.
+    let textColor: Color
     @EnvironmentObject var playerStore: PlayerStore
 
     @State private var scrubTime: Double? = nil
@@ -226,7 +233,7 @@ private struct PlayerControlsSection: View {
                         Text(formatTime(playerStore.duration))
                     }
                     .font(.app(size: 12))
-                    .foregroundColor(.white)
+                    .foregroundColor(textColor)
                     .padding(.horizontal, 24)
                 }
             }
@@ -241,7 +248,7 @@ private struct PlayerControlsSection: View {
                     }) {
                         Image(systemName: "gobackward.30")
                             .font(.system(size: 30))
-                            .foregroundColor(.white)
+                            .foregroundColor(textColor)
                     }
                 }
 
@@ -278,7 +285,7 @@ private struct PlayerControlsSection: View {
                     }) {
                         Image(systemName: "goforward.30")
                             .font(.system(size: 30))
-                            .foregroundColor(.white)
+                            .foregroundColor(textColor)
                     }
                 }
             }
@@ -298,9 +305,11 @@ private struct PlayerControlsSection: View {
 struct TracklistView: View {
     let tracks: [EpisodeTrack]
     let episode: Episode
-    /// Accent for the current track's number inside its white badge (web:
+    /// Accent for the current track's number inside its badge (web:
     /// `bg-white text-accent`).
     let accent: Color
+    /// Text color over the accent background.
+    let textColor: Color
     @EnvironmentObject var playerStore: PlayerStore
 
     private var currentTrack: EpisodeTrack? {
@@ -316,14 +325,14 @@ struct TracklistView: View {
         VStack(alignment: .leading, spacing: 0) {
             Text("\(tracks.count) Tracks")
                 .font(.app(size: 18, weight: .bold))
-                .foregroundColor(.white)
+                .foregroundColor(textColor)
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
                 .padding(.bottom, 12)
 
             ForEach(tracks) { track in
                 let isCurrent = currentTrack?.id == track.id
-                TrackRow(track: track, episode: episode, accent: accent, isCurrent: isCurrent)
+                TrackRow(track: track, episode: episode, accent: accent, textColor: textColor, isCurrent: isCurrent)
             }
             .padding(.bottom, 4)
         }
@@ -332,11 +341,12 @@ struct TracklistView: View {
 }
 
 private struct PingRing: View {
+    let color: Color
     @State private var pinging = false
 
     var body: some View {
         Circle()
-            .fill(Color.white)
+            .fill(color)
             .frame(width: 20, height: 20)
             .scaleEffect(pinging ? 2.0 : 1.0)
             .opacity(pinging ? 0 : 0.5)
@@ -351,6 +361,7 @@ private struct TrackRow: View {
     let track: EpisodeTrack
     let episode: Episode
     let accent: Color
+    let textColor: Color
     let isCurrent: Bool
     @EnvironmentObject var playerStore: PlayerStore
 
@@ -366,7 +377,7 @@ private struct TrackRow: View {
             ZStack(alignment: .leading) {
                 // Left current-track bar
                 Rectangle()
-                    .fill(Color.white)
+                    .fill(textColor)
                     .frame(width: 2)
                     .opacity(isCurrent ? 1 : 0)
                     .animation(.easeInOut(duration: 0.3), value: isCurrent)
@@ -376,9 +387,9 @@ private struct TrackRow: View {
                     // an accent-colored number and a ping ring (web parity)
                     ZStack {
                         if isCurrent {
-                            PingRing()
+                            PingRing(color: textColor)
                             Circle()
-                                .fill(Color.white)
+                                .fill(textColor)
                                 .frame(width: 20, height: 20)
                             Text("\(track.order)")
                                 .font(.app(size: 10, weight: .bold))
@@ -386,7 +397,7 @@ private struct TrackRow: View {
                         } else {
                             Text("\(track.order)")
                                 .font(.app(size: 12))
-                                .foregroundColor(.white)
+                                .foregroundColor(textColor)
                         }
                     }
                     .frame(width: 24)
@@ -394,11 +405,11 @@ private struct TrackRow: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(track.name)
                             .font(.app(size: 14, weight: isCurrent ? .bold : .medium))
-                            .foregroundColor(.white)
+                            .foregroundColor(textColor)
                             .lineLimit(1)
                         Text(track.artist)
                             .font(.app(size: 13))
-                            .foregroundColor(.white.opacity(isCurrent ? 1.0 : 0.8))
+                            .foregroundColor(textColor.opacity(isCurrent ? 1.0 : 0.8))
                             .lineLimit(1)
                     }
                     .animation(.easeInOut(duration: 0.3), value: isCurrent)
@@ -408,7 +419,7 @@ private struct TrackRow: View {
                     if let ts = track.formattedTimestamp {
                         Text(ts)
                             .font(.app(size: 12))
-                            .foregroundColor(.white)
+                            .foregroundColor(textColor)
                     }
                 }
                 .padding(.horizontal, 16)

@@ -28,6 +28,7 @@ SwiftUI app, iOS 16+, no third-party dependencies.
 ios/Soulector/
 ├── SoulectorApp.swift          # App entry point
 ├── AppFont.swift               # Font.app(size:weight:) → Space Grotesk (web parity)
+├── DebugVariants.swift         # Temporary accent-variant controls (paintpalette menu)
 ├── Fonts/                      # Space Grotesk TTFs (converted from public/fonts woff2)
 ├── ContentView.swift           # Root, injects @StateObject stores
 ├── Views/
