@@ -25,11 +25,26 @@ final class PlayerStore: ObservableObject {
     @Published private(set) var duration: Double = 0     // seconds
     @Published private(set) var currentTracks: [EpisodeTrack] = []
     @Published private(set) var isLoadingTracks = false
-    @Published private(set) var accentColor: Color = .black
+    @Published private(set) var accent: AccentColor?
     @Published var isSeeking = false
+
+    /// The fetched accent resolved to this app's chosen swatch (Vibrant).
+    var effectiveAccent: AccentColor? { accent?.appSwatch }
+    /// Album accent for light surfaces; falls back to the web's static
+    /// default accent, hsl(0 0% 9%).
+    var accentOnLight: Color { effectiveAccent?.onLight ?? Color(white: 0.09) }
+    /// Album accent for elements on the black background; falls back to the
+    /// white the UI uses when nothing is playing.
+    var accentOnDark: Color { effectiveAccent?.onDark ?? .white }
 
     /// Called when an episode plays to completion. Set by the view layer to implement auto-advance.
     var onEpisodeEnded: ((Episode) -> Void)?
+
+    /// Emits the target time (seconds) of every user-initiated seek — slider,
+    /// skip buttons, lock-screen scrubbing. Programmatic seeks (the initial
+    /// cue on load, radio drift corrections) don't emit, so subscribers can
+    /// treat every event as the user taking control of playback.
+    let userSeeks = PassthroughSubject<Double, Never>()
 
     var isPlaying: Bool { state == .playing }
     var isLoading: Bool { state == .loading }
@@ -151,7 +166,7 @@ final class PlayerStore: ObservableObject {
     private func loadAccentColor(for episodeId: String) async {
         guard let accent = try? await APIClient.shared.fetchAccentColor(episodeId: episodeId) else { return }
         guard !Task.isCancelled else { return }
-        accentColor = accent.swiftUIColor
+        self.accent = accent
     }
 
     private func loadTracks(for episodeId: String) async {
@@ -186,7 +201,7 @@ final class PlayerStore: ObservableObject {
                     self.updateDuration()
                     if let seek = self.pendingSeek {
                         self.pendingSeek = nil
-                        self.seek(to: seek)
+                        self.seek(to: seek, userInitiated: false)
                     }
                     self.player?.play()
                     self.state = .playing
@@ -248,7 +263,10 @@ final class PlayerStore: ObservableObject {
         isPlaying ? pause() : resume()
     }
 
-    func seek(to time: Double) {
+    func seek(to time: Double, userInitiated: Bool = true) {
+        if userInitiated {
+            userSeeks.send(time)
+        }
         isSeeking = true
         let cmTime = CMTime(seconds: time, preferredTimescale: 600)
         currentTime = max(0, min(time, duration))
@@ -301,7 +319,7 @@ final class PlayerStore: ObservableObject {
         tracksLoadTask = nil
         accentColorTask?.cancel()
         accentColorTask = nil
-        accentColor = .black
+        accent = nil
         loadedArtwork = nil
         loadedArtworkEpisodeId = nil
         pendingSeek = nil

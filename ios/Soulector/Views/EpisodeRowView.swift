@@ -7,6 +7,8 @@ struct EpisodeRowView: View {
     let onTap: () -> Void
     let onFavorite: () -> Void
 
+    @EnvironmentObject var playerStore: PlayerStore
+
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 12) {
@@ -28,21 +30,23 @@ struct EpisodeRowView: View {
                 // Text info
                 VStack(alignment: .leading, spacing: 3) {
                     Text(episode.name)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white)
+                        .font(.app(size: 14, weight: .semibold))
+                        // Playing row title picks up the album accent, like
+                        // the web list (on-dark variant for the black bg).
+                        .foregroundColor(isPlaying ? playerStore.accentOnDark : .white)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
 
                     HStack(spacing: 6) {
                         Text(episode.formattedDate)
-                            .font(.system(size: 12))
+                            .font(.app(size: 12))
                             .foregroundColor(.white.opacity(0.5))
 
                         Text("·")
                             .foregroundColor(.white.opacity(0.3))
 
                         Text(episode.formattedDuration)
-                            .font(.system(size: 12))
+                            .font(.app(size: 12))
                             .foregroundColor(.white.opacity(0.5))
                     }
                 }
@@ -132,6 +136,7 @@ private struct EqualizerBar: View {
 
     private let minScale: CGFloat = 1.0 / 6.0
     @State private var scale: CGFloat = 1.0 / 6.0
+    @State private var generation = 0
 
     var body: some View {
         RoundedRectangle(cornerRadius: 1)
@@ -143,14 +148,23 @@ private struct EqualizerBar: View {
     }
 
     private func apply(playing: Bool) {
+        generation += 1
         if playing {
             scale = 1.0
-            withAnimation(
-                .easeInOut(duration: duration)
-                    .repeatForever(autoreverses: true)
-                    .delay(delay)
-            ) {
-                scale = minScale
+            let started = generation
+            // Deferred a tick so the repeatForever gets its own transaction —
+            // started inside an in-flight layout transaction (this overlay
+            // appears together with the mini player slide-in) it would leak
+            // onto every view animating in it. See MarqueeText.restart.
+            DispatchQueue.main.async {
+                guard started == generation else { return }
+                withAnimation(
+                    .easeInOut(duration: duration)
+                        .repeatForever(autoreverses: true)
+                        .delay(delay)
+                ) {
+                    scale = minScale
+                }
             }
         } else {
             // Finite animation cancels the repeating one and settles low.

@@ -29,7 +29,7 @@ struct MiniPlayerView: View {
                     MarqueeText(text: episode.name)
                         .foregroundColor(.white)
                     Text(episode.formattedDate)
-                        .font(.system(size: 12))
+                        .font(.app(size: 12))
                         .foregroundColor(.white.opacity(0.5))
                         .lineLimit(1)
                 }
@@ -45,7 +45,7 @@ struct MiniPlayerView: View {
                         Button(action: { playerStore.forward(30) }) {
                             Image(systemName: "goforward.30")
                                 .font(.system(size: 20))
-                                .foregroundColor(.white.opacity(0.85))
+                                .foregroundColor(playerStore.accentOnDark.opacity(0.85))
                                 .frame(width: 36, height: 36)
                         }
                         .buttonStyle(.plain)
@@ -57,7 +57,7 @@ struct MiniPlayerView: View {
                         }) {
                             Image(systemName: playerStore.isPlaying ? "pause.fill" : "play.fill")
                                 .font(.system(size: 22))
-                                .foregroundColor(.white)
+                                .foregroundColor(playerStore.accentOnDark)
                                 .frame(width: 36, height: 36)
                         }
                         .buttonStyle(.plain)
@@ -69,10 +69,11 @@ struct MiniPlayerView: View {
             .background(.ultraThinMaterial)
             .background(Color.black.opacity(0.6))
             .overlay(
-                // Accent-colored progress line at top
+                // Accent-colored progress line at top (on-dark variant: the
+                // line sits directly on the black background)
                 GeometryReader { geo in
                     Rectangle()
-                        .fill(playerStore.accentColor.opacity(0.9))
+                        .fill(playerStore.accentOnDark.opacity(0.9))
                         .frame(width: geo.size.width * playerStore.progress, height: 2)
                 },
                 alignment: .top
@@ -98,13 +99,14 @@ struct MiniPlayerView: View {
 /// seamlessly. Falls back to plain truncated text when it fits.
 private struct MarqueeText: View {
     let text: String
-    var font: Font = .system(size: 14, weight: .semibold)
+    var font: Font = .app(size: 14, weight: .semibold)
     var gap: CGFloat = 40
     var speed: CGFloat = 30 // points per second
 
     @State private var textWidth: CGFloat = 0
     @State private var containerWidth: CGFloat = 0
     @State private var offset: CGFloat = 0
+    @State private var generation = 0
 
     private var shouldMarquee: Bool { containerWidth > 0 && textWidth > containerWidth }
 
@@ -163,10 +165,19 @@ private struct MarqueeText: View {
         noAnim.disablesAnimations = true
         withTransaction(noAnim) { offset = 0 }
 
+        generation += 1
         guard shouldMarquee, textWidth > 0 else { return }
         let distance = textWidth + gap
-        withAnimation(.linear(duration: Double(distance / speed)).repeatForever(autoreverses: false)) {
-            offset = -distance
+        let started = generation
+        // Deferred a tick: restart() fires during layout (width measurement,
+        // the mini player's slide-in), and a repeatForever started inside an
+        // in-flight transaction leaks onto every view animating in it —
+        // sending the whole screen sliding by the marquee distance forever.
+        DispatchQueue.main.async {
+            guard started == generation else { return }
+            withAnimation(.linear(duration: Double(distance / speed)).repeatForever(autoreverses: false)) {
+                offset = -distance
+            }
         }
     }
 }

@@ -21,18 +21,70 @@ struct StreamUrls: Decodable {
     }
 }
 
-struct AccentColor: Decodable {
+struct PaletteSwatch: Decodable, Equatable {
+    let name: String
     let rgb: [Double]
     let hsl: [Double]
+}
 
-    /// A SwiftUI Color using the HSL values, with lightness boosted into a visible range
-    /// so dark album art colors still produce a distinguishable gradient background.
-    var swiftUIColor: Color {
+struct AccentColor: Decodable, Equatable {
+    let rgb: [Double]
+    let hsl: [Double]
+    /// Every swatch the server's extraction produced (Vibrant, DarkVibrant,
+    /// …), for auditioning alternatives to the default pick. Optional because
+    /// older server responses predate the field.
+    let palette: [PaletteSwatch]?
+
+    /// This accent with a different extraction swatch substituted in; falls
+    /// back to the server's default pick when the name is missing from this
+    /// episode's palette (or nil).
+    func withSwatch(named name: String?) -> AccentColor {
+        guard let name,
+              let swatch = palette?.first(where: { $0.name == name })
+        else { return self }
+        return AccentColor(rgb: swatch.rgb, hsl: swatch.hsl, palette: palette)
+    }
+
+    /// The swatch this app uses: Vibrant — richer against the dark UI than
+    /// the server's DarkVibrant default, which is tuned for the web's white
+    /// surroundings. Falls back to the server's pick for responses without
+    /// palette data.
+    var appSwatch: AccentColor { withSwatch(named: "Vibrant") }
+
+    /// The swatch exactly as extracted — what the web paints the episode
+    /// sheet with (`bg-accent`).
+    var raw: Color {
+        color { $0 }
+    }
+
+    /// Whether dark text reads better than white on this swatch
+    /// (perceived-luminance threshold on the raw RGB).
+    var prefersDarkText: Bool {
+        guard rgb.count >= 3 else { return false }
+        let luminance = 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]
+        return luminance > 150
+    }
+
+    /// The swatch roughly as the web uses it, for accent elements on light
+    /// surfaces (the white FAB pill). The server extracts a dark-leaning
+    /// swatch (DarkVibrant) precisely so it reads well against white and can
+    /// host white text; the cap keeps unusual artwork from breaking that.
+    var onLight: Color {
+        color { min($0, 0.45) }
+    }
+
+    /// The same thinking mirrored for this app's black surfaces: keep the
+    /// swatch's hue and saturation but lift lightness into a range that reads
+    /// against black next to near-white text.
+    var onDark: Color {
+        color { max(0.55, min(0.75, $0)) }
+    }
+
+    private func color(lightness clamp: (Double) -> Double) -> Color {
         guard hsl.count >= 3 else { return .black }
         let h = hsl[0]
         let s = hsl[1]
-        // Clamp lightness: dark colors (< 0.25) get lifted; very bright ones get toned down
-        let l = max(0.28, min(0.48, hsl[2]))
+        let l = clamp(hsl[2])
         // Convert HSL → HSB so SwiftUI's Color(hue:saturation:brightness:) can consume it
         let b = l + s * min(l, 1 - l)
         let sHSB = b == 0 ? 0.0 : 2 * (1 - l / b)

@@ -1,5 +1,9 @@
 import SwiftUI
 
+/// Mirrors the web's mobile episode sheet
+/// (src/client/EpisodesScreen/EpisodeModalSheet): a solid accent-colored
+/// sheet with a subtle top-to-bottom gray overlay, white content, outlined
+/// action buttons, and the tracklist in a translucent dark panel.
 struct EpisodeDetailSheet: View {
     let episode: Episode
     @EnvironmentObject var playerStore: PlayerStore
@@ -8,28 +12,39 @@ struct EpisodeDetailSheet: View {
 
     @State private var detailTracks: [EpisodeTrack] = []
     @State private var isLoadingDetailTracks = false
-    @State private var episodeAccentColor: Color = .black
-
+    @State private var episodeAccent: AccentColor?
     private var tracks: [EpisodeTrack] { detailTracks }
     private var isLoadingTracks: Bool { isLoadingDetailTracks }
     private var isFavorite: Bool { favoritesStore.isFavorite(episode.id) }
 
+    /// This episode's accent resolved to the app's chosen swatch (Vibrant).
+    private var sheetAccent: AccentColor? { episodeAccent?.appSwatch }
+    /// Web paints the sheet container with the raw accent (`bg-accent`).
+    private var accentBackground: Color { sheetAccent?.raw ?? Color(white: 0.09) }
+    /// Text color over the accent background.
+    private var fg: Color { .white }
+
     var body: some View {
         ZStack {
-            // Accent color gradient background
+            accentBackground.ignoresSafeArea()
+            // Darker take on the web's overlay (gray-700/30 → white/5): the
+            // accent hue shows through, but deepened enough that the sheet
+            // still reads as part of a dark-mode app.
             LinearGradient(
-                colors: [episodeAccentColor.opacity(0.75), Color.black],
+                colors: [
+                    Color.black.opacity(0.25),
+                    Color.black.opacity(0.55),
+                ],
                 startPoint: .top,
                 endPoint: .bottom
             )
             .ignoresSafeArea()
-            .animation(.easeInOut(duration: 0.5), value: episodeAccentColor)
 
             ScrollView {
                 VStack(spacing: 20) {
                     // Drag handle
                     Capsule()
-                        .fill(Color.white.opacity(0.3))
+                        .fill(fg.opacity(0.3))
                         .frame(width: 40, height: 4)
                         .padding(.top, 12)
 
@@ -43,87 +58,74 @@ struct EpisodeDetailSheet: View {
                                 .aspectRatio(1, contentMode: .fit)
                         }
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                     .padding(.horizontal, 40)
-                    .shadow(color: .black.opacity(0.5), radius: 20, y: 8)
 
-                    // Title + date
-                    VStack(spacing: 6) {
+                    // Title + date (web: bold white title, white/80 date)
+                    VStack(spacing: 4) {
                         Text(episode.name)
-                            .font(.title3.bold())
-                            .foregroundColor(.white)
+                            .font(.app(size: 17, weight: .bold))
+                            .foregroundColor(fg)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 20)
 
-                        Text("\(episode.collectiveName) · \(episode.formattedDate)")
-                            .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.6))
+                        Text(episode.formattedDate)
+                            .font(.app(size: 14))
+                            .foregroundColor(fg.opacity(0.8))
                     }
 
                     // Player controls
-                    PlayerControlsSection(episode: episode)
+                    PlayerControlsSection(episode: episode, accent: accentBackground, textColor: fg)
 
-                    // Action buttons
-                    HStack(spacing: 16) {
-                        // Favorite
+                    // Action buttons (web: 2-col grid of white-outlined buttons)
+                    HStack(spacing: 8) {
+                        if let url = URL(string: episode.permalinkUrl) {
+                            Link(destination: url) {
+                                actionButtonLabel(icon: "link", text: "Open in SoundCloud")
+                            }
+                        }
+
                         Button(action: {
                             UIImpactFeedbackGenerator(style: isFavorite ? .light : .medium).impactOccurred()
                             favoritesStore.toggleFavorite(episode.id)
                         }) {
-                            HStack(spacing: 8) {
-                                Image(systemName: isFavorite ? "heart.fill" : "heart")
-                                Text(isFavorite ? "Unfavorite" : "Favorite")
-                                    .font(.system(size: 14, weight: .medium))
-                            }
-                            .foregroundColor(isFavorite ? .red : .white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(Color.white.opacity(0.1))
-                            .clipShape(RoundedRectangle(cornerRadius: 20))
-                        }
-
-                        // SoundCloud link
-                        if let url = URL(string: episode.permalinkUrl) {
-                            Link(destination: url) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "link")
-                                    Text("SoundCloud")
-                                        .font(.system(size: 14, weight: .medium))
-                                }
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
-                                .background(Color.white.opacity(0.1))
-                                .clipShape(RoundedRectangle(cornerRadius: 20))
-                            }
+                            actionButtonLabel(
+                                icon: isFavorite ? "heart.fill" : "heart",
+                                text: isFavorite ? "Remove Favorite" : "Add Favorite"
+                            )
                         }
                     }
+                    .padding(.horizontal, 16)
 
-                    // Tracklist
+                    // Tracklist in a translucent panel (web: bg-black/20)
                     if isLoadingTracks {
                         ProgressView()
-                            .tint(.white)
+                            .tint(fg)
                             .padding()
                     } else if !tracks.isEmpty {
-                        TracklistView(tracks: tracks, episode: episode)
+                        TracklistView(tracks: tracks, episode: episode, accent: accentBackground, textColor: fg)
+                            .background(Color.black.opacity(0.2))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .padding(.horizontal, 12)
                     }
 
                     Spacer(minLength: 32)
                 }
             }
         }
+        .animation(.easeInOut(duration: 0.5), value: sheetAccent)
         .task(id: episode.id) {
             // Reuse already-loaded data if this is the current episode
             if playerStore.currentEpisode?.id == episode.id {
                 if !playerStore.currentTracks.isEmpty {
                     detailTracks = playerStore.currentTracks
                 }
-                episodeAccentColor = playerStore.accentColor
+                episodeAccent = playerStore.accent
             }
 
             // Always fetch accent color for the displayed episode
             if let accent = try? await APIClient.shared.fetchAccentColor(episodeId: episode.id) {
-                episodeAccentColor = accent.swiftUIColor
+                episodeAccent = accent
             }
 
             // Fetch tracks if not already loaded
@@ -134,16 +136,33 @@ struct EpisodeDetailSheet: View {
             }
         }
     }
+
+    private func actionButtonLabel(icon: String, text: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .semibold))
+            Text(text)
+                .font(.app(size: 12, weight: .semibold))
+        }
+        .foregroundColor(fg)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(fg, lineWidth: 2))
+    }
+
 }
 
 // MARK: - Player controls (embedded in sheet)
 
 private struct PlayerControlsSection: View {
     let episode: Episode
+    /// The sheet's accent — the web colors the play glyph with it
+    /// (`text-accent` on the white circle).
+    let accent: Color
+    /// Text/glyph color over the accent background.
+    let textColor: Color
     @EnvironmentObject var playerStore: PlayerStore
 
-    @State private var rewindTrigger = 0
-    @State private var forwardTrigger = 0
     @State private var scrubTime: Double? = nil
 
     private var isCurrentEpisode: Bool { playerStore.currentEpisode?.id == episode.id }
@@ -169,22 +188,23 @@ private struct PlayerControlsSection: View {
                         Spacer()
                         Text(formatTime(playerStore.duration))
                     }
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.5))
+                    .font(.app(size: 12))
+                    .foregroundColor(textColor)
                     .padding(.horizontal, 24)
                 }
             }
 
-            // Buttons
-            HStack(spacing: 40) {
+            // Buttons (web: big white 30s skips around a white circle whose
+            // play/pause glyph is accent-colored)
+            HStack(spacing: 24) {
                 if isCurrentEpisode {
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         playerStore.rewind(30)
                     }) {
                         Image(systemName: "gobackward.30")
-                            .font(.system(size: 26))
-                            .foregroundColor(.white)
+                            .font(.system(size: 30))
+                            .foregroundColor(textColor)
                     }
                 }
 
@@ -200,15 +220,15 @@ private struct PlayerControlsSection: View {
                     ZStack {
                         Circle()
                             .fill(Color.white)
-                            .frame(width: 66, height: 66)
+                            .frame(width: 72, height: 72)
 
                         if isCurrentEpisode && playerStore.isLoading {
-                            ProgressView().tint(.black).scaleEffect(1.2)
+                            ProgressView().tint(accent).scaleEffect(1.2)
                         } else {
                             let icon = isCurrentEpisode && playerStore.isPlaying ? "pause.fill" : "play.fill"
                             Image(systemName: icon)
-                                .font(.system(size: 26))
-                                .foregroundColor(.black)
+                                .font(.system(size: 28))
+                                .foregroundColor(accent)
                                 .offset(x: (isCurrentEpisode && playerStore.isPlaying) ? 0 : 2)
                         }
                     }
@@ -220,8 +240,8 @@ private struct PlayerControlsSection: View {
                         playerStore.forward(30)
                     }) {
                         Image(systemName: "goforward.30")
-                            .font(.system(size: 26))
-                            .foregroundColor(.white)
+                            .font(.system(size: 30))
+                            .foregroundColor(textColor)
                     }
                 }
             }
@@ -241,6 +261,11 @@ private struct PlayerControlsSection: View {
 struct TracklistView: View {
     let tracks: [EpisodeTrack]
     let episode: Episode
+    /// Accent for the current track's number inside its badge (web:
+    /// `bg-white text-accent`).
+    let accent: Color
+    /// Text color over the accent background.
+    let textColor: Color
     @EnvironmentObject var playerStore: PlayerStore
 
     private var currentTrack: EpisodeTrack? {
@@ -255,42 +280,44 @@ struct TracklistView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("\(tracks.count) Tracks")
-                .font(.headline)
-                .foregroundColor(.white.opacity(0.7))
-                .padding(.horizontal, 20)
+                .font(.app(size: 18, weight: .bold))
+                .foregroundColor(textColor)
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
                 .padding(.bottom, 12)
 
             ForEach(tracks) { track in
                 let isCurrent = currentTrack?.id == track.id
-                TrackRow(track: track, episode: episode, isCurrent: isCurrent)
-                Divider().background(Color.white.opacity(0.1)).padding(.horizontal, 20)
+                TrackRow(track: track, episode: episode, accent: accent, textColor: textColor, isCurrent: isCurrent)
             }
+            .padding(.bottom, 4)
         }
+        .padding(.bottom, 8)
     }
 }
 
 private struct PingRing: View {
-    @State private var scale: CGFloat = 1.0
-    @State private var opacity: Double = 0.5
+    let color: Color
+    @State private var pinging = false
 
     var body: some View {
         Circle()
-            .stroke(Color.white, lineWidth: 1.5)
+            .fill(color)
             .frame(width: 20, height: 20)
-            .scaleEffect(scale)
-            .opacity(opacity)
-            .onAppear {
-                withAnimation(.easeOut(duration: 1.5).repeatForever(autoreverses: false)) {
-                    scale = 2.0
-                    opacity = 0
-                }
-            }
+            .scaleEffect(pinging ? 2.0 : 1.0)
+            .opacity(pinging ? 0 : 0.5)
+            // Scoped so the repeatForever can't leak into surrounding layout
+            // transactions (see MarqueeText.restart).
+            .animation(.easeOut(duration: 1.5).repeatForever(autoreverses: false), value: pinging)
+            .onAppear { pinging = true }
     }
 }
 
 private struct TrackRow: View {
     let track: EpisodeTrack
     let episode: Episode
+    let accent: Color
+    let textColor: Color
     let isCurrent: Bool
     @EnvironmentObject var playerStore: PlayerStore
 
@@ -306,50 +333,53 @@ private struct TrackRow: View {
             ZStack(alignment: .leading) {
                 // Left current-track bar
                 Rectangle()
-                    .fill(Color.white)
+                    .fill(textColor)
                     .frame(width: 2)
                     .opacity(isCurrent ? 1 : 0)
                     .animation(.easeInOut(duration: 0.3), value: isCurrent)
 
                 HStack(alignment: .center, spacing: 12) {
-                    // Track number / timestamp with current indicator
+                    // Track number; the current one sits in a white badge with
+                    // an accent-colored number and a ping ring (web parity)
                     ZStack {
                         if isCurrent {
-                            PingRing()
+                            PingRing(color: textColor)
                             Circle()
-                                .fill(Color.white)
+                                .fill(textColor)
                                 .frame(width: 20, height: 20)
                             Text("\(track.order)")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(.black)
-                        } else if let ts = track.formattedTimestamp {
-                            Text(ts)
-                                .font(.system(size: 12, design: .monospaced))
-                                .foregroundColor(.white.opacity(0.4))
+                                .font(.app(size: 10, weight: .bold))
+                                .foregroundColor(accent)
                         } else {
                             Text("\(track.order)")
-                                .font(.system(size: 12))
-                                .foregroundColor(.white.opacity(0.4))
+                                .font(.app(size: 12))
+                                .foregroundColor(textColor)
                         }
                     }
-                    .frame(width: 52, alignment: .leading)
+                    .frame(width: 24)
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(track.name)
-                            .font(.system(size: 13, weight: isCurrent ? .bold : .medium))
-                            .foregroundColor(.white)
+                            .font(.app(size: 14, weight: isCurrent ? .bold : .medium))
+                            .foregroundColor(textColor)
                             .lineLimit(1)
                         Text(track.artist)
-                            .font(.system(size: 12))
-                            .foregroundColor(.white.opacity(isCurrent ? 1.0 : 0.55))
+                            .font(.app(size: 13))
+                            .foregroundColor(textColor.opacity(isCurrent ? 1.0 : 0.8))
                             .lineLimit(1)
                     }
                     .animation(.easeInOut(duration: 0.3), value: isCurrent)
 
                     Spacer()
+
+                    if let ts = track.formattedTimestamp {
+                        Text(ts)
+                            .font(.app(size: 12))
+                            .foregroundColor(textColor)
+                    }
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
             }
         }
         .buttonStyle(.plain)

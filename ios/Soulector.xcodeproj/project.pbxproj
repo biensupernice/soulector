@@ -22,6 +22,15 @@
 		AA000020 /* SearchIndexEpisode.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000020 /* SearchIndexEpisode.swift */; };
 		AA000021 /* EpisodeSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000021 /* EpisodeSearch.swift */; };
 		AA000022 /* SearchResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000022 /* SearchResultsView.swift */; };
+		AA000023 /* RadioSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000023 /* RadioSchedule.swift */; };
+		AA000024 /* RadioStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000024 /* RadioStore.swift */; };
+		AA000025 /* PlayerFabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000025 /* PlayerFabs.swift */; };
+		AA000026 /* AppFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000026 /* AppFont.swift */; };
+		AA000027 /* SpaceGrotesk-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000027 /* SpaceGrotesk-Light.ttf */; };
+		AA000028 /* SpaceGrotesk-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000028 /* SpaceGrotesk-Regular.ttf */; };
+		AA000029 /* SpaceGrotesk-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000029 /* SpaceGrotesk-Medium.ttf */; };
+		AA000030 /* SpaceGrotesk-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000030 /* SpaceGrotesk-SemiBold.ttf */; };
+		AA000031 /* SpaceGrotesk-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000031 /* SpaceGrotesk-Bold.ttf */; };
 		AA000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000014 /* Assets.xcassets */; };
 		AA000015 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000015 /* Preview Assets.xcassets */; };
 /* End PBXBuildFile section */
@@ -43,6 +52,15 @@
 		AB000020 /* SearchIndexEpisode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchIndexEpisode.swift; sourceTree = "<group>"; };
 		AB000021 /* EpisodeSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeSearch.swift; sourceTree = "<group>"; };
 		AB000022 /* SearchResultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchResultsView.swift; sourceTree = "<group>"; };
+		AB000023 /* RadioSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioSchedule.swift; sourceTree = "<group>"; };
+		AB000024 /* RadioStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioStore.swift; sourceTree = "<group>"; };
+		AB000025 /* PlayerFabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerFabs.swift; sourceTree = "<group>"; };
+		AB000026 /* AppFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppFont.swift; sourceTree = "<group>"; };
+		AB000027 /* SpaceGrotesk-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Light.ttf"; sourceTree = "<group>"; };
+		AB000028 /* SpaceGrotesk-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Regular.ttf"; sourceTree = "<group>"; };
+		AB000029 /* SpaceGrotesk-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Medium.ttf"; sourceTree = "<group>"; };
+		AB000030 /* SpaceGrotesk-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-SemiBold.ttf"; sourceTree = "<group>"; };
+		AB000031 /* SpaceGrotesk-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Bold.ttf"; sourceTree = "<group>"; };
 		AB000014 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AB000015 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		AB000016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -71,8 +89,10 @@
 			isa = PBXGroup;
 			children = (
 				AB000001 /* SoulectorApp.swift */,
+				AB000026 /* AppFont.swift */,
 				AB000016 /* Info.plist */,
 				AB000014 /* Assets.xcassets */,
+				AD000011 /* Fonts */,
 				AD000010 /* Preview Content */,
 				AD000003 /* Models */,
 				AD000004 /* Networking */,
@@ -89,6 +109,7 @@
 				AB000003 /* Episode.swift */,
 				AB000004 /* EpisodeTrack.swift */,
 				AB000020 /* SearchIndexEpisode.swift */,
+				AB000023 /* RadioSchedule.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -106,6 +127,7 @@
 			children = (
 				AB000006 /* PlayerStore.swift */,
 				AB000007 /* FavoritesStore.swift */,
+				AB000024 /* RadioStore.swift */,
 			);
 			path = Stores;
 			sourceTree = "<group>";
@@ -128,6 +150,7 @@
 				AB000011 /* EpisodeDetailSheet.swift */,
 				AB000012 /* MiniPlayerView.swift */,
 				AB000022 /* SearchResultsView.swift */,
+				AB000025 /* PlayerFabs.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -138,6 +161,18 @@
 				AB000000 /* Soulector.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		AD000011 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				AB000027 /* SpaceGrotesk-Light.ttf */,
+				AB000028 /* SpaceGrotesk-Regular.ttf */,
+				AB000029 /* SpaceGrotesk-Medium.ttf */,
+				AB000030 /* SpaceGrotesk-SemiBold.ttf */,
+				AB000031 /* SpaceGrotesk-Bold.ttf */,
+			);
+			path = Fonts;
 			sourceTree = "<group>";
 		};
 		AD000010 /* Preview Content */ = {
@@ -208,6 +243,11 @@
 			files = (
 				AA000014 /* Assets.xcassets in Resources */,
 				AA000015 /* Preview Assets.xcassets in Resources */,
+				AA000027 /* SpaceGrotesk-Light.ttf in Resources */,
+				AA000028 /* SpaceGrotesk-Regular.ttf in Resources */,
+				AA000029 /* SpaceGrotesk-Medium.ttf in Resources */,
+				AA000030 /* SpaceGrotesk-SemiBold.ttf in Resources */,
+				AA000031 /* SpaceGrotesk-Bold.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -233,6 +273,10 @@
 				AA000020 /* SearchIndexEpisode.swift in Sources */,
 				AA000021 /* EpisodeSearch.swift in Sources */,
 				AA000022 /* SearchResultsView.swift in Sources */,
+				AA000023 /* RadioSchedule.swift in Sources */,
+				AA000024 /* RadioStore.swift in Sources */,
+				AA000025 /* PlayerFabs.swift in Sources */,
+				AA000026 /* AppFont.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

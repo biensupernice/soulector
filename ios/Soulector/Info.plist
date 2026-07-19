@@ -47,5 +47,14 @@
 	<array>
 		<string>audio</string>
 	</array>
+	<!-- Space Grotesk, matching the web app (public/fonts) -->
+	<key>UIAppFonts</key>
+	<array>
+		<string>SpaceGrotesk-Light.ttf</string>
+		<string>SpaceGrotesk-Regular.ttf</string>
+		<string>SpaceGrotesk-Medium.ttf</string>
+		<string>SpaceGrotesk-SemiBold.ttf</string>
+		<string>SpaceGrotesk-Bold.ttf</string>
+	</array>
 </dict>
 </plist>

@@ -9,11 +9,24 @@ struct Episode: Identifiable, Equatable, Hashable, Codable {
     let permalinkUrl: String
     let collectiveSlug: String
     let artworkUrl: String
+    /// Whether `episode.getStreamUrl` can return audio for this episode
+    /// (MIXCLOUD episodes are only playable through an archive mirror).
+    /// Optional because cached payloads may predate the field.
+    let hasStreamableAudio: Bool?
 
     // Note: JSON also contains "createadAt" (typo) and "embedPlayerKey" (Int or String),
     // both are intentionally omitted from CodingKeys so they are silently ignored.
     private enum CodingKeys: String, CodingKey {
         case id, source, duration, releasedAt, name, permalinkUrl, collectiveSlug, artworkUrl
+        case hasStreamableAudio
+    }
+
+    /// Radio mode keeps unplayable episodes out of the broadcast schedule.
+    /// A stale cache without the flag falls back to excluding all MIXCLOUD
+    /// episodes — too strict for archive-mirrored ones, but only until the
+    /// next `episodes.all` refresh replaces the cache.
+    var isStreamable: Bool {
+        hasStreamableAudio ?? (source != "MIXCLOUD")
     }
 
     var releasedAtDate: Date? {
