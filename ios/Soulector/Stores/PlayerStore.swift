@@ -26,27 +26,16 @@ final class PlayerStore: ObservableObject {
     @Published private(set) var currentTracks: [EpisodeTrack] = []
     @Published private(set) var isLoadingTracks = false
     @Published private(set) var accent: AccentColor?
-    /// Debug affordance for auditioning extraction swatches: when set, accent
-    /// derivations substitute this palette swatch (e.g. "Vibrant") for the
-    /// server's default pick, app-wide. Persisted so it can be judged across
-    /// launches and episodes; cycled from the episode sheet / FAB cluster.
-    @Published private(set) var accentSwatchOverride: String?
     @Published var isSeeking = false
 
-    private static let accentSwatchKey = "soulector.accentSwatchOverride"
-
-    /// The fetched accent with any swatch override applied.
-    var effectiveAccent: AccentColor? { accent?.withSwatch(named: accentSwatchOverride) }
-    /// Album accent for elements on light surfaces (the white FAB pill);
-    /// falls back to the web's static default accent, hsl(0 0% 9%).
+    /// The fetched accent resolved to this app's chosen swatch (Vibrant).
+    var effectiveAccent: AccentColor? { accent?.appSwatch }
+    /// Album accent for light surfaces; falls back to the web's static
+    /// default accent, hsl(0 0% 9%).
     var accentOnLight: Color { effectiveAccent?.onLight ?? Color(white: 0.09) }
     /// Album accent for elements on the black background; falls back to the
     /// white the UI uses when nothing is playing.
     var accentOnDark: Color { effectiveAccent?.onDark ?? .white }
-
-    var accentSwatchLabel: String {
-        accentSwatchOverride.map { "Accent: \($0)" } ?? "Accent: Default (DarkVibrant)"
-    }
 
     /// Refetches the current episode's accent — e.g. after the API base URL
     /// override changes, so a server with palette data can replace an accent
@@ -55,22 +44,6 @@ final class PlayerStore: ObservableObject {
         guard let id = currentEpisode?.id else { return }
         accentColorTask?.cancel()
         accentColorTask = Task { await loadAccentColor(for: id) }
-    }
-
-    func setAccentSwatch(_ name: String?) {
-        accentSwatchOverride = name
-        UserDefaults.standard.set(name, forKey: Self.accentSwatchKey)
-    }
-
-    /// Steps default → each extracted swatch → back to default.
-    func cycleAccentSwatch() {
-        let names = accent?.palette?.map(\.name) ?? []
-        guard !names.isEmpty else { return }
-        if let current = accentSwatchOverride, let idx = names.firstIndex(of: current) {
-            setAccentSwatch(idx + 1 < names.count ? names[idx + 1] : nil)
-        } else {
-            setAccentSwatch(names.first)
-        }
     }
 
     /// Called when an episode plays to completion. Set by the view layer to implement auto-advance.
@@ -107,7 +80,6 @@ final class PlayerStore: ObservableObject {
     // MARK: Init
 
     init() {
-        accentSwatchOverride = UserDefaults.standard.string(forKey: Self.accentSwatchKey)
         configureAudioSession()
         configureRemoteCommands()
     }

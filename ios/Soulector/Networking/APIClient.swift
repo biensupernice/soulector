@@ -45,6 +45,12 @@ struct AccentColor: Decodable, Equatable {
         return AccentColor(rgb: swatch.rgb, hsl: swatch.hsl, palette: palette)
     }
 
+    /// The swatch this app uses: Vibrant — richer against the dark UI than
+    /// the server's DarkVibrant default, which is tuned for the web's white
+    /// surroundings. Falls back to the server's pick for responses without
+    /// palette data.
+    var appSwatch: AccentColor { withSwatch(named: "Vibrant") }
+
     /// The swatch exactly as extracted — what the web paints the episode
     /// sheet with (`bg-accent`).
     var raw: Color {

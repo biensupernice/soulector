@@ -13,24 +13,16 @@ struct EpisodeDetailSheet: View {
     @State private var detailTracks: [EpisodeTrack] = []
     @State private var isLoadingDetailTracks = false
     @State private var episodeAccent: AccentColor?
-    @State private var showAccentChip = false
-    @State private var accentChipGeneration = 0
-    @AppStorage(TextOnAccent.storageKey) private var textOnAccentRaw = TextOnAccent.white.rawValue
-
     private var tracks: [EpisodeTrack] { detailTracks }
     private var isLoadingTracks: Bool { isLoadingDetailTracks }
     private var isFavorite: Bool { favoritesStore.isFavorite(episode.id) }
 
-    /// This episode's accent with the app-wide swatch override applied.
-    private var sheetAccent: AccentColor? {
-        episodeAccent?.withSwatch(named: playerStore.accentSwatchOverride)
-    }
+    /// This episode's accent resolved to the app's chosen swatch (Vibrant).
+    private var sheetAccent: AccentColor? { episodeAccent?.appSwatch }
     /// Web paints the sheet container with the raw accent (`bg-accent`).
     private var accentBackground: Color { sheetAccent?.raw ?? Color(white: 0.09) }
-    /// Text color over the accent background (the text-on-accent variant).
-    private var fg: Color {
-        (TextOnAccent(rawValue: textOnAccentRaw) ?? .white).color(over: sheetAccent)
-    }
+    /// Text color over the accent background.
+    private var fg: Color { .white }
 
     var body: some View {
         ZStack {
@@ -56,8 +48,7 @@ struct EpisodeDetailSheet: View {
                         .frame(width: 40, height: 4)
                         .padding(.top, 12)
 
-                    // Album art. Long-press cycles through the extraction's
-                    // palette swatches (debug affordance, applies app-wide).
+                    // Album art
                     AsyncImage(url: URL(string: episode.artworkUrl)) { phase in
                         if case .success(let image) = phase {
                             image.resizable().aspectRatio(contentMode: .fit)
@@ -69,15 +60,6 @@ struct EpisodeDetailSheet: View {
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .padding(.horizontal, 40)
-                    .onLongPressGesture {
-                        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-                        playerStore.cycleAccentSwatch()
-                    }
-
-                    if showAccentChip {
-                        AccentSwatchChip(label: playerStore.accentSwatchLabel)
-                            .transition(.opacity)
-                    }
 
                     // Title + date (web: bold white title, white/80 date)
                     VStack(spacing: 4) {
@@ -153,9 +135,6 @@ struct EpisodeDetailSheet: View {
                 isLoadingDetailTracks = false
             }
         }
-        .onChange(of: playerStore.accentSwatchOverride) { _ in
-            flashAccentChip()
-        }
     }
 
     private func actionButtonLabel(icon: String, text: String) -> some View {
@@ -171,31 +150,6 @@ struct EpisodeDetailSheet: View {
         .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(fg, lineWidth: 2))
     }
 
-    private func flashAccentChip() {
-        accentChipGeneration += 1
-        let generation = accentChipGeneration
-        withAnimation(.easeInOut(duration: 0.15)) { showAccentChip = true }
-        Task {
-            try? await Task.sleep(nanoseconds: 1_800_000_000)
-            guard generation == accentChipGeneration else { return }
-            withAnimation(.easeInOut(duration: 0.3)) { showAccentChip = false }
-        }
-    }
-}
-
-/// Transient label naming the active accent swatch while cycling.
-struct AccentSwatchChip: View {
-    let label: String
-
-    var body: some View {
-        Text(label)
-            .font(.app(size: 12, weight: .semibold))
-            .foregroundColor(.white)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(Color.black.opacity(0.45))
-            .clipShape(Capsule())
-    }
 }
 
 // MARK: - Player controls (embedded in sheet)

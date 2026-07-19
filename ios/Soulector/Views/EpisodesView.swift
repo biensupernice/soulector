@@ -16,13 +16,9 @@ struct EpisodesView: View {
     @State private var selectedEpisode: Episode?
     @State private var showCollectivePicker = false
     @State private var navBarHeight: CGFloat = 0
-    @State private var showAccentChip = false
-    @State private var accentChipGeneration = 0
     @AppStorage(APIClient.baseURLOverrideKey) private var apiBaseOverride = ""
     @State private var showAPIOverridePrompt = false
     @State private var apiOverrideDraft = ""
-    @AppStorage(TextOnAccent.storageKey) private var textOnAccentRaw = TextOnAccent.white.rawValue
-    @AppStorage(FabStyle.storageKey) private var fabStyleRaw = FabStyle.whiteAccent.rawValue
 
     private var displayedEpisodes: [Episode] {
         selectedTab == .all
@@ -81,22 +77,13 @@ struct EpisodesView: View {
 
             // Floating radio/shuffle cluster (mirrors the web PlayerFabs),
             // tucked into the bottom-right corner above the mini player.
-            // Long-press cycles the accent swatch (debug affordance).
-            VStack(alignment: .trailing, spacing: 8) {
+            VStack {
                 Spacer()
-                if showAccentChip {
-                    AccentSwatchChip(label: playerStore.accentSwatchLabel)
-                        .transition(.opacity)
-                }
                 HStack {
                     Spacer()
                     PlayerFabs(
                         on: radioStore.isOn,
-                        style: FabStyle(rawValue: fabStyleRaw) ?? .whiteAccent,
-                        accentOnLight: playerStore.accentOnLight,
-                        accentOnDark: playerStore.accentOnDark,
-                        onAirText: (TextOnAccent(rawValue: textOnAccentRaw) ?? .white)
-                            .color(over: playerStore.effectiveAccent),
+                        accent: playerStore.accentOnLight,
                         onRadioTap: {
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             if radioStore.isOn {
@@ -113,26 +100,10 @@ struct EpisodesView: View {
                             }
                         }
                     )
-                    .simultaneousGesture(
-                        LongPressGesture(minimumDuration: 0.5).onEnded { _ in
-                            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-                            playerStore.cycleAccentSwatch()
-                        }
-                    )
                 }
             }
             .padding(.trailing, 16)
             .padding(.bottom, playerStore.hasEpisode ? 76 : 16)
-            .onChange(of: playerStore.accentSwatchOverride) { _ in
-                accentChipGeneration += 1
-                let generation = accentChipGeneration
-                withAnimation(.easeInOut(duration: 0.15)) { showAccentChip = true }
-                Task {
-                    try? await Task.sleep(nanoseconds: 1_800_000_000)
-                    guard generation == accentChipGeneration else { return }
-                    withAnimation(.easeInOut(duration: 0.3)) { showAccentChip = false }
-                }
-            }
 
             // Mini player pinned to bottom
             if playerStore.hasEpisode {
@@ -214,39 +185,6 @@ struct EpisodesView: View {
             Spacer()
 
             HStack(spacing: 4) {
-                // Temporary variant menu for auditioning accent treatments
-                Menu {
-                    Picker("Accent Swatch", selection: Binding(
-                        get: { playerStore.accentSwatchOverride ?? "" },
-                        set: { playerStore.setAccentSwatch($0.isEmpty ? nil : $0) }
-                    )) {
-                        Text("Default (DarkVibrant)").tag("")
-                        ForEach(swatchNames, id: \.self) { name in
-                            Text(name).tag(name)
-                        }
-                    }
-                    .pickerStyle(.inline)
-
-                    Picker("Text on Accent", selection: $textOnAccentRaw) {
-                        ForEach(TextOnAccent.allCases) { option in
-                            Text(option.label).tag(option.rawValue)
-                        }
-                    }
-                    .pickerStyle(.inline)
-
-                    Picker("FAB Style", selection: $fabStyleRaw) {
-                        ForEach(FabStyle.allCases) { option in
-                            Text(option.label).tag(option.rawValue)
-                        }
-                    }
-                    .pickerStyle(.inline)
-                } label: {
-                    Image(systemName: "paintpalette")
-                        .font(.system(size: 18))
-                        .foregroundColor(.white)
-                        .frame(width: 40, height: 40)
-                }
-
                 // Search toggle (shuffle lives in the floating cluster below)
                 Button(action: {
                     withAnimation(.easeInOut(duration: 0.2)) { showSearch.toggle() }
@@ -270,15 +208,6 @@ struct EpisodesView: View {
                 Color.clear.onAppear { navBarHeight = geo.size.height }
             }
         )
-    }
-
-    /// Palette names for the variant menu; falls back to the standard Vibrant
-    /// swatch names before any accent (with palette data) has been fetched.
-    private var swatchNames: [String] {
-        let fetched = playerStore.accent?.palette?.map(\.name) ?? []
-        return fetched.isEmpty
-            ? ["Vibrant", "DarkVibrant", "LightVibrant", "Muted", "DarkMuted", "LightMuted"]
-            : fetched
     }
 
     private var apiOverrideBanner: some View {

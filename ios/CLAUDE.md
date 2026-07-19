@@ -28,7 +28,6 @@ SwiftUI app, iOS 16+, no third-party dependencies.
 ios/Soulector/
 ├── SoulectorApp.swift          # App entry point
 ├── AppFont.swift               # Font.app(size:weight:) → Space Grotesk (web parity)
-├── DebugVariants.swift         # Temporary accent-variant controls (paintpalette menu)
 ├── Fonts/                      # Space Grotesk TTFs (converted from public/fonts woff2)
 ├── ContentView.swift           # Root, injects @StateObject stores
 ├── Views/
@@ -36,7 +35,7 @@ ios/Soulector/
 │   ├── EpisodeRowView.swift    # List row with context menu
 │   ├── EpisodeDetailSheet.swift # Single sheet for browse + playback; contains ProgressSlider, TracklistView
 │   ├── MiniPlayerView.swift    # Persistent bottom bar
-│   └── PlayerFabs.swift        # Floating radio/shuffle cluster (port of web PlayerFabs)
+│   └── PlayerFabs.swift        # Floating radio/shuffle cluster (near-black pill, accent On Air fill)
 ├── Stores/
 │   ├── PlayerStore.swift       # AVPlayer wrapper; publishes accentColor, exposes onEpisodeEnded + userSeeks
 │   ├── RadioStore.swift        # Radio mode orchestration (port of web useRadio)
@@ -54,7 +53,7 @@ ios/Soulector/
 ## Key patterns
 
 - **State:** `@StateObject` in `ContentView`, passed down as `@EnvironmentObject`
-- **Accent color:** `PlayerStore.accent` (AccentColor) — fetched from `episode.getAccentColor` when an episode plays; also fetched locally in `EpisodeDetailSheet` for the viewed episode. The web extracts a dark-leaning swatch (DarkVibrant) chosen to sit on light surfaces; this app mirrors that with surface-aware variants: `raw` (episode sheet background, like the web's `bg-accent`), `accentOnLight` (white FAB pill), `accentOnDark` (lightness lifted for elements on black — mini player controls, playing row title). The API also returns the full extraction `palette`; long-pressing the sheet artwork or the FAB cluster cycles `accentSwatchOverride` (persisted) through it to audition alternatives
+- **Accent color:** `PlayerStore.accent` (AccentColor) — fetched from `episode.getAccentColor` when an episode plays; also fetched locally in `EpisodeDetailSheet` for the viewed episode. The web extracts a dark-leaning swatch (DarkVibrant) chosen to sit on light surfaces; this app mirrors that with surface-aware variants: `raw` (episode sheet background, like the web's `bg-accent`), `accentOnLight` (dark-leaning; the FAB cluster's On Air fill), `accentOnDark` (lightness lifted for elements on black — mini player controls, playing row title). The API also returns the full extraction `palette`; this app resolves to the **Vibrant** swatch (`AccentColor.appSwatch`) — richer on the dark UI than the web's DarkVibrant default — falling back to the server's pick when palette data is absent
 - **Auto-advance:** `PlayerStore.onEpisodeEnded` closure — wired in `EpisodesView.onAppear`
 - **Single sheet:** Mini player tap and episode row tap both set `selectedEpisode`; `EpisodeDetailSheet` handles both browse and active playback
 - **Haptics:** `UIImpactFeedbackGenerator` (no iOS 17 requirement)
