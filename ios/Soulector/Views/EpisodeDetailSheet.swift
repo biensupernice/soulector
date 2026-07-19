@@ -35,11 +35,13 @@ struct EpisodeDetailSheet: View {
     var body: some View {
         ZStack {
             accentBackground.ignoresSafeArea()
-            // Web overlay: bg-gradient-to-t from-gray-700/30 to-white/5
+            // Darker take on the web's overlay (gray-700/30 → white/5): the
+            // accent hue shows through, but deepened enough that the sheet
+            // still reads as part of a dark-mode app.
             LinearGradient(
                 colors: [
-                    Color.white.opacity(0.05),
-                    Color(red: 55 / 255, green: 65 / 255, blue: 81 / 255).opacity(0.3),
+                    Color.black.opacity(0.25),
+                    Color.black.opacity(0.55),
                 ],
                 startPoint: .top,
                 endPoint: .bottom
