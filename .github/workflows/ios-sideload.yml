@@ -89,16 +89,21 @@ jobs:
               await github.rest.issues.createComment({ ...context.repo, issue_number: context.issue.number, body });
             }
 
-      - name: Publish rolling release
+      # Every main build gets its own versioned release (run_number is a
+      # simple monotonic build number), with GitHub's auto-generated notes
+      # listing the changes since the previous release. The newest build is
+      # always reachable at .../releases/latest.
+      - name: Publish release
         if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: sideload-latest
-          name: Soulector iOS (latest sideload build)
+          tag_name: ios-build-${{ github.run_number }}
+          name: Soulector iOS build ${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
           body: |
-            Unsigned IPA for sideloading with SideStore.
-
-            Built from `${{ github.sha }}` on `${{ github.ref_name }}`.
+            Unsigned IPA for sideloading with SideStore, built from
+            `${{ github.sha }}` on `${{ github.ref_name }}`.
 
             **Install on iPhone:** download `Soulector.ipa` below in Safari,
             then open SideStore → My Apps → + → pick the downloaded file.
