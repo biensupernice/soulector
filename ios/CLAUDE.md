@@ -53,7 +53,7 @@ ios/Soulector/
 ## Key patterns
 
 - **State:** `@StateObject` in `ContentView`, passed down as `@EnvironmentObject`
-- **Accent color:** `PlayerStore.accentColor` (Color) — fetched from `episode.getAccentColor` API when an episode plays; also fetched locally in `EpisodeDetailSheet` for the viewed episode. The web extracts a dark-leaning swatch (DarkVibrant) chosen to sit on light surfaces; this app mirrors that with surface-aware variants: `accentOnLight` (raw-ish, for the white FAB pill) and `accentOnDark` (lightness lifted, for elements on the black background — mini player controls, playing row title)
+- **Accent color:** `PlayerStore.accent` (AccentColor) — fetched from `episode.getAccentColor` when an episode plays; also fetched locally in `EpisodeDetailSheet` for the viewed episode. The web extracts a dark-leaning swatch (DarkVibrant) chosen to sit on light surfaces; this app mirrors that with surface-aware variants: `raw` (episode sheet background, like the web's `bg-accent`), `accentOnLight` (white FAB pill), `accentOnDark` (lightness lifted for elements on black — mini player controls, playing row title). The API also returns the full extraction `palette`; long-pressing the sheet artwork or the FAB cluster cycles `accentSwatchOverride` (persisted) through it to audition alternatives
 - **Auto-advance:** `PlayerStore.onEpisodeEnded` closure — wired in `EpisodesView.onAppear`
 - **Single sheet:** Mini player tap and episode row tap both set `selectedEpisode`; `EpisodeDetailSheet` handles both browse and active playback
 - **Haptics:** `UIImpactFeedbackGenerator` (no iOS 17 requirement)

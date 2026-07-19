@@ -21,14 +21,34 @@ struct StreamUrls: Decodable {
     }
 }
 
-struct AccentColor: Decodable {
+struct PaletteSwatch: Decodable, Equatable {
+    let name: String
     let rgb: [Double]
     let hsl: [Double]
+}
 
-    /// A SwiftUI Color using the HSL values, with lightness boosted into a visible range
-    /// so dark album art colors still produce a distinguishable gradient background.
-    var swiftUIColor: Color {
-        color { max(0.28, min(0.48, $0)) }
+struct AccentColor: Decodable, Equatable {
+    let rgb: [Double]
+    let hsl: [Double]
+    /// Every swatch the server's extraction produced (Vibrant, DarkVibrant,
+    /// …), for auditioning alternatives to the default pick. Optional because
+    /// older server responses predate the field.
+    let palette: [PaletteSwatch]?
+
+    /// This accent with a different extraction swatch substituted in; falls
+    /// back to the server's default pick when the name is missing from this
+    /// episode's palette (or nil).
+    func withSwatch(named name: String?) -> AccentColor {
+        guard let name,
+              let swatch = palette?.first(where: { $0.name == name })
+        else { return self }
+        return AccentColor(rgb: swatch.rgb, hsl: swatch.hsl, palette: palette)
+    }
+
+    /// The swatch exactly as extracted — what the web paints the episode
+    /// sheet with (`bg-accent`).
+    var raw: Color {
+        color { $0 }
     }
 
     /// The swatch roughly as the web uses it, for accent elements on light

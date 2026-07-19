@@ -484,6 +484,7 @@ export const episodeRouter = router({
         hsl: [0, 0, 0], // TODO Fix default from rgb 24 24 27
         bodyTexColor: "black",
         titleTextColor: "black",
+        palette: [] as { name: string; rgb: number[]; hsl: number[] }[],
       };
 
       if (!episodeId) {
@@ -522,8 +523,26 @@ export const episodeRouter = router({
       const swatch =
         palette.DarkVibrant || palette.Vibrant || palette.DarkMuted;
 
+      // Every swatch the extraction produced, so clients can offer
+      // alternatives to the default pick above.
+      const paletteProjection = (
+        [
+          "Vibrant",
+          "DarkVibrant",
+          "LightVibrant",
+          "Muted",
+          "DarkMuted",
+          "LightMuted",
+        ] as const
+      ).flatMap((name) => {
+        const s = palette[name];
+        return s
+          ? [{ name, rgb: s.rgb, hsl: [s.hsl[0], s.hsl[1], s.hsl[2]] }]
+          : [];
+      });
+
       if (!swatch) {
-        return defaultAccentColor;
+        return { ...defaultAccentColor, palette: paletteProjection };
       }
 
       const darkVibrantResult = {
@@ -531,6 +550,7 @@ export const episodeRouter = router({
         hsl: [swatch.hsl[0], swatch.hsl[1], swatch.hsl[2]],
         bodyTexColor: swatch.getBodyTextColor(),
         titleTextColor: swatch.getTitleTextColor(),
+        palette: paletteProjection,
       };
 
       return darkVibrantResult;

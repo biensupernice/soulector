@@ -16,6 +16,8 @@ struct EpisodesView: View {
     @State private var selectedEpisode: Episode?
     @State private var showCollectivePicker = false
     @State private var navBarHeight: CGFloat = 0
+    @State private var showAccentChip = false
+    @State private var accentChipGeneration = 0
 
     private var displayedEpisodes: [Episode] {
         selectedTab == .all
@@ -68,8 +70,13 @@ struct EpisodesView: View {
 
             // Floating radio/shuffle cluster (mirrors the web PlayerFabs),
             // tucked into the bottom-right corner above the mini player.
-            VStack {
+            // Long-press cycles the accent swatch (debug affordance).
+            VStack(alignment: .trailing, spacing: 8) {
                 Spacer()
+                if showAccentChip {
+                    AccentSwatchChip(label: playerStore.accentSwatchLabel)
+                        .transition(.opacity)
+                }
                 HStack {
                     Spacer()
                     PlayerFabs(
@@ -91,10 +98,26 @@ struct EpisodesView: View {
                             }
                         }
                     )
+                    .simultaneousGesture(
+                        LongPressGesture(minimumDuration: 0.5).onEnded { _ in
+                            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+                            playerStore.cycleAccentSwatch()
+                        }
+                    )
                 }
             }
             .padding(.trailing, 16)
             .padding(.bottom, playerStore.hasEpisode ? 76 : 16)
+            .onChange(of: playerStore.accentSwatchOverride) { _ in
+                accentChipGeneration += 1
+                let generation = accentChipGeneration
+                withAnimation(.easeInOut(duration: 0.15)) { showAccentChip = true }
+                Task {
+                    try? await Task.sleep(nanoseconds: 1_800_000_000)
+                    guard generation == accentChipGeneration else { return }
+                    withAnimation(.easeInOut(duration: 0.3)) { showAccentChip = false }
+                }
+            }
 
             // Mini player pinned to bottom
             if playerStore.hasEpisode {
