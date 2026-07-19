@@ -26,7 +26,15 @@ final class PlayerStore: ObservableObject {
     @Published private(set) var currentTracks: [EpisodeTrack] = []
     @Published private(set) var isLoadingTracks = false
     @Published private(set) var accentColor: Color = .black
+    @Published private(set) var accent: AccentColor?
     @Published var isSeeking = false
+
+    /// Album accent for elements on light surfaces (the white FAB pill);
+    /// falls back to the web's static default accent, hsl(0 0% 9%).
+    var accentOnLight: Color { accent?.onLight ?? Color(white: 0.09) }
+    /// Album accent for elements on the black background; falls back to the
+    /// white the UI uses when nothing is playing.
+    var accentOnDark: Color { accent?.onDark ?? .white }
 
     /// Called when an episode plays to completion. Set by the view layer to implement auto-advance.
     var onEpisodeEnded: ((Episode) -> Void)?
@@ -157,6 +165,7 @@ final class PlayerStore: ObservableObject {
     private func loadAccentColor(for episodeId: String) async {
         guard let accent = try? await APIClient.shared.fetchAccentColor(episodeId: episodeId) else { return }
         guard !Task.isCancelled else { return }
+        self.accent = accent
         accentColor = accent.swiftUIColor
     }
 
@@ -311,6 +320,7 @@ final class PlayerStore: ObservableObject {
         accentColorTask?.cancel()
         accentColorTask = nil
         accentColor = .black
+        accent = nil
         loadedArtwork = nil
         loadedArtworkEpisodeId = nil
         pendingSeek = nil

@@ -4,15 +4,17 @@ import SwiftUI
 /// (`src/client/EpisodesScreen/PlayerFabs.tsx`): one connected pill with a
 /// radio segment and a shuffle segment. On air the radio side expands into an
 /// accent-filled "On Air" pill while shuffle collapses to just its icon;
-/// tuning away reverses it. The web accent is near-black on white, which is
-/// what makes the white pill pop against this app's black background.
+/// tuning away reverses it. The white pill pops against this app's black
+/// background and doubles as a light surface for the album accent.
 struct PlayerFabs: View {
     let on: Bool
+    /// The playing episode's album accent (dark-leaning, like the web's
+    /// `--accent`): the white pill is a light surface, so the same swatch the
+    /// web shows against its white background works here unchanged.
+    let accent: Color
     let onRadioTap: () -> Void
     let onShuffleTap: () -> Void
 
-    // Same accent as the web cluster: hsl(0 0% 9%).
-    private static let accent = Color(white: 0.09)
     // Matches the web cluster's spring (bounce 0.18, duration 0.45).
     private static let spring = Animation.spring(duration: 0.45, bounce: 0.18)
 
@@ -20,14 +22,14 @@ struct PlayerFabs: View {
         HStack(spacing: 0) {
             radioSegment
             Rectangle()
-                .fill(Self.accent.opacity(0.2))
+                .fill(accent.opacity(0.2))
                 .frame(width: 1)
             shuffleSegment
         }
         .fixedSize()
         .background(Color.white)
         .clipShape(Capsule())
-        .overlay(Capsule().strokeBorder(Self.accent.opacity(0.3), lineWidth: 1))
+        .overlay(Capsule().strokeBorder(accent.opacity(0.3), lineWidth: 1))
         .shadow(color: .black.opacity(0.35), radius: 10, x: 0, y: 4)
         .animation(Self.spring, value: on)
     }
@@ -46,13 +48,13 @@ struct PlayerFabs: View {
                 } else {
                     Image(systemName: "dot.radiowaves.left.and.right")
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(Self.accent)
+                        .foregroundColor(accent)
                         .padding(.horizontal, 16)
                 }
             }
             .frame(minHeight: 24)
             .padding(.vertical, 12)
-            .background(on ? Self.accent : Color.clear)
+            .background(on ? accent : Color.clear)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(on ? "On Air" : "Radio")
@@ -76,7 +78,7 @@ struct PlayerFabs: View {
                     .padding(.horizontal, 20)
                 }
             }
-            .foregroundColor(Self.accent)
+            .foregroundColor(accent)
             .frame(minHeight: 24)
             .padding(.vertical, 12)
         }

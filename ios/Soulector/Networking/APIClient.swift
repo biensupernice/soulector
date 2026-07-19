@@ -28,11 +28,29 @@ struct AccentColor: Decodable {
     /// A SwiftUI Color using the HSL values, with lightness boosted into a visible range
     /// so dark album art colors still produce a distinguishable gradient background.
     var swiftUIColor: Color {
+        color { max(0.28, min(0.48, $0)) }
+    }
+
+    /// The swatch roughly as the web uses it, for accent elements on light
+    /// surfaces (the white FAB pill). The server extracts a dark-leaning
+    /// swatch (DarkVibrant) precisely so it reads well against white and can
+    /// host white text; the cap keeps unusual artwork from breaking that.
+    var onLight: Color {
+        color { min($0, 0.45) }
+    }
+
+    /// The same thinking mirrored for this app's black surfaces: keep the
+    /// swatch's hue and saturation but lift lightness into a range that reads
+    /// against black next to near-white text.
+    var onDark: Color {
+        color { max(0.55, min(0.75, $0)) }
+    }
+
+    private func color(lightness clamp: (Double) -> Double) -> Color {
         guard hsl.count >= 3 else { return .black }
         let h = hsl[0]
         let s = hsl[1]
-        // Clamp lightness: dark colors (< 0.25) get lifted; very bright ones get toned down
-        let l = max(0.28, min(0.48, hsl[2]))
+        let l = clamp(hsl[2])
         // Convert HSL → HSB so SwiftUI's Color(hue:saturation:brightness:) can consume it
         let b = l + s * min(l, 1 - l)
         let sHSB = b == 0 ? 0.0 : 2 * (1 - l / b)

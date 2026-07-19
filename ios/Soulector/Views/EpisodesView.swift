@@ -74,6 +74,7 @@ struct EpisodesView: View {
                     Spacer()
                     PlayerFabs(
                         on: radioStore.isOn,
+                        accent: playerStore.accentOnLight,
                         onRadioTap: {
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             if radioStore.isOn {
