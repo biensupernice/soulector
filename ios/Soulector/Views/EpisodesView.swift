@@ -18,6 +18,9 @@ struct EpisodesView: View {
     @State private var navBarHeight: CGFloat = 0
     @State private var showAccentChip = false
     @State private var accentChipGeneration = 0
+    @AppStorage(APIClient.baseURLOverrideKey) private var apiBaseOverride = ""
+    @State private var showAPIOverridePrompt = false
+    @State private var apiOverrideDraft = ""
 
     private var displayedEpisodes: [Episode] {
         selectedTab == .all
@@ -36,6 +39,12 @@ struct EpisodesView: View {
             VStack(spacing: 0) {
                 // Navigation bar area
                 navBar
+
+                // Visible whenever the app points at a non-production API,
+                // so a forgotten override can't silently confuse things.
+                if !apiBaseOverride.isEmpty {
+                    apiOverrideBanner
+                }
 
                 // Search bar
                 if showSearch {
@@ -157,7 +166,8 @@ struct EpisodesView: View {
 
     private var navBar: some View {
         HStack {
-            // Collective picker
+            // Collective picker. Long-press opens the API server override
+            // prompt (debug affordance for testing against preview deploys).
             Button(action: {
                 withAnimation(.spring(duration: 0.2)) { showCollectivePicker.toggle() }
             }) {
@@ -171,6 +181,29 @@ struct EpisodesView: View {
                 }
             }
             .buttonStyle(.plain)
+            .simultaneousGesture(
+                LongPressGesture(minimumDuration: 0.5).onEnded { _ in
+                    UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+                    apiOverrideDraft = apiBaseOverride
+                    showAPIOverridePrompt = true
+                }
+            )
+            .alert("API Server", isPresented: $showAPIOverridePrompt) {
+                TextField("https://….vercel.app", text: $apiOverrideDraft)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                Button("Save") {
+                    apiBaseOverride = apiOverrideDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                    onAPIBaseChanged()
+                }
+                Button("Use Production") {
+                    apiBaseOverride = ""
+                    onAPIBaseChanged()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Point the app at a preview deployment (paste the URL; /api/trpc is added automatically). Long-press the title to change it back.")
+            }
 
             Spacer()
 
@@ -198,6 +231,33 @@ struct EpisodesView: View {
                 Color.clear.onAppear { navBarHeight = geo.size.height }
             }
         )
+    }
+
+    private var apiOverrideBanner: some View {
+        Button(action: {
+            apiOverrideDraft = apiBaseOverride
+            showAPIOverridePrompt = true
+        }) {
+            HStack(spacing: 6) {
+                Circle().fill(Color.orange).frame(width: 6, height: 6)
+                Text("Preview API: \(apiBaseOverride)")
+                    .font(.app(size: 11, weight: .medium))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            .foregroundColor(.orange)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 6)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func onAPIBaseChanged() {
+        // Reload from the newly selected server: the episode list, and the
+        // current episode's accent (so palette data appears without a replay).
+        Task { await episodesVM.fetchEpisodes() }
+        playerStore.refreshAccent()
     }
 
     private var searchBar: some View {

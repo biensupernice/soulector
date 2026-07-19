@@ -108,7 +108,23 @@ final class APIClient {
     }
     private let streamUrlCache = StreamUrlCache()
 
-    private let baseURL = "https://soulector.app/api/trpc"
+    static let defaultBaseURL = "https://soulector.app/api/trpc"
+    /// UserDefaults key holding a debug base-URL override (e.g. a Vercel
+    /// preview host, with or without the /api/trpc suffix). Set from the
+    /// long-press prompt on the episodes screen title.
+    static let baseURLOverrideKey = "soulector.apiBaseOverride"
+
+    private var baseURL: String {
+        guard
+            var override = UserDefaults.standard
+                .string(forKey: Self.baseURLOverrideKey)?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+            !override.isEmpty
+        else { return Self.defaultBaseURL }
+        while override.hasSuffix("/") { override.removeLast() }
+        if !override.hasSuffix("/api/trpc") { override += "/api/trpc" }
+        return override
+    }
     private let session: URLSession = {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30

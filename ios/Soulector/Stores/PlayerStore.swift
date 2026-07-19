@@ -48,6 +48,15 @@ final class PlayerStore: ObservableObject {
         accentSwatchOverride.map { "Accent: \($0)" } ?? "Accent: Default (DarkVibrant)"
     }
 
+    /// Refetches the current episode's accent — e.g. after the API base URL
+    /// override changes, so a server with palette data can replace an accent
+    /// fetched without it.
+    func refreshAccent() {
+        guard let id = currentEpisode?.id else { return }
+        accentColorTask?.cancel()
+        accentColorTask = Task { await loadAccentColor(for: id) }
+    }
+
     /// Steps default → each extracted swatch → back to default.
     func cycleAccentSwatch() {
         let names = accent?.palette?.map(\.name) ?? []
