@@ -37,15 +37,6 @@ final class PlayerStore: ObservableObject {
     /// white the UI uses when nothing is playing.
     var accentOnDark: Color { effectiveAccent?.onDark ?? .white }
 
-    /// Refetches the current episode's accent — e.g. after the API base URL
-    /// override changes, so a server with palette data can replace an accent
-    /// fetched without it.
-    func refreshAccent() {
-        guard let id = currentEpisode?.id else { return }
-        accentColorTask?.cancel()
-        accentColorTask = Task { await loadAccentColor(for: id) }
-    }
-
     /// Called when an episode plays to completion. Set by the view layer to implement auto-advance.
     var onEpisodeEnded: ((Episode) -> Void)?
 
