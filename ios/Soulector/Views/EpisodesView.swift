@@ -16,6 +16,7 @@ struct EpisodesView: View {
     @State private var selectedEpisode: Episode?
     @State private var showCollectivePicker = false
     @State private var navBarHeight: CGFloat = 0
+    @FocusState private var searchFieldFocused: Bool
 
     private var displayedEpisodes: [Episode] {
         selectedTab == .all
@@ -185,7 +186,16 @@ struct EpisodesView: View {
             TextField("Search episodes and tracks...", text: $episodesVM.searchText)
                 .foregroundColor(.white)
                 .tint(.white)
+                .focused($searchFieldFocused)
+                // Results update live as you type, so there's nothing to submit.
+                // No autocapitalization/autocorrect (episode, track, and artist
+                // names aren't dictionary words, and search is case- and
+                // diacritic-insensitive), and the return key resigns focus so it
+                // acts as "done — show me the results" instead of a dead key.
                 .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .submitLabel(.search)
+                .onSubmit { searchFieldFocused = false }
 
             if !episodesVM.searchText.isEmpty {
                 Button(action: { episodesVM.searchText = "" }) {
@@ -200,6 +210,14 @@ struct EpisodesView: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .padding(.horizontal, 16)
         .padding(.bottom, 8)
+        // Raise the keyboard as soon as the search bar appears. The tiny delay
+        // lets the show/hide transition settle so the focus reliably takes and
+        // the keyboard animates up (focusing mid-transition can get dropped).
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                searchFieldFocused = true
+            }
+        }
     }
 
     private var tabSelector: some View {
