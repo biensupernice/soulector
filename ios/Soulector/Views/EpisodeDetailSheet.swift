@@ -65,6 +65,9 @@ struct EpisodeDetailSheet: View {
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .padding(.horizontal, sheetHPadding)
+                    // Breathing room below the drag handle so the art doesn't
+                    // crowd the top edge of the sheet.
+                    .padding(.top, 16)
 
                     // Title + date (web: bold white title, white/80 date)
                     VStack(spacing: 4) {
@@ -196,6 +199,9 @@ private struct PlayerControlsSection: View {
                     .font(.app(size: 12))
                     .foregroundColor(textColor)
                     .padding(.horizontal, sheetHPadding)
+                    // The slider's 44pt touch target leaves ~20pt of dead space
+                    // below the visible bar; pull the times up to sit closer to it.
+                    .padding(.top, -14)
                 }
             }
 
