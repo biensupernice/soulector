@@ -165,10 +165,22 @@ export function EpisodesScreen({ searchText }: Props) {
     setSelectedSection(section);
   }
 
+  // On mobile the software keyboard stays up while the search input is focused,
+  // covering the results. Blur the input as soon as the user starts dragging the
+  // list so the keyboard dismisses and the full results are visible. The search
+  // stays open (text and results are preserved) — only the keyboard goes away.
+  function dismissKeyboardOnScroll() {
+    const active = document.activeElement;
+    if (active instanceof HTMLInputElement) {
+      active.blur();
+    }
+  }
+
   if (episodes) {
     return (
       <div className="flex-2 md-safe-bottom relative mt-14 h-full flex-col overflow-hidden pt-safe-top">
         <div
+          onTouchMove={dismissKeyboardOnScroll}
           className={classNames(
             "relative h-full overflow-scroll py-2 pb-safe-bottom",
             currentEpisodeId && "mb-24",
