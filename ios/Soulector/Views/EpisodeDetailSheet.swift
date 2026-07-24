@@ -1,5 +1,10 @@
 import SwiftUI
 
+/// Shared horizontal inset for every top-level element in the episode sheet
+/// (album art, title/date, player controls, action buttons, tracklist) so they
+/// all line up on the same left/right margin.
+private let sheetHPadding: CGFloat = 20
+
 /// Mirrors the web's mobile episode sheet
 /// (src/client/EpisodesScreen/EpisodeModalSheet): a solid accent-colored
 /// sheet with a subtle top-to-bottom gray overlay, white content, outlined
@@ -58,8 +63,11 @@ struct EpisodeDetailSheet: View {
                                 .aspectRatio(1, contentMode: .fit)
                         }
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .padding(.horizontal, 40)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(.horizontal, sheetHPadding)
+                    // Breathing room below the drag handle so the art doesn't
+                    // crowd the top edge of the sheet.
+                    .padding(.top, 16)
 
                     // Title + date (web: bold white title, white/80 date)
                     VStack(spacing: 4) {
@@ -67,12 +75,12 @@ struct EpisodeDetailSheet: View {
                             .font(.app(size: 17, weight: .bold))
                             .foregroundColor(fg)
                             .multilineTextAlignment(.center)
-                            .padding(.horizontal, 20)
 
                         Text(episode.formattedDate)
                             .font(.app(size: 14))
                             .foregroundColor(fg.opacity(0.8))
                     }
+                    .padding(.horizontal, sheetHPadding)
 
                     // Player controls
                     PlayerControlsSection(episode: episode, accent: accentBackground, textColor: fg)
@@ -95,7 +103,7 @@ struct EpisodeDetailSheet: View {
                             )
                         }
                     }
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, sheetHPadding)
 
                     // Tracklist in a translucent panel (web: bg-black/20)
                     if isLoadingTracks {
@@ -106,7 +114,7 @@ struct EpisodeDetailSheet: View {
                         TracklistView(tracks: tracks, episode: episode, accent: accentBackground, textColor: fg)
                             .background(Color.black.opacity(0.2))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
-                            .padding(.horizontal, 12)
+                            .padding(.horizontal, sheetHPadding)
                     }
 
                     Spacer(minLength: 32)
@@ -181,7 +189,7 @@ private struct PlayerControlsSection: View {
                             playerStore.seek(to: pct * playerStore.duration)
                         }
                     )
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, sheetHPadding)
 
                     HStack {
                         Text(formatTime(scrubTime ?? playerStore.currentTime))
@@ -190,7 +198,10 @@ private struct PlayerControlsSection: View {
                     }
                     .font(.app(size: 12))
                     .foregroundColor(textColor)
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, sheetHPadding)
+                    // The slider's 44pt touch target leaves ~20pt of dead space
+                    // below the visible bar; pull the times up to sit closer to it.
+                    .padding(.top, -14)
                 }
             }
 

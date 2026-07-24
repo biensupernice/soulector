@@ -44,6 +44,9 @@ struct SearchResultsView: View {
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
+            // Drop the keyboard as soon as the user scrolls the results so the
+            // search field doesn't keep the keyboard covering the matches.
+            .scrollDismissesKeyboard(.immediately)
         }
     }
 
