@@ -13,6 +13,7 @@ struct EpisodeDetailSheet: View {
     let episode: Episode
     @EnvironmentObject var playerStore: PlayerStore
     @EnvironmentObject var favoritesStore: FavoritesStore
+    @EnvironmentObject var downloadsStore: DownloadsStore
     @Environment(\.dismiss) var dismiss
 
     @State private var detailTracks: [EpisodeTrack] = []
@@ -54,20 +55,12 @@ struct EpisodeDetailSheet: View {
                         .padding(.top, 12)
 
                     // Album art
-                    AsyncImage(url: URL(string: episode.artworkUrl)) { phase in
-                        if case .success(let image) = phase {
-                            image.resizable().aspectRatio(contentMode: .fit)
-                        } else {
-                            Rectangle()
-                                .fill(Color.gray.opacity(0.3))
-                                .aspectRatio(1, contentMode: .fit)
-                        }
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .padding(.horizontal, sheetHPadding)
-                    // Breathing room below the drag handle so the art doesn't
-                    // crowd the top edge of the sheet.
-                    .padding(.top, 16)
+                    EpisodeArtwork(episode: episode, contentMode: .fit)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .padding(.horizontal, sheetHPadding)
+                        // Breathing room below the drag handle so the art doesn't
+                        // crowd the top edge of the sheet.
+                        .padding(.top, 16)
 
                     // Title + date (web: bold white title, white/80 date)
                     VStack(spacing: 4) {
@@ -76,9 +69,19 @@ struct EpisodeDetailSheet: View {
                             .foregroundColor(fg)
                             .multilineTextAlignment(.center)
 
-                        Text(episode.formattedDate)
-                            .font(.app(size: 14))
-                            .foregroundColor(fg.opacity(0.8))
+                        HStack(spacing: 6) {
+                            Text(episode.formattedDate)
+                                .font(.app(size: 14))
+                                .foregroundColor(fg.opacity(0.8))
+
+                            if downloadState != .notDownloaded {
+                                Text("·")
+                                    .font(.app(size: 14))
+                                    .foregroundColor(fg.opacity(0.5))
+
+                                DownloadBadge(state: downloadState, tint: fg.opacity(0.8), size: 12)
+                            }
+                        }
                     }
                     .padding(.horizontal, sheetHPadding)
 
@@ -121,6 +124,12 @@ struct EpisodeDetailSheet: View {
                 }
             }
         }
+        // The sheet's own "more" entry point, matching the list row's kebab.
+        // Parked by the drag handle so it never crowds the action buttons.
+        .overlay(alignment: .topTrailing) {
+            EpisodeKebabButton(episode: episode, tint: fg.opacity(0.8), size: CGSize(width: 44, height: 44))
+                .padding(.trailing, 8)
+        }
         .animation(.easeInOut(duration: 0.5), value: sheetAccent)
         .task(id: episode.id) {
             // Reuse already-loaded data if this is the current episode
@@ -129,6 +138,13 @@ struct EpisodeDetailSheet: View {
                     detailTracks = playerStore.currentTracks
                 }
                 episodeAccent = playerStore.accent
+            }
+
+            // A downloaded episode carries its own tracklist and accent, so the
+            // sheet fills in with no network — and instantly with one.
+            if let offline = downloadsStore.cachedMetadata(for: episode.id) {
+                if detailTracks.isEmpty { detailTracks = offline.tracks }
+                if episodeAccent == nil { episodeAccent = offline.accent }
             }
 
             // Always fetch accent color for the displayed episode
@@ -143,6 +159,10 @@ struct EpisodeDetailSheet: View {
                 isLoadingDetailTracks = false
             }
         }
+    }
+
+    private var downloadState: DownloadState {
+        downloadsStore.state(for: episode.id)
     }
 
     private func actionButtonLabel(icon: String, text: String) -> some View {

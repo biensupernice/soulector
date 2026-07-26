@@ -32,13 +32,17 @@ ios/Soulector/
 ├── ContentView.swift           # Root, injects @StateObject stores
 ├── Views/
 │   ├── EpisodesView.swift      # Main list screen; also wires playerStore.onEpisodeEnded + radioStore
-│   ├── EpisodeRowView.swift    # List row with context menu
+│   ├── EpisodeRowView.swift    # List row with favorite + kebab controls and long-press menu
+│   ├── EpisodeActions.swift    # Shared kebab menu contents, kebab button, download status badge
+│   ├── EpisodeArtwork.swift    # Album art; prefers the downloaded copy over the network
 │   ├── EpisodeDetailSheet.swift # Single sheet for browse + playback; contains ProgressSlider, TracklistView
 │   ├── MiniPlayerView.swift    # Persistent bottom bar
 │   └── PlayerFabs.swift        # Floating radio/shuffle cluster (near-black pill, accent On Air fill)
 ├── Stores/
 │   ├── PlayerStore.swift       # AVPlayer wrapper; publishes accentColor, exposes onEpisodeEnded + userSeeks
 │   ├── RadioStore.swift        # Radio mode orchestration (port of web useRadio)
+│   ├── DownloadsStore.swift    # Offline downloads (background URLSession); singleton
+│   ├── NetworkMonitor.swift    # NWPathMonitor connectivity
 │   └── FavoritesStore.swift    # UserDefaults persistence
 ├── ViewModels/
 │   └── EpisodesViewModel.swift # Episode list + filter state
@@ -58,6 +62,7 @@ ios/Soulector/
 - **Single sheet:** Mini player tap and episode row tap both set `selectedEpisode`; `EpisodeDetailSheet` handles both browse and active playback
 - **Haptics:** `UIImpactFeedbackGenerator` (no iOS 17 requirement)
 - **Typography:** Space Grotesk everywhere via `Font.app(size:weight:)` (plus a root `.environment(\.font, ...)` default). SF Symbols keep `.system` fonts — symbols don't render in custom fonts
+- **Offline downloads:** `DownloadsStore` is a **singleton**, not a `@StateObject` — iOS relaunches the app to hand back finished background transfers (`SoulectorApp.backgroundTask(.urlSession:)`), which needs the session rebuilt from outside the view tree. Files live in `Application Support/Downloads` (excluded from backup), described by a `manifest.json` that also stores the `Episode` itself, since the episodes list lives in the evictable caches directory. Each download captures **sidecars** — artwork, tracklist, accent — so a downloaded episode looks and reads the same with no network; `PlayerStore` prefers the local audio/artwork/metadata, and `EpisodeArtwork` prefers the local image. Entry point is the kebab (`EpisodeKebabButton`) next to the row's favorite button and at the top-right of the episode sheet; state shows as a `DownloadBadge` in the metadata line. Offline (`NetworkMonitor`), non-downloaded rows dim and stop responding, the radio FAB disables, shuffle draws from downloads, and the list count reads "Offline · N downloaded"
 - **Radio mode:** `RadioStore` (wired in `EpisodesView.onAppear` via `configure`) owns tune-in/out, the slot-boundary timer, drift correction, and resume re-sync. `Models/RadioSchedule.swift` computes what's on air and must stay semantically identical to the web's `src/lib/radioSchedule.ts` (same hash, ordering, epoch) — change them together or iOS and web broadcasts diverge
 
 ## API

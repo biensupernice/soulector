@@ -8,86 +8,99 @@ struct EpisodeRowView: View {
     let onFavorite: () -> Void
 
     @EnvironmentObject var playerStore: PlayerStore
+    @EnvironmentObject var favoritesStore: FavoritesStore
+    @EnvironmentObject var downloadsStore: DownloadsStore
+    @EnvironmentObject var network: NetworkMonitor
+
+    private var downloadState: DownloadState {
+        downloadsStore.state(for: episode.id)
+    }
+
+    /// With no network an episode we haven't downloaded simply can't play, so
+    /// the row says as much up front instead of failing after the tap.
+    private var unavailable: Bool {
+        !network.isOnline && downloadState != .downloaded
+    }
 
     var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 12) {
-                // Album art
-                AsyncImage(url: URL(string: episode.artworkUrl)) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().aspectRatio(contentMode: .fill)
-                    default:
-                        Rectangle().fill(Color.gray.opacity(0.3))
+        // The tap target and the trailing controls are siblings rather than
+        // controls nested inside the row button, so each gets its own taps.
+        HStack(spacing: 0) {
+            Button(action: onTap) {
+                HStack(spacing: 12) {
+                    EpisodeArtwork(episode: episode)
+                        .frame(width: 56, height: 56)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .overlay(
+                            isPlaying ? playingOverlay : nil
+                        )
+
+                    // Text info
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(episode.name)
+                            .font(.app(size: 14, weight: .semibold))
+                            // Playing row title picks up the album accent, like
+                            // the web list (on-dark variant for the black bg).
+                            .foregroundColor(isPlaying ? playerStore.accentOnDark : .white)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+
+                        HStack(spacing: 6) {
+                            Text(episode.formattedDate)
+                                .font(.app(size: 12))
+                                .foregroundColor(.white.opacity(0.5))
+
+                            Text("·")
+                                .foregroundColor(.white.opacity(0.3))
+
+                            Text(episode.formattedDuration)
+                                .font(.app(size: 12))
+                                .foregroundColor(.white.opacity(0.5))
+
+                            if downloadState != .notDownloaded {
+                                Text("·")
+                                    .foregroundColor(.white.opacity(0.3))
+
+                                DownloadBadge(state: downloadState, size: 11)
+                            }
+                        }
                     }
+
+                    Spacer(minLength: 8)
                 }
-                .frame(width: 56, height: 56)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .overlay(
-                    isPlaying ? playingOverlay : nil
-                )
-
-                // Text info
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(episode.name)
-                        .font(.app(size: 14, weight: .semibold))
-                        // Playing row title picks up the album accent, like
-                        // the web list (on-dark variant for the black bg).
-                        .foregroundColor(isPlaying ? playerStore.accentOnDark : .white)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-
-                    HStack(spacing: 6) {
-                        Text(episode.formattedDate)
-                            .font(.app(size: 12))
-                            .foregroundColor(.white.opacity(0.5))
-
-                        Text("·")
-                            .foregroundColor(.white.opacity(0.3))
-
-                        Text(episode.formattedDuration)
-                            .font(.app(size: 12))
-                            .foregroundColor(.white.opacity(0.5))
-                    }
-                }
-
-                Spacer()
-
-                // Favorite button
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: isFavorite ? .light : .medium).impactOccurred()
-                    onFavorite()
-                }) {
-                    Image(systemName: isFavorite ? "heart.fill" : "heart")
-                        .font(.system(size: 18))
-                        .foregroundColor(isFavorite ? .red : .white.opacity(0.4))
-                }
-                .buttonStyle(.plain)
-                .padding(.trailing, 4)
+                .padding(.leading, 16)
+                .padding(.vertical, 10)
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(isPlaying ? Color.white.opacity(0.06) : Color.clear)
-        }
-        .buttonStyle(.plain)
-        .contextMenu {
+            .buttonStyle(.plain)
+            .disabled(unavailable)
+
+            // Favorite button
             Button(action: {
                 UIImpactFeedbackGenerator(style: isFavorite ? .light : .medium).impactOccurred()
                 onFavorite()
             }) {
-                Label(
-                    isFavorite ? "Unfavorite" : "Favorite",
-                    systemImage: isFavorite ? "heart.slash" : "heart"
-                )
+                Image(systemName: isFavorite ? "heart.fill" : "heart")
+                    .font(.system(size: 18))
+                    .foregroundColor(isFavorite ? .red : .white.opacity(0.4))
+                    .frame(width: 36, height: 44)
+                    .contentShape(Rectangle())
             }
-            Button(action: onTap) {
-                Label("Play", systemImage: "play.fill")
-            }
-            if let url = URL(string: episode.permalinkUrl) {
-                Link(destination: url) {
-                    Label("Open in SoundCloud", systemImage: "link")
-                }
-            }
+            .buttonStyle(.plain)
+
+            EpisodeKebabButton(episode: episode, onPlay: unavailable ? nil : onTap)
+                .padding(.trailing, 4)
+        }
+        .opacity(unavailable ? 0.4 : 1)
+        .background(isPlaying ? Color.white.opacity(0.06) : Color.clear)
+        .contextMenu {
+            EpisodeActions(
+                episode: episode,
+                favoritesStore: favoritesStore,
+                downloadsStore: downloadsStore,
+                onPlay: unavailable ? nil : onTap,
+                canDownload: network.isOnline
+            )
         }
     }
 

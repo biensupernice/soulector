@@ -3,6 +3,7 @@ import SwiftUI
 enum EpisodeTab: String, CaseIterable {
     case all       = "All Episodes"
     case favorites = "Favorites"
+    case downloads = "Downloads"
 }
 
 struct EpisodesView: View {
@@ -10,6 +11,8 @@ struct EpisodesView: View {
     @EnvironmentObject var playerStore: PlayerStore
     @EnvironmentObject var favoritesStore: FavoritesStore
     @EnvironmentObject var radioStore: RadioStore
+    @EnvironmentObject var downloadsStore: DownloadsStore
+    @EnvironmentObject var network: NetworkMonitor
 
     @State private var selectedTab: EpisodeTab = .all
     @State private var showSearch = false
@@ -19,9 +22,17 @@ struct EpisodesView: View {
     @FocusState private var searchFieldFocused: Bool
 
     private var displayedEpisodes: [Episode] {
-        selectedTab == .all
-            ? episodesVM.filteredEpisodes
-            : episodesVM.favoriteEpisodes(favoritesStore: favoritesStore)
+        switch selectedTab {
+        case .all:       return episodesVM.filteredEpisodes
+        case .favorites: return episodesVM.favoriteEpisodes(favoritesStore: favoritesStore)
+        case .downloads: return episodesVM.downloadedEpisodes(downloadsStore: downloadsStore)
+        }
+    }
+
+    /// Downloads only earns a pill once there's something in it — an empty
+    /// third tab would just be clutter for anyone who never downloads.
+    private var visibleTabs: [EpisodeTab] {
+        EpisodeTab.allCases.filter { $0 != .downloads || !downloadsStore.isEmpty }
     }
 
     private var isSearching: Bool {
@@ -76,6 +87,9 @@ struct EpisodesView: View {
                     PlayerFabs(
                         on: radioStore.isOn,
                         accent: playerStore.accentOnLight,
+                        // The broadcast is live audio — there's nothing to tune
+                        // into without a connection.
+                        radioAvailable: network.isOnline,
                         onRadioTap: {
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             if radioStore.isOn {
@@ -87,7 +101,7 @@ struct EpisodesView: View {
                         onShuffleTap: {
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
                             radioStore.tuneOut()
-                            if let episode = episodesVM.filteredEpisodes.randomElement() {
+                            if let episode = shufflePool.randomElement() {
                                 Task { await playerStore.play(episode: episode) }
                             }
                         }
@@ -104,6 +118,10 @@ struct EpisodesView: View {
             }
         }
         .animation(.spring(duration: 0.3), value: playerStore.hasEpisode)
+        // Removing the last download takes its tab away with it.
+        .onChange(of: downloadsStore.isEmpty) { isEmpty in
+            if isEmpty && selectedTab == .downloads { selectedTab = .all }
+        }
         .task { await episodesVM.fetchEpisodes() }
         .onAppear {
             radioStore.configure(player: playerStore, episodesVM: episodesVM)
@@ -222,39 +240,66 @@ struct EpisodesView: View {
 
     private var tabSelector: some View {
         HStack(spacing: 8) {
-            ForEach(EpisodeTab.allCases, id: \.self) { tab in
-                Button(action: { selectedTab = tab }) {
-                    Text(tab.rawValue)
-                        .font(.app(size: 14, weight: selectedTab == tab ? .semibold : .regular))
-                        .foregroundColor(selectedTab == tab ? .black : .white.opacity(0.6))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 7)
-                        .background(selectedTab == tab ? Color.white : Color.white.opacity(0.12))
-                        .clipShape(Capsule())
+            // Scrolls rather than truncates: a third pill plus the count runs
+            // past the width of the narrowest phones we support.
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(visibleTabs, id: \.self) { tab in
+                        Button(action: { selectedTab = tab }) {
+                            Text(tab.rawValue)
+                                .font(.app(size: 14, weight: selectedTab == tab ? .semibold : .regular))
+                                .foregroundColor(selectedTab == tab ? .black : .white.opacity(0.6))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 7)
+                                .background(selectedTab == tab ? Color.white : Color.white.opacity(0.12))
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-                .buttonStyle(.plain)
             }
+            .fixedSize(horizontal: false, vertical: true)
 
-            Spacer()
+            Spacer(minLength: 8)
 
             Text(countText)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.white.opacity(0.4))
+                .lineLimit(1)
+                .layoutPriority(1)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
     }
 
     private var countText: String {
-        guard isSearching else { return "\(displayedEpisodes.count) Total" }
-        let results = episodesVM.searchResults
-        let episodeWord = results.count == 1 ? "episode" : "episodes"
-        var text = "\(results.count) \(episodeWord)"
-        let trackCount = results.reduce(0) { $0 + $1.matchedTracks.count }
-        if trackCount > 0 {
-            text += " · \(trackCount) \(trackCount == 1 ? "track" : "tracks")"
+        if isSearching {
+            let results = episodesVM.searchResults
+            let episodeWord = results.count == 1 ? "episode" : "episodes"
+            var text = "\(results.count) \(episodeWord)"
+            let trackCount = results.reduce(0) { $0 + $1.matchedTracks.count }
+            if trackCount > 0 {
+                text += " · \(trackCount) \(trackCount == 1 ? "track" : "tracks")"
+            }
+            return text
         }
-        return text
+        // Offline, the honest count is what's actually playable — and it
+        // explains why the rest of the list has gone quiet.
+        if !network.isOnline {
+            let count = downloadsStore.downloadedEpisodes.count
+            return count > 0 ? "Offline · \(count) downloaded" : "Offline"
+        }
+        if selectedTab == .downloads {
+            return "\(displayedEpisodes.count) · \(downloadsStore.formattedTotalSize)"
+        }
+        return "\(displayedEpisodes.count) Total"
+    }
+
+    /// Shuffle stays useful with no network by drawing from what's on the device.
+    private var shufflePool: [Episode] {
+        network.isOnline
+            ? episodesVM.filteredEpisodes
+            : episodesVM.downloadedEpisodes(downloadsStore: downloadsStore)
     }
 
     private var collectiveDropdown: some View {
@@ -340,6 +385,14 @@ struct EpisodesView: View {
         }
     }
 
+    private var emptyStateText: String {
+        switch selectedTab {
+        case .all:       return "No episodes found"
+        case .favorites: return "No favorites yet"
+        case .downloads: return "No downloads yet"
+        }
+    }
+
     @ViewBuilder
     private var episodeListContent: some View {
         if isSearching {
@@ -396,7 +449,7 @@ struct EpisodesView: View {
         } else if displayedEpisodes.isEmpty {
             VStack {
                 Spacer()
-                Text(selectedTab == .favorites ? "No favorites yet" : "No episodes found")
+                Text(emptyStateText)
                     .foregroundColor(.white.opacity(0.5))
                 Spacer()
             }

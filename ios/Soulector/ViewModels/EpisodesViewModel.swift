@@ -94,6 +94,13 @@ final class EpisodesViewModel: ObservableObject {
         applyFilters(to: episodes).filter { favoritesStore.isFavorite($0.id) }
     }
 
+    /// Sourced from the downloads manifest rather than `episodes`: the episodes
+    /// list lives in the caches directory and can be evicted, but a download the
+    /// user asked for has to stay findable.
+    func downloadedEpisodes(downloadsStore: DownloadsStore) -> [Episode] {
+        applyFilters(to: downloadsStore.downloadedEpisodes)
+    }
+
     private func applyFilters(to list: [Episode]) -> [Episode] {
         guard selectedCollective != .all else { return list }
         return list.filter { $0.collectiveSlug == selectedCollective.rawValue }
