@@ -4,8 +4,12 @@
 
 - **Project file:** `Soulector.xcodeproj`
 - **Scheme:** `Soulector`
-- **Target:** `Soulector`
-- **Bundle ID:** check `Soulector.xcodeproj` if needed
+- **Targets:** `Soulector` (app), `SoulectorWidget` (WidgetKit extension)
+- **Bundle IDs:** app `com.soulector.app`, widget `com.soulector.app.widget`
+- **App Group:** `group.com.soulector.app` — shared container for the widget's
+  now-playing snapshot + artwork. Enabled via `Soulector/Soulector.entitlements`
+  and `SoulectorWidget/SoulectorWidget.entitlements`; the capability must be
+  toggled on in signing (Automatic signing provisions it).
 
 ## Building
 
@@ -25,6 +29,16 @@ Via Xcode MCP (preferred when available):
 SwiftUI app, iOS 16+, no third-party dependencies.
 
 ```
+ios/Shared/                     # Compiled into BOTH app + widget targets
+├── NowPlaying.swift            # NowPlayingSnapshot + NowPlayingStore (App Group I/O)
+└── SoulectorLink.swift         # soulector:// deep-link actions (tune-in/shuffle/toggle)
+
+ios/SoulectorWidget/            # Home-screen widget extension
+├── SoulectorWidgetBundle.swift # @main WidgetBundle
+├── NowPlayingWidget.swift      # Now Playing card (small + medium), accent-tinted
+├── Info.plist                  # NSExtension (widgetkit) + Space Grotesk UIAppFonts
+└── SoulectorWidget.entitlements # App Group
+
 ios/Soulector/
 ├── SoulectorApp.swift          # App entry point
 ├── AppFont.swift               # Font.app(size:weight:) → Space Grotesk (web parity)
@@ -65,6 +79,16 @@ ios/Soulector/
 - **Typography:** Space Grotesk everywhere via `Font.app(size:weight:)` (plus a root `.environment(\.font, ...)` default). SF Symbols keep `.system` fonts — symbols don't render in custom fonts
 - **Offline downloads:** `DownloadsStore` is a **singleton**, not a `@StateObject` — iOS relaunches the app to hand back finished background transfers (`SoulectorApp.backgroundTask(.urlSession:)`), which needs the session rebuilt from outside the view tree. Files live in `Application Support/Downloads` (excluded from backup), described by a `manifest.json` that also stores the `Episode` itself, since the episodes list lives in the evictable caches directory. Each download captures **sidecars** — artwork, tracklist, accent — so a downloaded episode looks and reads the same with no network; `PlayerStore` prefers the local audio/artwork/metadata, and `EpisodeArtwork` prefers the local image. Entry point is the kebab (`EpisodeKebabButton`), which opens `EpisodeActionsSheet` — a self-sizing sheet painted in that episode's album accent, holding download/favorite/SoundCloud. It stays open through an action so state changes are visible in place. **Presentation is owned by the screen** (`EpisodesView.actionsEpisode`), not the row — a sheet attached to a list row dies when the row recycles — and the two `.sheet` modifiers are attached to *different* views, since two on one view fight. Long-press still gets the native menu (`EpisodeActions`). State shows as a `DownloadBadge` in the metadata line, alongside a heart mark when favorited (favoriting is an action, not a row control). Offline (`NetworkMonitor`), non-downloaded rows dim and stop responding, the radio FAB disables, shuffle draws from downloads, and the list count reads "Offline · N downloaded"
 - **Radio mode:** `RadioStore` (wired in `EpisodesView.onAppear` via `configure`) owns tune-in/out, the slot-boundary timer, drift correction, and resume re-sync. `Models/RadioSchedule.swift` computes what's on air and must stay semantically identical to the web's `src/lib/radioSchedule.ts` (same hash, ordering, epoch) — change them together or iOS and web broadcasts diverge
+- **Home-screen widget:** `SoulectorWidget` shows the current mix on an
+  album-accent-tinted card (Spotify-widget style — `Color.soulectorCard` clamps
+  the extracted `accentHSL` into a mid-dark band). `PlayerStore.publishNowPlaying()`
+  writes a `NowPlayingSnapshot` (title, collective, isPlaying, progress, radio
+  state, accent) + downsampled artwork to the App Group on every playback change
+  and calls `WidgetCenter.reloadAllTimelines()`; `RadioStore` mirrors on-air via
+  `PlayerStore.setRadioOn`. The widget can't drive `AVPlayer`, so its buttons are
+  `soulector://` deep links (`SoulectorAction`) opened into the app and dispatched
+  by `EpisodesView.onOpenURL`: **medium** = play/pause + Tune In + Shuffle
+  (mirrors the FAB), **small** = the card with a single Tune In tap target
 
 ## API
 

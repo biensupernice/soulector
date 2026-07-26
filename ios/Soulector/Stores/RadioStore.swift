@@ -153,6 +153,7 @@ final class RadioStore: ObservableObject {
         waitingForBoundary = false
         slot = nil
         isOn = false
+        player?.setRadioOn(false)
     }
 
     /// The audio ran out. Stored durations can slightly overshoot the real
@@ -194,6 +195,7 @@ final class RadioStore: ObservableObject {
         driftThresholdMs = Self.driftCorrectionMinMs
         scheduleBoundaryTimer(for: next)
         startDriftTimerIfNeeded()
+        player.setRadioOn(true)
 
         let offsetSeconds = Double(next.offsetMs) / 1000
         Task { await player.play(episode: episode, startingAt: offsetSeconds) }
