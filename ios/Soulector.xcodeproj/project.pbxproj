@@ -45,6 +45,12 @@
 		BA000012 /* NowPlaying.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001 /* NowPlaying.swift */; };
 		BA000013 /* SoulectorLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000002 /* SoulectorLink.swift */; };
 		BA000014 /* AppFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000026 /* AppFont.swift */; };
+		BA000015 /* LiveRadioPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000009 /* LiveRadioPreview.swift */; };
+		BA000016 /* Episode.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000003 /* Episode.swift */; };
+		BA000017 /* EpisodeTrack.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000004 /* EpisodeTrack.swift */; };
+		BA000018 /* SearchIndexEpisode.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000020 /* SearchIndexEpisode.swift */; };
+		BA000019 /* RadioSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000023 /* RadioSchedule.swift */; };
+		BA000040 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000005 /* APIClient.swift */; };
 		BA000020 /* SpaceGrotesk-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000027 /* SpaceGrotesk-Light.ttf */; };
 		BA000021 /* SpaceGrotesk-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000028 /* SpaceGrotesk-Regular.ttf */; };
 		BA000022 /* SpaceGrotesk-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000029 /* SpaceGrotesk-Medium.ttf */; };
@@ -95,6 +101,7 @@
 		BB000006 /* SoulectorWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SoulectorWidget.entitlements; sourceTree = "<group>"; };
 		BB000007 /* Soulector.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Soulector.entitlements; sourceTree = "<group>"; };
 		BB000008 /* SoulectorWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SoulectorWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB000009 /* LiveRadioPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRadioPreview.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -238,6 +245,7 @@
 			children = (
 				BB000003 /* SoulectorWidgetBundle.swift */,
 				BB000004 /* NowPlayingWidget.swift */,
+				BB000009 /* LiveRadioPreview.swift */,
 				BB000006 /* SoulectorWidget.entitlements */,
 				BB000005 /* Info.plist */,
 			);
@@ -412,6 +420,12 @@
 				BA000012 /* NowPlaying.swift in Sources */,
 				BA000013 /* SoulectorLink.swift in Sources */,
 				BA000014 /* AppFont.swift in Sources */,
+				BA000015 /* LiveRadioPreview.swift in Sources */,
+				BA000016 /* Episode.swift in Sources */,
+				BA000017 /* EpisodeTrack.swift in Sources */,
+				BA000018 /* SearchIndexEpisode.swift in Sources */,
+				BA000019 /* RadioSchedule.swift in Sources */,
+				BA000040 /* APIClient.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -73,7 +73,6 @@ final class PlayerStore: ObservableObject {
     private var loadedArtwork: MPMediaItemArtwork?
     private var loadedArtworkEpisodeId: String?
     private var pendingSeek: Double?
-    private var lastWidgetPublish = Date.distantPast
 
     // MARK: Init
 
@@ -247,11 +246,10 @@ final class PlayerStore: ObservableObject {
         timeObserver = player?.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
             guard let self, !self.isSeeking else { return }
             self.currentTime = time.seconds.isNaN ? 0 : time.seconds
-            // Keep the widget's progress line roughly current without hammering
-            // WidgetKit's reload budget: refresh at most every 15s while playing.
-            if self.isPlaying, Date().timeIntervalSince(self.lastWidgetPublish) > 15 {
-                self.publishNowPlaying()
-            }
+            // No widget refresh here: WidgetKit's reload budget can't absorb a
+            // ticking clock, and it doesn't need to — the snapshot carries
+            // elapsed + duration so the widget's timeline advances the progress
+            // line itself between the discrete reloads below.
         }
 
         // End of playback
@@ -305,6 +303,9 @@ final class PlayerStore: ObservableObject {
             Task { @MainActor [weak self] in self?.isSeeking = false }
         }
         updateNowPlayingInfo()
+        // A seek moves the position discontinuously, so the widget's
+        // interpolated progress needs resetting to the new anchor.
+        publishNowPlaying()
     }
 
     func forward(_ seconds: Double = 15) {
@@ -376,13 +377,16 @@ final class PlayerStore: ObservableObject {
             subtitle: currentEpisode?.collectiveName ?? "",
             isPlaying: isPlaying,
             isRadioOn: isRadioOn,
-            progress: progress,
+            elapsedSeconds: currentTime,
+            durationSeconds: duration,
             accentRGB: accent?.rgb,
             accentHSL: accent?.hsl,
+            // Mirrors the key EpisodesViewModel persists, so the widget's
+            // live-radio fallback tunes to the station the user last chose.
+            collective: UserDefaults.standard.string(forKey: "soulector.selectedCollective"),
             updatedAt: Date()
         )
         NowPlayingStore.save(snapshot)
-        lastWidgetPublish = Date()
         WidgetCenter.shared.reloadAllTimelines()
     }
 

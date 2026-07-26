@@ -20,9 +20,14 @@ struct NowPlayingWidget: Widget {
 // MARK: - Timeline
 
 struct NowPlayingEntry: TimelineEntry {
-    let date: Date
-    let snapshot: NowPlayingSnapshot
-    let artwork: Image?
+    var date: Date
+    var snapshot: NowPlayingSnapshot
+    var artwork: Image?
+    /// True when the card is reporting what the broadcast schedule says is on
+    /// the air rather than this device's own playback — see `LiveRadioPreview`.
+    var isScheduledPreview: Bool = false
+    /// When to ask WidgetKit for the next timeline.
+    var refreshAt: Date = Date().addingTimeInterval(120)
 }
 
 struct NowPlayingProvider: TimelineProvider {
@@ -31,26 +36,74 @@ struct NowPlayingProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (NowPlayingEntry) -> Void) {
-        completion(currentEntry())
+        Task { completion(await currentEntry()) }
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<NowPlayingEntry>) -> Void) {
-        // The app calls WidgetCenter.reloadAllTimelines() on every playback
-        // change; this periodic refresh is just a backstop to keep the
-        // progress line from going stale while the app is backgrounded.
-        let entry = currentEntry()
-        let next = Calendar.current.date(byAdding: .minute, value: 2, to: Date())
-            ?? Date().addingTimeInterval(120)
-        completion(Timeline(entries: [entry], policy: .after(next)))
+        Task {
+            let entry = await currentEntry()
+            completion(Timeline(entries: entries(from: entry), policy: .after(entry.refreshAt)))
+        }
     }
 
-    private func currentEntry() -> NowPlayingEntry {
-        let snapshot = NowPlayingStore.load()
-        var artwork: Image?
-        if let data = NowPlayingStore.loadArtworkData(), let ui = UIImage(data: data) {
-            artwork = Image(uiImage: ui)
+    /// When the position is moving — we're playing, or we're reporting a live
+    /// broadcast — hand WidgetKit a run of future entries with the progress
+    /// line rolled forward. The line then advances on its own, without
+    /// spending a timeline reload per tick.
+    private func entries(from entry: NowPlayingEntry) -> [NowPlayingEntry] {
+        let advancing = entry.snapshot.isPlaying || entry.isScheduledPreview
+        guard advancing, entry.snapshot.durationSeconds > 0 else { return [entry] }
+
+        let step: TimeInterval = 60
+        let horizon = max(step, entry.refreshAt.timeIntervalSince(entry.date))
+        let count = min(Int(horizon / step), 30)
+        guard count > 0 else { return [entry] }
+
+        return (0...count).map { i in
+            let offset = Double(i) * step
+            var future = entry
+            future.date = entry.date.addingTimeInterval(offset)
+            future.snapshot = entry.snapshot.advanced(by: offset)
+            return future
         }
-        return NowPlayingEntry(date: Date(), snapshot: snapshot, artwork: artwork)
+    }
+
+    private func currentEntry() async -> NowPlayingEntry {
+        // Preferred: whatever the app is actually playing. The app reloads the
+        // timeline on every playback change, so this stays current.
+        let snapshot = NowPlayingStore.load()
+        if snapshot.hasEpisode {
+            var artwork: Image?
+            if let data = NowPlayingStore.loadArtworkData(), let ui = UIImage(data: data) {
+                artwork = Image(uiImage: ui)
+            }
+            return NowPlayingEntry(date: Date(), snapshot: snapshot, artwork: artwork)
+        }
+
+        // Nothing shared — either nothing has played yet, or this build's
+        // signing doesn't carry the App Group. Report the live broadcast,
+        // which the widget can work out on its own.
+        let station = snapshot.collective ?? soulectorDefaultCollective
+        if let live = await LiveRadioPreview.current(collective: station) {
+            // Refresh when the broadcast moves to the next episode, but check
+            // back at least every 15 minutes so the progress line keeps up.
+            let cap = Date().addingTimeInterval(15 * 60)
+            return NowPlayingEntry(
+                date: Date(),
+                snapshot: live.snapshot,
+                artwork: live.artwork.map(Image.init(uiImage:)),
+                isScheduledPreview: true,
+                refreshAt: min(live.slotEndsAt, cap)
+            )
+        }
+
+        // Offline with an empty cache: fall through to the empty state.
+        return NowPlayingEntry(
+            date: Date(),
+            snapshot: snapshot,
+            artwork: nil,
+            refreshAt: Date().addingTimeInterval(15 * 60)
+        )
     }
 }
 
@@ -100,6 +153,9 @@ private struct SmallNowPlaying: View {
 
             if s.hasEpisode {
                 Artwork(image: entry.artwork, size: 44)
+                if entry.isScheduledPreview {
+                    OnAirEyebrow()
+                }
                 Text(s.title)
                     .font(.app(size: 14, weight: .bold))
                     .foregroundColor(.white)
@@ -149,6 +205,9 @@ private struct MediumNowPlaying: View {
             Artwork(image: entry.artwork, size: 52)
 
             VStack(alignment: .leading, spacing: 2) {
+                if entry.isScheduledPreview {
+                    OnAirEyebrow()
+                }
                 Text(s.title)
                     .font(.app(size: 16, weight: .bold))
                     .foregroundColor(.white)
@@ -161,10 +220,14 @@ private struct MediumNowPlaying: View {
 
             Spacer(minLength: 8)
 
-            Link(destination: SoulectorAction.togglePlayPause.url) {
+            // Showing the broadcast rather than our own playback? Then the
+            // round button starts it, which means tuning in.
+            Link(destination: entry.isScheduledPreview
+                 ? SoulectorAction.tuneIn.url
+                 : SoulectorAction.togglePlayPause.url) {
                 ZStack {
                     Circle().fill(Color.white)
-                    Image(systemName: s.isPlaying ? "pause.fill" : "play.fill")
+                    Image(systemName: !entry.isScheduledPreview && s.isPlaying ? "pause.fill" : "play.fill")
                         .font(.system(size: 18, weight: .bold))
                         .foregroundColor(.black)
                 }
@@ -288,6 +351,20 @@ private struct BrandMark: View {
         Text("Soulector")
             .font(.app(size: 12, weight: .bold))
             .foregroundColor(.white.opacity(0.8))
+    }
+}
+
+/// Marks the card as reporting the live broadcast rather than this device's
+/// playback, so "on air now" never reads as "you're playing this".
+private struct OnAirEyebrow: View {
+    var body: some View {
+        HStack(spacing: 5) {
+            Circle().fill(Color.white.opacity(0.9)).frame(width: 6, height: 6)
+            Text("ON AIR NOW")
+                .font(.app(size: 10, weight: .bold))
+                .tracking(0.8)
+                .foregroundColor(.white.opacity(0.85))
+        }
     }
 }
 
