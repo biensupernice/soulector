@@ -82,13 +82,25 @@ ios/Soulector/
 - **Home-screen widget:** `SoulectorWidget` shows the current mix on an
   album-accent-tinted card (Spotify-widget style — `Color.soulectorCard` clamps
   the extracted `accentHSL` into a mid-dark band). `PlayerStore.publishNowPlaying()`
-  writes a `NowPlayingSnapshot` (title, collective, isPlaying, progress, radio
-  state, accent) + downsampled artwork to the App Group on every playback change
-  and calls `WidgetCenter.reloadAllTimelines()`; `RadioStore` mirrors on-air via
-  `PlayerStore.setRadioOn`. The widget can't drive `AVPlayer`, so its buttons are
-  `soulector://` deep links (`SoulectorAction`) opened into the app and dispatched
-  by `EpisodesView.onOpenURL`: **medium** = play/pause + Tune In + Shuffle
-  (mirrors the FAB), **small** = the card with a single Tune In tap target
+  writes a `NowPlayingSnapshot` (title, collective, isPlaying, elapsed/duration,
+  radio state, accent) + downsampled artwork to the App Group on every playback
+  change and calls `WidgetCenter.reloadAllTimelines()`; `RadioStore` mirrors
+  on-air via `PlayerStore.setRadioOn`. The widget can't drive `AVPlayer`, so its
+  buttons are `soulector://` deep links (`SoulectorAction`) opened into the app
+  and dispatched by `EpisodesView.onOpenURL`: **medium** = play/pause + Tune In
+  + Shuffle (mirrors the FAB), **small** = the card with a single Tune In tap
+  target
+- **Widget, two things worth knowing before changing it:**
+  - *Never reload the timeline to tick the clock.* WidgetKit's daily reload
+    budget can't absorb it. The snapshot carries `elapsedSeconds` +
+    `durationSeconds` (not a baked fraction) so `NowPlayingProvider` emits
+    future entries via `NowPlayingSnapshot.advanced(by:)` and the progress line
+    moves on its own. Reloads are for discrete events only
+  - *The widget must survive having no App Group.* When the shared container
+    isn't readable (signing without the capability, or nothing played yet),
+    `LiveRadioPreview` computes what's on the air from `RadioSchedule` + the
+    public API — no shared state needed — and the card is labelled "ON AIR NOW"
+    so it never reads as this device's playback
 
 ## API
 
