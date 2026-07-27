@@ -20,7 +20,12 @@ struct EpisodesView: View {
     @State private var actionsEpisode: Episode?
     @State private var showCollectivePicker = false
     @State private var navBarHeight: CGFloat = 0
+    @State private var tabMetrics = TabScrollMetrics()
+    @State private var tabViewportWidth: CGFloat = 0
     @FocusState private var searchFieldFocused: Bool
+
+    private static let tabScrollSpace = "episodeTabs"
+    private static let tabFadeWidth: CGFloat = 20
 
     private var displayedEpisodes: [Episode] {
         switch selectedTab {
@@ -263,8 +268,29 @@ struct EpisodesView: View {
                         .buttonStyle(.plain)
                     }
                 }
+                .background(
+                    GeometryReader { proxy in
+                        let frame = proxy.frame(in: .named(Self.tabScrollSpace))
+                        Color.clear.preference(
+                            key: TabScrollMetricsKey.self,
+                            value: TabScrollMetrics(offset: -frame.minX, contentWidth: frame.width)
+                        )
+                    }
+                )
             }
             .fixedSize(horizontal: false, vertical: true)
+            .coordinateSpace(name: Self.tabScrollSpace)
+            .background(
+                GeometryReader { proxy in
+                    Color.clear.preference(key: TabViewportWidthKey.self, value: proxy.size.width)
+                }
+            )
+            .onPreferenceChange(TabScrollMetricsKey.self) { tabMetrics = $0 }
+            .onPreferenceChange(TabViewportWidthKey.self) { tabViewportWidth = $0 }
+            // A pill sliced mid-word at the edge reads as a rendering bug.
+            // Fading it says "there's more this way" instead — and only on the
+            // side that actually has more, so a fully scrolled row looks solid.
+            .mask(tabScrollFade)
 
             Spacer(minLength: 8)
 
@@ -276,6 +302,29 @@ struct EpisodesView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+    }
+
+    /// Opaque through the middle, fading over `tabFadeWidth` on whichever edge
+    /// has content hidden past it. Zero-width when there's nothing to reveal,
+    /// so the first and last pill keep their full contrast.
+    private var tabScrollFade: some View {
+        HStack(spacing: 0) {
+            LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing)
+                .frame(width: tabFadeLeading ? Self.tabFadeWidth : 0)
+
+            Color.black
+
+            LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                .frame(width: tabFadeTrailing ? Self.tabFadeWidth : 0)
+        }
+        .animation(.easeOut(duration: 0.2), value: tabFadeLeading)
+        .animation(.easeOut(duration: 0.2), value: tabFadeTrailing)
+    }
+
+    // A pixel of slack so rounding at the scroll limits doesn't leave a fade on.
+    private var tabFadeLeading: Bool { tabMetrics.offset > 1 }
+    private var tabFadeTrailing: Bool {
+        tabMetrics.contentWidth - tabViewportWidth - tabMetrics.offset > 1
     }
 
     private var countText: String {
@@ -486,5 +535,30 @@ struct EpisodesView: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
         }
+    }
+}
+
+// MARK: - Tab strip scroll metrics
+
+/// Where the tab strip is scrolled and how wide its content is, reported up
+/// from inside the ScrollView so the edge fades know which side has more.
+struct TabScrollMetrics: Equatable {
+    var offset: CGFloat = 0
+    var contentWidth: CGFloat = 0
+}
+
+private struct TabScrollMetricsKey: PreferenceKey {
+    static let defaultValue = TabScrollMetrics()
+
+    static func reduce(value: inout TabScrollMetrics, nextValue: () -> TabScrollMetrics) {
+        value = nextValue()
+    }
+}
+
+private struct TabViewportWidthKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
