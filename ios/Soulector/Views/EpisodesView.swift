@@ -17,6 +17,7 @@ struct EpisodesView: View {
     @State private var selectedTab: EpisodeTab = .all
     @State private var showSearch = false
     @State private var selectedEpisode: Episode?
+    @State private var actionsEpisode: Episode?
     @State private var showCollectivePicker = false
     @State private var navBarHeight: CGFloat = 0
     @FocusState private var searchFieldFocused: Bool
@@ -116,6 +117,11 @@ struct EpisodesView: View {
                 MiniPlayerView(onTap: { selectedEpisode = playerStore.currentEpisode })
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
+        }
+        // Attached out here rather than next to the detail sheet: two `.sheet`
+        // modifiers on the same view fight over the presentation.
+        .sheet(item: $actionsEpisode) { episode in
+            EpisodeActionsSheet(episode: episode)
         }
         .animation(.spring(duration: 0.3), value: playerStore.hasEpisode)
         // Removing the last download takes its tab away with it.
@@ -401,7 +407,6 @@ struct EpisodesView: View {
                 loading: episodesVM.isSearchIndexLoading,
                 currentEpisodeId: playerStore.currentEpisode?.id,
                 bottomPadding: playerStore.hasEpisode ? 70 : 0,
-                isFavorite: { favoritesStore.isFavorite($0) },
                 onEpisodeTap: { episode in
                     radioStore.tuneOut()
                     selectedEpisode = episode
@@ -412,7 +417,7 @@ struct EpisodesView: View {
                     selectedEpisode = episode
                     Task { await playerStore.play(episode: episode, startingAt: timestamp.map(Double.init)) }
                 },
-                onFavorite: { favoritesStore.toggleFavorite($0.id) }
+                onShowActions: { actionsEpisode = $0 }
             )
         } else if episodesVM.isLoading && episodesVM.episodes.isEmpty {
             VStack {
@@ -459,14 +464,13 @@ struct EpisodesView: View {
                     EpisodeRowView(
                         episode: episode,
                         isPlaying: playerStore.currentEpisode?.id == episode.id,
-                        isFavorite: favoritesStore.isFavorite(episode.id),
                         onTap: {
                             // Manual plays take over from the radio (web parity).
                             radioStore.tuneOut()
                             selectedEpisode = episode
                             Task { await playerStore.play(episode: episode) }
                         },
-                        onFavorite: { favoritesStore.toggleFavorite(episode.id) }
+                        onShowActions: { actionsEpisode = episode }
                     )
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)

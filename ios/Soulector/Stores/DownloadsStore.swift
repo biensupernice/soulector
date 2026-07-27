@@ -125,6 +125,12 @@ final class DownloadsStore: ObservableObject {
         ByteCountFormatter.string(fromByteCount: totalBytes, countStyle: .file)
     }
 
+    /// What one episode is costing on disk; nil until it's finished landing.
+    func formattedSize(for episodeId: String) -> String? {
+        guard let record = records[episodeId], record.isComplete, record.bytes > 0 else { return nil }
+        return ByteCountFormatter.string(fromByteCount: record.bytes, countStyle: .file)
+    }
+
     /// The local audio file, when a complete copy is on disk.
     func audioURL(for episodeId: String) -> URL? {
         guard records[episodeId]?.isComplete == true else { return nil }

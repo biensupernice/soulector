@@ -3,9 +3,10 @@ import SwiftUI
 struct EpisodeRowView: View {
     let episode: Episode
     let isPlaying: Bool
-    let isFavorite: Bool
     let onTap: () -> Void
-    let onFavorite: () -> Void
+    /// Presenting from the row itself would tie the sheet's lifetime to a cell
+    /// that scrolls away, so the screen owns it.
+    let onShowActions: () -> Void
 
     @EnvironmentObject var playerStore: PlayerStore
     @EnvironmentObject var favoritesStore: FavoritesStore
@@ -15,6 +16,8 @@ struct EpisodeRowView: View {
     private var downloadState: DownloadState {
         downloadsStore.state(for: episode.id)
     }
+
+    private var isFavorite: Bool { favoritesStore.isFavorite(episode.id) }
 
     /// With no network an episode we haven't downloaded simply can't play, so
     /// the row says as much up front instead of failing after the tap.
@@ -57,6 +60,19 @@ struct EpisodeRowView: View {
                                 .font(.app(size: 12))
                                 .foregroundColor(.white.opacity(0.5))
 
+                            // Favoriting moved into the actions sheet, but you
+                            // still need to see it while browsing — so it reads
+                            // as a mark here rather than a control.
+                            if isFavorite {
+                                Text("·")
+                                    .foregroundColor(.white.opacity(0.3))
+
+                                Image(systemName: "heart.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(Color(red: 1, green: 0.35, blue: 0.36).opacity(0.9))
+                                    .accessibilityLabel("Favorite")
+                            }
+
                             if downloadState != .notDownloaded {
                                 Text("·")
                                     .foregroundColor(.white.opacity(0.3))
@@ -75,20 +91,7 @@ struct EpisodeRowView: View {
             .buttonStyle(.plain)
             .disabled(unavailable)
 
-            // Favorite button
-            Button(action: {
-                UIImpactFeedbackGenerator(style: isFavorite ? .light : .medium).impactOccurred()
-                onFavorite()
-            }) {
-                Image(systemName: isFavorite ? "heart.fill" : "heart")
-                    .font(.system(size: 18))
-                    .foregroundColor(isFavorite ? .red : .white.opacity(0.4))
-                    .frame(width: 36, height: 44)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            EpisodeKebabButton(episode: episode, onPlay: unavailable ? nil : onTap)
+            EpisodeKebabButton(action: onShowActions)
                 .padding(.trailing, 4)
         }
         .opacity(unavailable ? 0.4 : 1)

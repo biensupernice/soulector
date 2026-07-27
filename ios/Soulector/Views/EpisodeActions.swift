@@ -87,34 +87,24 @@ struct EpisodeActions: View {
 
 // MARK: - Kebab button
 
-/// The tap-sized entry point to `EpisodeActions`. Same glyph in the list and in
-/// the episode sheet, so "more things I can do here" is one shape to learn.
+/// The tap-sized entry point to `EpisodeActionsSheet`. Same glyph in the list
+/// and in the episode sheet, so "more things I can do here" is one shape to
+/// learn. Presentation lives with the caller — a sheet attached to a scrolling
+/// row gets dismissed when that row recycles.
 struct EpisodeKebabButton: View {
-    let episode: Episode
-    var onPlay: (() -> Void)? = nil
     var tint: Color = .white.opacity(0.4)
     var size: CGSize = CGSize(width: 36, height: 44)
-
-    @EnvironmentObject var favoritesStore: FavoritesStore
-    @EnvironmentObject var downloadsStore: DownloadsStore
-    @EnvironmentObject var network: NetworkMonitor
+    let action: () -> Void
 
     var body: some View {
-        Menu {
-            EpisodeActions(
-                episode: episode,
-                favoritesStore: favoritesStore,
-                downloadsStore: downloadsStore,
-                onPlay: onPlay,
-                canDownload: network.isOnline
-            )
-        } label: {
+        Button(action: action) {
             Image(systemName: "ellipsis")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(tint)
                 .frame(width: size.width, height: size.height)
                 .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
         .accessibilityLabel("More actions")
     }
 }
@@ -152,8 +142,8 @@ struct DownloadBadge: View {
 }
 
 /// Determinate once the transfer reports bytes; before that a short arc spins,
-/// so a queued download never looks stalled.
-private struct DownloadRing: View {
+/// so a queued download never looks stalled. Shared with the actions sheet.
+struct DownloadRing: View {
     let progress: Double?
     let tint: Color
     let size: CGFloat

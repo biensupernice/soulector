@@ -19,6 +19,7 @@ struct EpisodeDetailSheet: View {
     @State private var detailTracks: [EpisodeTrack] = []
     @State private var isLoadingDetailTracks = false
     @State private var episodeAccent: AccentColor?
+    @State private var showActions = false
     private var tracks: [EpisodeTrack] { detailTracks }
     private var isLoadingTracks: Bool { isLoadingDetailTracks }
     private var isFavorite: Bool { favoritesStore.isFavorite(episode.id) }
@@ -48,19 +49,13 @@ struct EpisodeDetailSheet: View {
 
             ScrollView {
                 VStack(spacing: 20) {
-                    // Drag handle
-                    Capsule()
-                        .fill(fg.opacity(0.3))
-                        .frame(width: 40, height: 4)
-                        .padding(.top, 12)
-
                     // Album art
                     EpisodeArtwork(episode: episode, contentMode: .fit)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .padding(.horizontal, sheetHPadding)
-                        // Breathing room below the drag handle so the art doesn't
-                        // crowd the top edge of the sheet.
-                        .padding(.top, 16)
+                        // Clears the fixed top bar, with the same breathing room
+                        // the drag handle used to leave.
+                        .padding(.top, 52)
 
                     // Title + date (web: bold white title, white/80 date)
                     VStack(spacing: 4) {
@@ -124,11 +119,12 @@ struct EpisodeDetailSheet: View {
                 }
             }
         }
-        // The sheet's own "more" entry point, matching the list row's kebab.
-        // Parked by the drag handle so it never crowds the action buttons.
-        .overlay(alignment: .topTrailing) {
-            EpisodeKebabButton(episode: episode, tint: fg.opacity(0.8), size: CGSize(width: 44, height: 44))
-                .padding(.trailing, 8)
+        // Fixed top bar: dismiss and "more" balanced on either side of the drag
+        // handle, so the corners answer each other instead of one lonely kebab.
+        // It stays put while the content scrolls under it.
+        .overlay(alignment: .top) { topBar }
+        .sheet(isPresented: $showActions) {
+            EpisodeActionsSheet(episode: episode)
         }
         .animation(.easeInOut(duration: 0.5), value: sheetAccent)
         .task(id: episode.id) {
@@ -163,6 +159,34 @@ struct EpisodeDetailSheet: View {
 
     private var downloadState: DownloadState {
         downloadsStore.state(for: episode.id)
+    }
+
+    private var topBar: some View {
+        HStack(spacing: 0) {
+            Button(action: { dismiss() }) {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(fg.opacity(0.8))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Close")
+
+            Spacer(minLength: 0)
+
+            Capsule()
+                .fill(fg.opacity(0.3))
+                .frame(width: 40, height: 4)
+
+            Spacer(minLength: 0)
+
+            EpisodeKebabButton(tint: fg.opacity(0.8), size: CGSize(width: 44, height: 44)) {
+                showActions = true
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.top, 6)
     }
 
     private func actionButtonLabel(icon: String, text: String) -> some View {
