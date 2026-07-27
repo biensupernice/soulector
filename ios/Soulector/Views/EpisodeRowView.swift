@@ -26,85 +26,87 @@ struct EpisodeRowView: View {
     }
 
     var body: some View {
-        // The tap target and the trailing controls are siblings rather than
-        // controls nested inside the row button, so each gets its own taps.
+        // The tap target and the kebab are siblings rather than a control nested
+        // inside a row button, so each gets its own taps. The tap area is plain
+        // gestures rather than a Button because a Button swallows the long press.
         HStack(spacing: 0) {
-            Button(action: onTap) {
-                HStack(spacing: 12) {
-                    EpisodeArtwork(episode: episode)
-                        .frame(width: 56, height: 56)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .overlay(
-                            isPlaying ? playingOverlay : nil
-                        )
+            HStack(spacing: 12) {
+                EpisodeArtwork(episode: episode)
+                    .frame(width: 56, height: 56)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .overlay(
+                        isPlaying ? playingOverlay : nil
+                    )
 
-                    // Text info
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(episode.name)
-                            .font(.app(size: 14, weight: .semibold))
-                            // Playing row title picks up the album accent, like
-                            // the web list (on-dark variant for the black bg).
-                            .foregroundColor(isPlaying ? playerStore.accentOnDark : .white)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.leading)
+                // Text info
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(episode.name)
+                        .font(.app(size: 14, weight: .semibold))
+                        // Playing row title picks up the album accent, like
+                        // the web list (on-dark variant for the black bg).
+                        .foregroundColor(isPlaying ? playerStore.accentOnDark : .white)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
 
-                        HStack(spacing: 6) {
-                            Text(episode.formattedDate)
-                                .font(.app(size: 12))
-                                .foregroundColor(.white.opacity(0.5))
+                    HStack(spacing: 6) {
+                        Text(episode.formattedDate)
+                            .font(.app(size: 12))
+                            .foregroundColor(.white.opacity(0.5))
 
+                        Text("·")
+                            .foregroundColor(.white.opacity(0.3))
+
+                        Text(episode.formattedDuration)
+                            .font(.app(size: 12))
+                            .foregroundColor(.white.opacity(0.5))
+
+                        // Favoriting moved into the actions sheet, but you
+                        // still need to see it while browsing — so it reads
+                        // as a mark here rather than a control.
+                        if isFavorite {
                             Text("·")
                                 .foregroundColor(.white.opacity(0.3))
 
-                            Text(episode.formattedDuration)
-                                .font(.app(size: 12))
-                                .foregroundColor(.white.opacity(0.5))
+                            Image(systemName: "heart.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(Color(red: 1, green: 0.35, blue: 0.36).opacity(0.9))
+                                .accessibilityLabel("Favorite")
+                        }
 
-                            // Favoriting moved into the actions sheet, but you
-                            // still need to see it while browsing — so it reads
-                            // as a mark here rather than a control.
-                            if isFavorite {
-                                Text("·")
-                                    .foregroundColor(.white.opacity(0.3))
+                        if downloadState != .notDownloaded {
+                            Text("·")
+                                .foregroundColor(.white.opacity(0.3))
 
-                                Image(systemName: "heart.fill")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(Color(red: 1, green: 0.35, blue: 0.36).opacity(0.9))
-                                    .accessibilityLabel("Favorite")
-                            }
-
-                            if downloadState != .notDownloaded {
-                                Text("·")
-                                    .foregroundColor(.white.opacity(0.3))
-
-                                DownloadBadge(state: downloadState, size: 11)
-                            }
+                            DownloadBadge(state: downloadState, size: 11)
                         }
                     }
-
-                    Spacer(minLength: 8)
                 }
-                .padding(.leading, 16)
-                .padding(.vertical, 10)
-                .contentShape(Rectangle())
+
+                Spacer(minLength: 8)
             }
-            .buttonStyle(.plain)
-            .disabled(unavailable)
+            .padding(.leading, 16)
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                guard !unavailable else { return }
+                onTap()
+            }
+            // Long-press lands on the same actions sheet the kebab opens — one
+            // surface, two ways in. Still available on a row that can't play,
+            // so its download and favorite stay reachable offline.
+            .onLongPressGesture(minimumDuration: 0.45) {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                onShowActions()
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction(named: "More actions") { onShowActions() }
 
             EpisodeKebabButton(action: onShowActions)
                 .padding(.trailing, 4)
         }
         .opacity(unavailable ? 0.4 : 1)
         .background(isPlaying ? Color.white.opacity(0.06) : Color.clear)
-        .contextMenu {
-            EpisodeActions(
-                episode: episode,
-                favoritesStore: favoritesStore,
-                downloadsStore: downloadsStore,
-                onPlay: unavailable ? nil : onTap,
-                canDownload: network.isOnline
-            )
-        }
     }
 
     @ViewBuilder

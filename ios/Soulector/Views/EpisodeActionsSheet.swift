@@ -10,16 +10,21 @@ struct EpisodeActionsSheet: View {
 
     @EnvironmentObject var favoritesStore: FavoritesStore
     @EnvironmentObject var downloadsStore: DownloadsStore
+    @EnvironmentObject var playerStore: PlayerStore
+    @EnvironmentObject var radioStore: RadioStore
     @EnvironmentObject var network: NetworkMonitor
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
 
     @State private var accent: AccentColor?
     @State private var favoritePulse = 0
-    /// Seeded generously so the first layout doesn't animate up from nothing.
-    @State private var contentHeight: CGFloat = 300
+    @State private var playPulse = 0
+    /// Seeded close to the usual four-row height so the first layout doesn't
+    /// animate up from nothing.
+    @State private var contentHeight: CGFloat = 360
 
     private var isFavorite: Bool { favoritesStore.isFavorite(episode.id) }
+    private var isCurrentEpisode: Bool { playerStore.currentEpisode?.id == episode.id }
     private var downloadState: DownloadState { downloadsStore.state(for: episode.id) }
     /// Same treatment as the episode sheet: the raw accent under a darkening
     /// gradient, so the hue comes through but white text stays readable.
@@ -104,6 +109,8 @@ struct EpisodeActionsSheet: View {
 
     private var actions: some View {
         VStack(spacing: 0) {
+            playRow
+
             downloadRow
 
             ActionRow(
@@ -126,6 +133,32 @@ struct EpisodeActionsSheet: View {
         }
         .padding(.top, 6)
         .padding(.bottom, 24)
+    }
+
+    /// Toggling the episode that's already playing changes state in place — the
+    /// label flips and you stay put. Starting a different one dismisses, since
+    /// what you want next is the player, not this panel.
+    @ViewBuilder
+    private var playRow: some View {
+        if isCurrentEpisode {
+            ActionRow(
+                icon: .symbol(playerStore.isPlaying ? "pause.fill" : "play.fill"),
+                title: playerStore.isPlaying ? "Pause" : "Resume",
+                pulse: playPulse
+            ) {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                playerStore.togglePlayPause()
+                playPulse += 1
+            }
+        } else if canPlay {
+            ActionRow(icon: .symbol("play.fill"), title: "Play") {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                // Manual plays take over from the radio, same as a row tap.
+                radioStore.tuneOut()
+                Task { await playerStore.play(episode: episode) }
+                dismiss()
+            }
+        }
     }
 
     @ViewBuilder
@@ -175,6 +208,10 @@ struct EpisodeActionsSheet: View {
     /// Starting a transfer needs a network, and MIXCLOUD episodes without an
     /// archive mirror have no audio to fetch.
     private var canDownload: Bool { episode.isStreamable && network.isOnline }
+
+    /// The same rule the list row uses to decide whether it's tappable: with no
+    /// network, only a downloaded episode can start.
+    private var canPlay: Bool { network.isOnline || downloadsStore.isDownloaded(episode.id) }
 
     private var downloadedSubtitle: String {
         guard let size = downloadsStore.formattedSize(for: episode.id) else { return "On this device" }
