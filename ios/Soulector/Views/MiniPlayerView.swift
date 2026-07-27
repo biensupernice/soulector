@@ -14,15 +14,9 @@ struct MiniPlayerView: View {
         Button(action: onTap) {
             HStack(spacing: 12) {
                 // Album art
-                AsyncImage(url: URL(string: episode.artworkUrl)) { phase in
-                    if case .success(let image) = phase {
-                        image.resizable().aspectRatio(contentMode: .fill)
-                    } else {
-                        Color.gray.opacity(0.4)
-                    }
-                }
-                .frame(width: 44, height: 44)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                EpisodeArtwork(episode: episode)
+                    .frame(width: 44, height: 44)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
 
                 // Episode name + date
                 VStack(alignment: .leading, spacing: 2) {

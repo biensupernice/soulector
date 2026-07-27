@@ -11,6 +11,10 @@ struct PlayerFabs: View {
     /// The playing episode's album accent (dark-leaning variant) for the
     /// On Air fill.
     let accent: Color
+    /// The radio needs a connection; offline the segment reads as unavailable
+    /// instead of tuning into silence. Shuffle stays live either way — it can
+    /// draw from downloads.
+    var radioAvailable: Bool = true
     let onRadioTap: () -> Void
     let onShuffleTap: () -> Void
 
@@ -55,10 +59,16 @@ struct PlayerFabs: View {
             .frame(minHeight: 24)
             .padding(.vertical, 12)
             .background(on ? accent : Color.clear)
+            .opacity(radioAvailable ? 1 : 0.35)
         }
         .buttonStyle(.plain)
+        .disabled(!radioAvailable)
         .accessibilityLabel(on ? "On Air" : "Radio")
-        .accessibilityHint(on ? "Tap to tune out" : "Tune in to the radio")
+        .accessibilityHint(
+            radioAvailable
+                ? (on ? "Tap to tune out" : "Tune in to the radio")
+                : "Unavailable offline"
+        )
     }
 
     private var shuffleSegment: some View {

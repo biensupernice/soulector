@@ -3,29 +3,40 @@ import SwiftUI
 struct EpisodeRowView: View {
     let episode: Episode
     let isPlaying: Bool
-    let isFavorite: Bool
     let onTap: () -> Void
-    let onFavorite: () -> Void
+    /// Presenting from the row itself would tie the sheet's lifetime to a cell
+    /// that scrolls away, so the screen owns it.
+    let onShowActions: () -> Void
 
     @EnvironmentObject var playerStore: PlayerStore
+    @EnvironmentObject var favoritesStore: FavoritesStore
+    @EnvironmentObject var downloadsStore: DownloadsStore
+    @EnvironmentObject var network: NetworkMonitor
+
+    private var downloadState: DownloadState {
+        downloadsStore.state(for: episode.id)
+    }
+
+    private var isFavorite: Bool { favoritesStore.isFavorite(episode.id) }
+
+    /// With no network an episode we haven't downloaded simply can't play, so
+    /// the row says as much up front instead of failing after the tap.
+    private var unavailable: Bool {
+        !network.isOnline && downloadState != .downloaded
+    }
 
     var body: some View {
-        Button(action: onTap) {
+        // The tap target and the kebab are siblings rather than a control nested
+        // inside a row button, so each gets its own taps. The tap area is plain
+        // gestures rather than a Button because a Button swallows the long press.
+        HStack(spacing: 0) {
             HStack(spacing: 12) {
-                // Album art
-                AsyncImage(url: URL(string: episode.artworkUrl)) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().aspectRatio(contentMode: .fill)
-                    default:
-                        Rectangle().fill(Color.gray.opacity(0.3))
-                    }
-                }
-                .frame(width: 56, height: 56)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .overlay(
-                    isPlaying ? playingOverlay : nil
-                )
+                EpisodeArtwork(episode: episode)
+                    .frame(width: 56, height: 56)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .overlay(
+                        isPlaying ? playingOverlay : nil
+                    )
 
                 // Text info
                 VStack(alignment: .leading, spacing: 3) {
@@ -48,47 +59,54 @@ struct EpisodeRowView: View {
                         Text(episode.formattedDuration)
                             .font(.app(size: 12))
                             .foregroundColor(.white.opacity(0.5))
+
+                        // Favoriting moved into the actions sheet, but you
+                        // still need to see it while browsing — so it reads
+                        // as a mark here rather than a control.
+                        if isFavorite {
+                            Text("·")
+                                .foregroundColor(.white.opacity(0.3))
+
+                            Image(systemName: "heart.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(Color(red: 1, green: 0.35, blue: 0.36).opacity(0.9))
+                                .accessibilityLabel("Favorite")
+                        }
+
+                        if downloadState != .notDownloaded {
+                            Text("·")
+                                .foregroundColor(.white.opacity(0.3))
+
+                            DownloadBadge(state: downloadState, size: 11)
+                        }
                     }
                 }
 
-                Spacer()
-
-                // Favorite button
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: isFavorite ? .light : .medium).impactOccurred()
-                    onFavorite()
-                }) {
-                    Image(systemName: isFavorite ? "heart.fill" : "heart")
-                        .font(.system(size: 18))
-                        .foregroundColor(isFavorite ? .red : .white.opacity(0.4))
-                }
-                .buttonStyle(.plain)
-                .padding(.trailing, 4)
+                Spacer(minLength: 8)
             }
-            .padding(.horizontal, 16)
+            .padding(.leading, 16)
             .padding(.vertical, 10)
-            .background(isPlaying ? Color.white.opacity(0.06) : Color.clear)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                guard !unavailable else { return }
+                onTap()
+            }
+            // Long-press lands on the same actions sheet the kebab opens — one
+            // surface, two ways in. Still available on a row that can't play,
+            // so its download and favorite stay reachable offline.
+            .onLongPressGesture(minimumDuration: 0.45) {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                onShowActions()
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction(named: "More actions") { onShowActions() }
+
+            EpisodeKebabButton(action: onShowActions)
+                .padding(.trailing, 4)
         }
-        .buttonStyle(.plain)
-        .contextMenu {
-            Button(action: {
-                UIImpactFeedbackGenerator(style: isFavorite ? .light : .medium).impactOccurred()
-                onFavorite()
-            }) {
-                Label(
-                    isFavorite ? "Unfavorite" : "Favorite",
-                    systemImage: isFavorite ? "heart.slash" : "heart"
-                )
-            }
-            Button(action: onTap) {
-                Label("Play", systemImage: "play.fill")
-            }
-            if let url = URL(string: episode.permalinkUrl) {
-                Link(destination: url) {
-                    Label("Open in SoundCloud", systemImage: "link")
-                }
-            }
-        }
+        .opacity(unavailable ? 0.4 : 1)
+        .background(isPlaying ? Color.white.opacity(0.06) : Color.clear)
     }
 
     @ViewBuilder

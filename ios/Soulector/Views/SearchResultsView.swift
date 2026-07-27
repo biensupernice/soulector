@@ -9,10 +9,9 @@ struct SearchResultsView: View {
     let loading: Bool
     let currentEpisodeId: String?
     let bottomPadding: CGFloat
-    let isFavorite: (String) -> Bool
     let onEpisodeTap: (Episode) -> Void
     let onTrackTap: (Episode, Int?) -> Void
-    let onFavorite: (Episode) -> Void
+    let onShowActions: (Episode) -> Void
 
     var body: some View {
         if results.isEmpty {
@@ -24,9 +23,8 @@ struct SearchResultsView: View {
                         EpisodeRowView(
                             episode: result.episode,
                             isPlaying: currentEpisodeId == result.episode.id,
-                            isFavorite: isFavorite(result.episode.id),
                             onTap: { onEpisodeTap(result.episode) },
-                            onFavorite: { onFavorite(result.episode) }
+                            onShowActions: { onShowActions(result.episode) }
                         )
                         if !result.matchedTracks.isEmpty {
                             matchedTracks(for: result)

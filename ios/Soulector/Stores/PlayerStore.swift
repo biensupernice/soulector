@@ -151,26 +151,42 @@ final class PlayerStore: ObservableObject {
         tracksLoadTask = Task { await loadTracks(for: episode.id) }
         accentColorTask = Task { await loadAccentColor(for: episode.id) }
 
+        // A downloaded episode plays off the disk: instant, and no network at all.
+        if let localAudio = DownloadsStore.shared.audioURL(for: episode.id) {
+            startPlayback(url: localAudio)
+            return
+        }
+
         do {
             guard let urls = try await APIClient.shared.fetchStreamUrl(episodeId: episode.id),
-                  !urls.httpMp3128Url.isEmpty else {
+                  !urls.httpMp3128Url.isEmpty,
+                  let url = URL(string: urls.httpMp3128Url) else {
                 state = .error("No stream URL available")
                 return
             }
-            startPlayback(streamUrl: urls.httpMp3128Url)
+            startPlayback(url: url)
         } catch {
             state = .error(error.localizedDescription)
         }
     }
 
     private func loadAccentColor(for episodeId: String) async {
+        // Downloads carry their accent, so the sheet is colored offline too.
+        if let cached = DownloadsStore.shared.cachedMetadata(for: episodeId)?.accent {
+            accent = cached
+        }
         guard let accent = try? await APIClient.shared.fetchAccentColor(episodeId: episodeId) else { return }
         guard !Task.isCancelled else { return }
         self.accent = accent
     }
 
     private func loadTracks(for episodeId: String) async {
-        isLoadingTracks = true
+        // Same for the tracklist: on screen immediately for a downloaded
+        // episode, and the fetch below still refreshes it when there's a network.
+        if let cached = DownloadsStore.shared.cachedMetadata(for: episodeId)?.tracks, !cached.isEmpty {
+            currentTracks = cached
+        }
+        isLoadingTracks = currentTracks.isEmpty
         do {
             currentTracks = try await APIClient.shared.fetchTracks(episodeId: episodeId)
         } catch is CancellationError {
@@ -181,12 +197,7 @@ final class PlayerStore: ObservableObject {
         isLoadingTracks = false
     }
 
-    private func startPlayback(streamUrl: String) {
-        guard let url = URL(string: streamUrl) else {
-            state = .error("Invalid stream URL")
-            return
-        }
-
+    private func startPlayback(url: URL) {
         let item = AVPlayerItem(url: url)
         playerItem = item
         player = AVPlayer(playerItem: item)
@@ -351,9 +362,16 @@ final class PlayerStore: ObservableObject {
             loadedArtwork = nil
             artworkLoadTask?.cancel()
             artworkLoadTask = Task {
-                guard let url = URL(string: episode.artworkUrl) else { return }
-                guard let (data, _) = try? await URLSession.shared.data(from: url),
-                      let image = UIImage(data: data) else { return }
+                var image: UIImage?
+                // The downloaded copy keeps the lock screen right offline.
+                if let local = DownloadsStore.shared.artworkURL(for: episode.id) {
+                    image = UIImage(contentsOfFile: local.path)
+                }
+                if image == nil, let url = URL(string: episode.artworkUrl),
+                   let (data, _) = try? await URLSession.shared.data(from: url) {
+                    image = UIImage(data: data)
+                }
+                guard let image else { return }
                 let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
                 self.loadedArtwork = artwork
                 // Update now playing info with artwork

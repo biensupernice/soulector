@@ -21,13 +21,15 @@ struct StreamUrls: Decodable {
     }
 }
 
-struct PaletteSwatch: Decodable, Equatable {
+// Codable rather than Decodable: accents are cached to disk alongside offline
+// downloads (see DownloadsStore).
+struct PaletteSwatch: Codable, Equatable {
     let name: String
     let rgb: [Double]
     let hsl: [Double]
 }
 
-struct AccentColor: Decodable, Equatable {
+struct AccentColor: Codable, Equatable {
     let rgb: [Double]
     let hsl: [Double]
     /// Every swatch the server's extraction produced (Vibrant, DarkVibrant,

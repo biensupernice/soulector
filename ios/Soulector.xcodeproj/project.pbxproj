@@ -31,6 +31,11 @@
 		AA000029 /* SpaceGrotesk-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000029 /* SpaceGrotesk-Medium.ttf */; };
 		AA000030 /* SpaceGrotesk-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000030 /* SpaceGrotesk-SemiBold.ttf */; };
 		AA000031 /* SpaceGrotesk-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000031 /* SpaceGrotesk-Bold.ttf */; };
+		AA000032 /* DownloadsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000032 /* DownloadsStore.swift */; };
+		AA000033 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000033 /* NetworkMonitor.swift */; };
+		AA000034 /* EpisodeActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000034 /* EpisodeActions.swift */; };
+		AA000035 /* EpisodeArtwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000035 /* EpisodeArtwork.swift */; };
+		AA000036 /* EpisodeActionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000036 /* EpisodeActionsSheet.swift */; };
 		AA000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000014 /* Assets.xcassets */; };
 		AA000015 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000015 /* Preview Assets.xcassets */; };
 /* End PBXBuildFile section */
@@ -61,6 +66,11 @@
 		AB000029 /* SpaceGrotesk-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Medium.ttf"; sourceTree = "<group>"; };
 		AB000030 /* SpaceGrotesk-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-SemiBold.ttf"; sourceTree = "<group>"; };
 		AB000031 /* SpaceGrotesk-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Bold.ttf"; sourceTree = "<group>"; };
+		AB000032 /* DownloadsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsStore.swift; sourceTree = "<group>"; };
+		AB000033 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
+		AB000034 /* EpisodeActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeActions.swift; sourceTree = "<group>"; };
+		AB000035 /* EpisodeArtwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeArtwork.swift; sourceTree = "<group>"; };
+		AB000036 /* EpisodeActionsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeActionsSheet.swift; sourceTree = "<group>"; };
 		AB000014 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AB000015 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		AB000016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -128,6 +138,8 @@
 				AB000006 /* PlayerStore.swift */,
 				AB000007 /* FavoritesStore.swift */,
 				AB000024 /* RadioStore.swift */,
+				AB000032 /* DownloadsStore.swift */,
+				AB000033 /* NetworkMonitor.swift */,
 			);
 			path = Stores;
 			sourceTree = "<group>";
@@ -151,6 +163,9 @@
 				AB000012 /* MiniPlayerView.swift */,
 				AB000022 /* SearchResultsView.swift */,
 				AB000025 /* PlayerFabs.swift */,
+				AB000034 /* EpisodeActions.swift */,
+				AB000036 /* EpisodeActionsSheet.swift */,
+				AB000035 /* EpisodeArtwork.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -277,6 +292,11 @@
 				AA000024 /* RadioStore.swift in Sources */,
 				AA000025 /* PlayerFabs.swift in Sources */,
 				AA000026 /* AppFont.swift in Sources */,
+				AA000032 /* DownloadsStore.swift in Sources */,
+				AA000033 /* NetworkMonitor.swift in Sources */,
+				AA000034 /* EpisodeActions.swift in Sources */,
+				AA000036 /* EpisodeActionsSheet.swift in Sources */,
+				AA000035 /* EpisodeArtwork.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

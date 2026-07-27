@@ -3,6 +3,7 @@ import SwiftUI
 enum EpisodeTab: String, CaseIterable {
     case all       = "All Episodes"
     case favorites = "Favorites"
+    case downloads = "Downloads"
 }
 
 struct EpisodesView: View {
@@ -10,18 +11,34 @@ struct EpisodesView: View {
     @EnvironmentObject var playerStore: PlayerStore
     @EnvironmentObject var favoritesStore: FavoritesStore
     @EnvironmentObject var radioStore: RadioStore
+    @EnvironmentObject var downloadsStore: DownloadsStore
+    @EnvironmentObject var network: NetworkMonitor
 
     @State private var selectedTab: EpisodeTab = .all
     @State private var showSearch = false
     @State private var selectedEpisode: Episode?
+    @State private var actionsEpisode: Episode?
     @State private var showCollectivePicker = false
     @State private var navBarHeight: CGFloat = 0
+    @State private var tabMetrics = TabScrollMetrics()
+    @State private var tabViewportWidth: CGFloat = 0
     @FocusState private var searchFieldFocused: Bool
 
+    private static let tabScrollSpace = "episodeTabs"
+    private static let tabFadeWidth: CGFloat = 20
+
     private var displayedEpisodes: [Episode] {
-        selectedTab == .all
-            ? episodesVM.filteredEpisodes
-            : episodesVM.favoriteEpisodes(favoritesStore: favoritesStore)
+        switch selectedTab {
+        case .all:       return episodesVM.filteredEpisodes
+        case .favorites: return episodesVM.favoriteEpisodes(favoritesStore: favoritesStore)
+        case .downloads: return episodesVM.downloadedEpisodes(downloadsStore: downloadsStore)
+        }
+    }
+
+    /// Downloads only earns a pill once there's something in it — an empty
+    /// third tab would just be clutter for anyone who never downloads.
+    private var visibleTabs: [EpisodeTab] {
+        EpisodeTab.allCases.filter { $0 != .downloads || !downloadsStore.isEmpty }
     }
 
     private var isSearching: Bool {
@@ -76,6 +93,9 @@ struct EpisodesView: View {
                     PlayerFabs(
                         on: radioStore.isOn,
                         accent: playerStore.accentOnLight,
+                        // The broadcast is live audio — there's nothing to tune
+                        // into without a connection.
+                        radioAvailable: network.isOnline,
                         onRadioTap: {
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             if radioStore.isOn {
@@ -87,7 +107,7 @@ struct EpisodesView: View {
                         onShuffleTap: {
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
                             radioStore.tuneOut()
-                            if let episode = episodesVM.filteredEpisodes.randomElement() {
+                            if let episode = shufflePool.randomElement() {
                                 Task { await playerStore.play(episode: episode) }
                             }
                         }
@@ -103,7 +123,16 @@ struct EpisodesView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        // Attached out here rather than next to the detail sheet: two `.sheet`
+        // modifiers on the same view fight over the presentation.
+        .sheet(item: $actionsEpisode) { episode in
+            EpisodeActionsSheet(episode: episode)
+        }
         .animation(.spring(duration: 0.3), value: playerStore.hasEpisode)
+        // Removing the last download takes its tab away with it.
+        .onChange(of: downloadsStore.isEmpty) { isEmpty in
+            if isEmpty && selectedTab == .downloads { selectedTab = .all }
+        }
         .task { await episodesVM.fetchEpisodes() }
         .onAppear {
             radioStore.configure(player: playerStore, episodesVM: episodesVM)
@@ -222,39 +251,110 @@ struct EpisodesView: View {
 
     private var tabSelector: some View {
         HStack(spacing: 8) {
-            ForEach(EpisodeTab.allCases, id: \.self) { tab in
-                Button(action: { selectedTab = tab }) {
-                    Text(tab.rawValue)
-                        .font(.app(size: 14, weight: selectedTab == tab ? .semibold : .regular))
-                        .foregroundColor(selectedTab == tab ? .black : .white.opacity(0.6))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 7)
-                        .background(selectedTab == tab ? Color.white : Color.white.opacity(0.12))
-                        .clipShape(Capsule())
+            // Scrolls rather than truncates: a third pill plus the count runs
+            // past the width of the narrowest phones we support.
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(visibleTabs, id: \.self) { tab in
+                        Button(action: { selectedTab = tab }) {
+                            Text(tab.rawValue)
+                                .font(.app(size: 14, weight: selectedTab == tab ? .semibold : .regular))
+                                .foregroundColor(selectedTab == tab ? .black : .white.opacity(0.6))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 7)
+                                .background(selectedTab == tab ? Color.white : Color.white.opacity(0.12))
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-                .buttonStyle(.plain)
+                .background(
+                    GeometryReader { proxy in
+                        let frame = proxy.frame(in: .named(Self.tabScrollSpace))
+                        Color.clear.preference(
+                            key: TabScrollMetricsKey.self,
+                            value: TabScrollMetrics(offset: -frame.minX, contentWidth: frame.width)
+                        )
+                    }
+                )
             }
+            .fixedSize(horizontal: false, vertical: true)
+            .coordinateSpace(name: Self.tabScrollSpace)
+            .background(
+                GeometryReader { proxy in
+                    Color.clear.preference(key: TabViewportWidthKey.self, value: proxy.size.width)
+                }
+            )
+            .onPreferenceChange(TabScrollMetricsKey.self) { tabMetrics = $0 }
+            .onPreferenceChange(TabViewportWidthKey.self) { tabViewportWidth = $0 }
+            // A pill sliced mid-word at the edge reads as a rendering bug.
+            // Fading it says "there's more this way" instead — and only on the
+            // side that actually has more, so a fully scrolled row looks solid.
+            .mask(tabScrollFade)
 
-            Spacer()
+            Spacer(minLength: 8)
 
             Text(countText)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.white.opacity(0.4))
+                .lineLimit(1)
+                .layoutPriority(1)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
     }
 
-    private var countText: String {
-        guard isSearching else { return "\(displayedEpisodes.count) Total" }
-        let results = episodesVM.searchResults
-        let episodeWord = results.count == 1 ? "episode" : "episodes"
-        var text = "\(results.count) \(episodeWord)"
-        let trackCount = results.reduce(0) { $0 + $1.matchedTracks.count }
-        if trackCount > 0 {
-            text += " · \(trackCount) \(trackCount == 1 ? "track" : "tracks")"
+    /// Opaque through the middle, fading over `tabFadeWidth` on whichever edge
+    /// has content hidden past it. Zero-width when there's nothing to reveal,
+    /// so the first and last pill keep their full contrast.
+    private var tabScrollFade: some View {
+        HStack(spacing: 0) {
+            LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing)
+                .frame(width: tabFadeLeading ? Self.tabFadeWidth : 0)
+
+            Color.black
+
+            LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                .frame(width: tabFadeTrailing ? Self.tabFadeWidth : 0)
         }
-        return text
+        .animation(.easeOut(duration: 0.2), value: tabFadeLeading)
+        .animation(.easeOut(duration: 0.2), value: tabFadeTrailing)
+    }
+
+    // A pixel of slack so rounding at the scroll limits doesn't leave a fade on.
+    private var tabFadeLeading: Bool { tabMetrics.offset > 1 }
+    private var tabFadeTrailing: Bool {
+        tabMetrics.contentWidth - tabViewportWidth - tabMetrics.offset > 1
+    }
+
+    private var countText: String {
+        if isSearching {
+            let results = episodesVM.searchResults
+            let episodeWord = results.count == 1 ? "episode" : "episodes"
+            var text = "\(results.count) \(episodeWord)"
+            let trackCount = results.reduce(0) { $0 + $1.matchedTracks.count }
+            if trackCount > 0 {
+                text += " · \(trackCount) \(trackCount == 1 ? "track" : "tracks")"
+            }
+            return text
+        }
+        // Offline, the honest count is what's actually playable — and it
+        // explains why the rest of the list has gone quiet.
+        if !network.isOnline {
+            let count = downloadsStore.downloadedEpisodes.count
+            return count > 0 ? "Offline · \(count) downloaded" : "Offline"
+        }
+        if selectedTab == .downloads {
+            return "\(displayedEpisodes.count) · \(downloadsStore.formattedTotalSize)"
+        }
+        return "\(displayedEpisodes.count) Total"
+    }
+
+    /// Shuffle stays useful with no network by drawing from what's on the device.
+    private var shufflePool: [Episode] {
+        network.isOnline
+            ? episodesVM.filteredEpisodes
+            : episodesVM.downloadedEpisodes(downloadsStore: downloadsStore)
     }
 
     private var collectiveDropdown: some View {
@@ -340,6 +440,14 @@ struct EpisodesView: View {
         }
     }
 
+    private var emptyStateText: String {
+        switch selectedTab {
+        case .all:       return "No episodes found"
+        case .favorites: return "No favorites yet"
+        case .downloads: return "No downloads yet"
+        }
+    }
+
     @ViewBuilder
     private var episodeListContent: some View {
         if isSearching {
@@ -348,7 +456,6 @@ struct EpisodesView: View {
                 loading: episodesVM.isSearchIndexLoading,
                 currentEpisodeId: playerStore.currentEpisode?.id,
                 bottomPadding: playerStore.hasEpisode ? 70 : 0,
-                isFavorite: { favoritesStore.isFavorite($0) },
                 onEpisodeTap: { episode in
                     radioStore.tuneOut()
                     selectedEpisode = episode
@@ -359,7 +466,7 @@ struct EpisodesView: View {
                     selectedEpisode = episode
                     Task { await playerStore.play(episode: episode, startingAt: timestamp.map(Double.init)) }
                 },
-                onFavorite: { favoritesStore.toggleFavorite($0.id) }
+                onShowActions: { actionsEpisode = $0 }
             )
         } else if episodesVM.isLoading && episodesVM.episodes.isEmpty {
             VStack {
@@ -396,7 +503,7 @@ struct EpisodesView: View {
         } else if displayedEpisodes.isEmpty {
             VStack {
                 Spacer()
-                Text(selectedTab == .favorites ? "No favorites yet" : "No episodes found")
+                Text(emptyStateText)
                     .foregroundColor(.white.opacity(0.5))
                 Spacer()
             }
@@ -406,14 +513,13 @@ struct EpisodesView: View {
                     EpisodeRowView(
                         episode: episode,
                         isPlaying: playerStore.currentEpisode?.id == episode.id,
-                        isFavorite: favoritesStore.isFavorite(episode.id),
                         onTap: {
                             // Manual plays take over from the radio (web parity).
                             radioStore.tuneOut()
                             selectedEpisode = episode
                             Task { await playerStore.play(episode: episode) }
                         },
-                        onFavorite: { favoritesStore.toggleFavorite(episode.id) }
+                        onShowActions: { actionsEpisode = episode }
                     )
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
@@ -429,5 +535,30 @@ struct EpisodesView: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
         }
+    }
+}
+
+// MARK: - Tab strip scroll metrics
+
+/// Where the tab strip is scrolled and how wide its content is, reported up
+/// from inside the ScrollView so the edge fades know which side has more.
+struct TabScrollMetrics: Equatable {
+    var offset: CGFloat = 0
+    var contentWidth: CGFloat = 0
+}
+
+private struct TabScrollMetricsKey: PreferenceKey {
+    static let defaultValue = TabScrollMetrics()
+
+    static func reduce(value: inout TabScrollMetrics, nextValue: () -> TabScrollMetrics) {
+        value = nextValue()
+    }
+}
+
+private struct TabViewportWidthKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
