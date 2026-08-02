@@ -158,6 +158,33 @@ struct EpisodesView: View {
                 Task { await playerStore.play(episode: next) }
             }
         }
+        // Deep links from the home-screen widget (soulector://…). These mirror
+        // the floating FAB cluster and the mini player's play/pause.
+        .onOpenURL { url in
+            guard let action = SoulectorAction(url: url) else { return }
+            switch action {
+            case .tuneIn:
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                if !radioStore.isOn { radioStore.tuneIn() }
+            case .shuffle:
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                radioStore.tuneOut()
+                if let episode = episodesVM.filteredEpisodes.randomElement() {
+                    Task { await playerStore.play(episode: episode) }
+                }
+            case .togglePlayPause:
+                if playerStore.hasEpisode {
+                    playerStore.togglePlayPause()
+                } else if !radioStore.isOn {
+                    // Nothing loaded yet — tapping play tunes in to the radio.
+                    radioStore.tuneIn()
+                }
+            case .openNowPlaying:
+                if let episode = playerStore.currentEpisode {
+                    selectedEpisode = episode
+                }
+            }
+        }
     }
 
     // MARK: - Subviews

@@ -4,6 +4,7 @@ import Foundation
 import MediaPlayer
 import SwiftUI
 import UIKit
+import WidgetKit
 
 // MARK: - State
 
@@ -27,6 +28,11 @@ final class PlayerStore: ObservableObject {
     @Published private(set) var isLoadingTracks = false
     @Published private(set) var accent: AccentColor?
     @Published var isSeeking = false
+
+    /// Whether the radio is currently on air. Owned by `RadioStore`, mirrored
+    /// here only so the now-playing snapshot the widget reads can show the
+    /// "On Air" state on its Tune In button.
+    private(set) var isRadioOn = false
 
     /// The fetched accent resolved to this app's chosen swatch (Vibrant).
     var effectiveAccent: AccentColor? { accent?.appSwatch }
@@ -146,6 +152,7 @@ final class PlayerStore: ObservableObject {
         currentTracks = []
         state = .loading
         updateNowPlayingInfo()
+        publishNowPlaying()
 
         // Load tracks and accent color concurrently with stream URL
         tracksLoadTask = Task { await loadTracks(for: episode.id) }
@@ -178,6 +185,8 @@ final class PlayerStore: ObservableObject {
         guard let accent = try? await APIClient.shared.fetchAccentColor(episodeId: episodeId) else { return }
         guard !Task.isCancelled else { return }
         self.accent = accent
+        // Refresh the widget so its card picks up the album tint.
+        publishNowPlaying()
     }
 
     private func loadTracks(for episodeId: String) async {
@@ -217,6 +226,7 @@ final class PlayerStore: ObservableObject {
                     self.player?.play()
                     self.state = .playing
                     self.updateNowPlayingInfo()
+                    self.publishNowPlaying()
                 case .failed:
                     self.state = .error(item.error?.localizedDescription ?? "Playback failed")
                 default:
@@ -236,6 +246,10 @@ final class PlayerStore: ObservableObject {
         timeObserver = player?.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
             guard let self, !self.isSeeking else { return }
             self.currentTime = time.seconds.isNaN ? 0 : time.seconds
+            // No widget refresh here: WidgetKit's reload budget can't absorb a
+            // ticking clock, and it doesn't need to — the snapshot carries
+            // elapsed + duration so the widget's timeline advances the progress
+            // line itself between the discrete reloads below.
         }
 
         // End of playback
@@ -247,6 +261,7 @@ final class PlayerStore: ObservableObject {
                 self.state = .paused
                 self.currentTime = 0
                 self.player?.seek(to: .zero)
+                self.publishNowPlaying()
                 if let finished { self.onEpisodeEnded?(finished) }
             }
             .store(in: &cancellables)
@@ -256,18 +271,21 @@ final class PlayerStore: ObservableObject {
         player?.play()
         state = .playing
         updateNowPlayingInfo()
+        publishNowPlaying()
     }
 
     func pause() {
         player?.pause()
         state = .paused
         updateNowPlayingInfo()
+        publishNowPlaying()
     }
 
     func resume() {
         player?.play()
         state = .playing
         updateNowPlayingInfo()
+        publishNowPlaying()
     }
 
     func togglePlayPause() {
@@ -285,6 +303,9 @@ final class PlayerStore: ObservableObject {
             Task { @MainActor [weak self] in self?.isSeeking = false }
         }
         updateNowPlayingInfo()
+        // A seek moves the position discontinuously, so the widget's
+        // interpolated progress needs resetting to the new anchor.
+        publishNowPlaying()
     }
 
     func forward(_ seconds: Double = 15) {
@@ -303,6 +324,7 @@ final class PlayerStore: ObservableObject {
         duration = 0
         currentTracks = []
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        publishNowPlaying()
     }
 
     // MARK: Private helpers
@@ -334,6 +356,38 @@ final class PlayerStore: ObservableObject {
         loadedArtwork = nil
         loadedArtworkEpisodeId = nil
         pendingSeek = nil
+    }
+
+    // MARK: Radio flag (mirrored from RadioStore for the widget snapshot)
+
+    func setRadioOn(_ on: Bool) {
+        guard isRadioOn != on else { return }
+        isRadioOn = on
+        publishNowPlaying()
+    }
+
+    // MARK: Widget snapshot
+
+    /// Writes the current playback state to the shared App Group container and
+    /// asks WidgetKit to refresh, so the home-screen widget stays in sync.
+    private func publishNowPlaying() {
+        let snapshot = NowPlayingSnapshot(
+            hasEpisode: currentEpisode != nil,
+            title: currentEpisode?.name ?? "",
+            subtitle: currentEpisode?.collectiveName ?? "",
+            isPlaying: isPlaying,
+            isRadioOn: isRadioOn,
+            elapsedSeconds: currentTime,
+            durationSeconds: duration,
+            accentRGB: accent?.rgb,
+            accentHSL: accent?.hsl,
+            // Mirrors the key EpisodesViewModel persists, so the widget's
+            // live-radio fallback tunes to the station the user last chose.
+            collective: UserDefaults.standard.string(forKey: "soulector.selectedCollective"),
+            updatedAt: Date()
+        )
+        NowPlayingStore.save(snapshot)
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     // MARK: Now Playing Info
@@ -378,6 +432,9 @@ final class PlayerStore: ObservableObject {
                 var updated = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
                 updated[MPMediaItemPropertyArtwork] = artwork
                 MPNowPlayingInfoCenter.default().nowPlayingInfo = updated
+                // Cache a downsampled copy for the widget and refresh it.
+                NowPlayingStore.saveArtwork(image: image)
+                WidgetCenter.shared.reloadAllTimelines()
             }
         }
     }

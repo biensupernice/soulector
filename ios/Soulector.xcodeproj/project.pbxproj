@@ -38,6 +38,25 @@
 		AA000036 /* EpisodeActionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000036 /* EpisodeActionsSheet.swift */; };
 		AA000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000014 /* Assets.xcassets */; };
 		AA000015 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000015 /* Preview Assets.xcassets */; };
+		BA000001 /* NowPlaying.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001 /* NowPlaying.swift */; };
+		BA000002 /* SoulectorLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000002 /* SoulectorLink.swift */; };
+		BA000010 /* SoulectorWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000003 /* SoulectorWidgetBundle.swift */; };
+		BA000011 /* NowPlayingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000004 /* NowPlayingWidget.swift */; };
+		BA000012 /* NowPlaying.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001 /* NowPlaying.swift */; };
+		BA000013 /* SoulectorLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000002 /* SoulectorLink.swift */; };
+		BA000014 /* AppFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000026 /* AppFont.swift */; };
+		BA000015 /* LiveRadioPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000009 /* LiveRadioPreview.swift */; };
+		BA000016 /* Episode.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000003 /* Episode.swift */; };
+		BA000017 /* EpisodeTrack.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000004 /* EpisodeTrack.swift */; };
+		BA000018 /* SearchIndexEpisode.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000020 /* SearchIndexEpisode.swift */; };
+		BA000019 /* RadioSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000023 /* RadioSchedule.swift */; };
+		BA000040 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000005 /* APIClient.swift */; };
+		BA000020 /* SpaceGrotesk-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000027 /* SpaceGrotesk-Light.ttf */; };
+		BA000021 /* SpaceGrotesk-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000028 /* SpaceGrotesk-Regular.ttf */; };
+		BA000022 /* SpaceGrotesk-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000029 /* SpaceGrotesk-Medium.ttf */; };
+		BA000023 /* SpaceGrotesk-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000030 /* SpaceGrotesk-SemiBold.ttf */; };
+		BA000024 /* SpaceGrotesk-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000031 /* SpaceGrotesk-Bold.ttf */; };
+		BA000030 /* SoulectorWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BB000008 /* SoulectorWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -74,10 +93,40 @@
 		AB000014 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AB000015 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		AB000016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BB000001 /* NowPlaying.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlaying.swift; sourceTree = "<group>"; };
+		BB000002 /* SoulectorLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoulectorLink.swift; sourceTree = "<group>"; };
+		BB000003 /* SoulectorWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoulectorWidgetBundle.swift; sourceTree = "<group>"; };
+		BB000004 /* NowPlayingWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingWidget.swift; sourceTree = "<group>"; };
+		BB000005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BB000006 /* SoulectorWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SoulectorWidget.entitlements; sourceTree = "<group>"; };
+		BB000007 /* Soulector.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Soulector.entitlements; sourceTree = "<group>"; };
+		BB000008 /* SoulectorWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SoulectorWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB000009 /* LiveRadioPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRadioPreview.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		BC000004 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BA000030 /* SoulectorWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		AC000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BC000002 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -91,6 +140,8 @@
 			isa = PBXGroup;
 			children = (
 				AD000002 /* Soulector */,
+				BD000002 /* SoulectorWidget */,
+				BD000001 /* Shared */,
 				AD000009 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -100,6 +151,7 @@
 			children = (
 				AB000001 /* SoulectorApp.swift */,
 				AB000026 /* AppFont.swift */,
+				BB000007 /* Soulector.entitlements */,
 				AB000016 /* Info.plist */,
 				AB000014 /* Assets.xcassets */,
 				AD000011 /* Fonts */,
@@ -174,8 +226,30 @@
 			isa = PBXGroup;
 			children = (
 				AB000000 /* Soulector.app */,
+				BB000008 /* SoulectorWidget.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		BD000001 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				BB000001 /* NowPlaying.swift */,
+				BB000002 /* SoulectorLink.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		BD000002 /* SoulectorWidget */ = {
+			isa = PBXGroup;
+			children = (
+				BB000003 /* SoulectorWidgetBundle.swift */,
+				BB000004 /* NowPlayingWidget.swift */,
+				BB000009 /* LiveRadioPreview.swift */,
+				BB000006 /* SoulectorWidget.entitlements */,
+				BB000005 /* Info.plist */,
+			);
+			path = SoulectorWidget;
 			sourceTree = "<group>";
 		};
 		AD000011 /* Fonts */ = {
@@ -208,15 +282,34 @@
 				AC000002 /* Sources */,
 				AC000001 /* Frameworks */,
 				AC000003 /* Resources */,
+				BC000004 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				BE000002 /* PBXTargetDependency */,
 			);
 			name = Soulector;
 			productName = Soulector;
 			productReference = AB000000 /* Soulector.app */;
 			productType = "com.apple.product-type.application";
+		};
+		BE000001 /* SoulectorWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BF000003 /* Build configuration list for PBXNativeTarget "SoulectorWidget" */;
+			buildPhases = (
+				BC000001 /* Sources */,
+				BC000002 /* Frameworks */,
+				BC000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SoulectorWidget;
+			productName = SoulectorWidget;
+			productReference = BB000008 /* SoulectorWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -229,6 +322,9 @@
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
 					AE000001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+					BE000001 = {
 						CreatedOnToolsVersion = 15.0;
 					};
 				};
@@ -247,6 +343,7 @@
 			projectRoot = "";
 			targets = (
 				AE000001 /* Soulector */,
+				BE000001 /* SoulectorWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -263,6 +360,18 @@
 				AA000029 /* SpaceGrotesk-Medium.ttf in Resources */,
 				AA000030 /* SpaceGrotesk-SemiBold.ttf in Resources */,
 				AA000031 /* SpaceGrotesk-Bold.ttf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BC000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BA000020 /* SpaceGrotesk-Light.ttf in Resources */,
+				BA000021 /* SpaceGrotesk-Regular.ttf in Resources */,
+				BA000022 /* SpaceGrotesk-Medium.ttf in Resources */,
+				BA000023 /* SpaceGrotesk-SemiBold.ttf in Resources */,
+				BA000024 /* SpaceGrotesk-Bold.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -297,10 +406,48 @@
 				AA000034 /* EpisodeActions.swift in Sources */,
 				AA000036 /* EpisodeActionsSheet.swift in Sources */,
 				AA000035 /* EpisodeArtwork.swift in Sources */,
+				BA000001 /* NowPlaying.swift in Sources */,
+				BA000002 /* SoulectorLink.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BC000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BA000010 /* SoulectorWidgetBundle.swift in Sources */,
+				BA000011 /* NowPlayingWidget.swift in Sources */,
+				BA000012 /* NowPlaying.swift in Sources */,
+				BA000013 /* SoulectorLink.swift in Sources */,
+				BA000014 /* AppFont.swift in Sources */,
+				BA000015 /* LiveRadioPreview.swift in Sources */,
+				BA000016 /* Episode.swift in Sources */,
+				BA000017 /* EpisodeTrack.swift in Sources */,
+				BA000018 /* SearchIndexEpisode.swift in Sources */,
+				BA000019 /* RadioSchedule.swift in Sources */,
+				BA000040 /* APIClient.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		BE000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BE000001 /* SoulectorWidget */;
+			targetProxy = BE000003 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXContainerItemProxy section */
+		BE000003 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AE000002 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BE000001;
+			remoteInfo = SoulectorWidget;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin XCBuildConfiguration section */
 		AF000010 /* Debug */ = {
@@ -421,6 +568,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Soulector/Soulector.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = V9BK854A9H;
@@ -449,6 +597,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Soulector/Soulector.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = V9BK854A9H;
@@ -472,6 +621,56 @@
 			};
 			name = Release;
 		};
+		BF000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = SoulectorWidget/SoulectorWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = V9BK854A9H;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SoulectorWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.soulector.app.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		BF000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = SoulectorWidget/SoulectorWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = V9BK854A9H;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SoulectorWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.soulector.app.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -489,6 +688,15 @@
 			buildConfigurations = (
 				AF000012 /* Debug */,
 				AF000013 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BF000003 /* Build configuration list for PBXNativeTarget "SoulectorWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BF000001 /* Debug */,
+				BF000002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
