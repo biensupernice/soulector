@@ -116,11 +116,20 @@ struct EpisodesView: View {
             }
             .padding(.trailing, 16)
             .padding(.bottom, playerStore.hasEpisode ? 76 : 16)
+            .ignoresSafeArea(.keyboard, edges: .bottom)
 
             // Mini player pinned to bottom
             if playerStore.hasEpisode {
                 MiniPlayerView(onTap: { selectedEpisode = playerStore.currentEpisode })
                     .transition(.move(edge: .bottom).combined(with: .opacity))
+                    // Pinned to the bottom of the *screen*, not to the top of
+                    // the keyboard. Search raises the keyboard, and riding it
+                    // up parks the bar — and the FAB cluster above it — right
+                    // on top of the results, which is the scarcest space there
+                    // is while typing. Left under the keyboard it costs
+                    // nothing, and scrolling the results dismisses the keyboard
+                    // (SearchResultsView), which hands the controls back.
+                    .ignoresSafeArea(.keyboard, edges: .bottom)
             }
         }
         // Attached out here rather than next to the detail sheet: two `.sheet`
@@ -482,7 +491,11 @@ struct EpisodesView: View {
                 results: episodesVM.searchResults,
                 loading: episodesVM.isSearchIndexLoading,
                 currentEpisodeId: playerStore.currentEpisode?.id,
-                bottomPadding: playerStore.hasEpisode ? 70 : 0,
+                // The trailing spacer only has to clear the mini player. With
+                // the keyboard up the bar sits behind it, so reserving that
+                // room would just be a gap between the last result and the
+                // keyboard.
+                bottomPadding: playerStore.hasEpisode && !searchFieldFocused ? 70 : 0,
                 onEpisodeTap: { episode in
                     radioStore.tuneOut()
                     selectedEpisode = episode
