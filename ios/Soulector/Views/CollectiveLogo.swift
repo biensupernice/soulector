@@ -15,6 +15,12 @@ struct CollectiveLogo: View {
 
         var textSize: CGFloat { self == .navBar ? 22 : 18 }
         var markHeight: CGFloat { self == .navBar ? 22 : 19 }
+        // "All Collectives" isn't a brand, it's the heading that gathers them,
+        // so the web sets it a size up from the collectives below it. At the
+        // collectives' size it reads as the smallest thing in the menu, since
+        // the wordmarks beside it are artwork drawn to fill their line.
+        var headingTextSize: CGFloat { self == .navBar ? 24 : 22 }
+        var headingMarkHeight: CGFloat { self == .navBar ? 26 : 24 }
         var wordmarkHeight: CGFloat { self == .navBar ? 15 : 13 }
         var scriptHeight: CGFloat { self == .navBar ? 24 : 21 }
         var spacing: CGFloat { self == .navBar ? 10 : 12 }
@@ -33,10 +39,12 @@ struct CollectiveLogo: View {
         case .all:
             HStack(spacing: placement.spacing) {
                 Image(systemName: "square.stack.fill")
-                    .font(.system(size: placement.markHeight))
-                    .frame(width: placement.markHeight * 1.3)
+                    .font(.system(size: placement.headingMarkHeight))
+                    // Holds the same column width as the wordmark rows' marks,
+                    // so every label in the menu starts on one line.
+                    .frame(width: placement.headingMarkHeight * 1.15)
                     .foregroundColor(.white)
-                name(collective.displayName)
+                name(collective.displayName, size: placement.headingTextSize)
             }
         case .soulection:
             HStack(spacing: placement.spacing) {
@@ -63,9 +71,9 @@ struct CollectiveLogo: View {
         }
     }
 
-    private func name(_ text: String) -> some View {
+    private func name(_ text: String, size: CGFloat? = nil) -> some View {
         Text(text)
-            .font(.app(size: placement.textSize, weight: .bold))
+            .font(.app(size: size ?? placement.textSize, weight: .bold))
             .foregroundColor(.white)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
