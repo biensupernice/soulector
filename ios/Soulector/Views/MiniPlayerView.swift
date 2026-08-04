@@ -18,14 +18,26 @@ struct MiniPlayerView: View {
                     .frame(width: 44, height: 44)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
 
-                // Episode name + date
+                // Episode name, and either the date or what's on deck
                 VStack(alignment: .leading, spacing: 2) {
                     MarqueeText(text: episode.name)
                         .foregroundColor(.white)
-                    Text(episode.formattedDate)
-                        .font(.app(size: 12))
-                        .foregroundColor(.white.opacity(0.5))
-                        .lineLimit(1)
+
+                    // A crossing arranged in a dive outlives the dive, so the
+                    // bar carries it — otherwise closing the sheet would look
+                    // like it had been called off.
+                    if let queued = playerStore.queued {
+                        Text(onDeckLine(for: queued))
+                            .font(.app(size: 12, weight: .medium))
+                            .foregroundColor(playerStore.accentOnDark)
+                            .lineLimit(1)
+                            .monospacedDigit()
+                    } else {
+                        Text(episode.formattedDate)
+                            .font(.app(size: 12))
+                            .foregroundColor(.white.opacity(0.5))
+                            .lineLimit(1)
+                    }
                 }
 
                 // Loading indicator or controls
@@ -82,6 +94,12 @@ struct MiniPlayerView: View {
                     }
                 }
         )
+    }
+
+    private func onDeckLine(for queued: QueuedTransition) -> String {
+        guard !playerStore.isCrossing else { return "Crossing into \(queued.episode.name)" }
+        let seconds = Int((playerStore.queuedRemaining ?? 0).rounded())
+        return String(format: "On deck · %d:%02d", seconds / 60, seconds % 60)
     }
 }
 

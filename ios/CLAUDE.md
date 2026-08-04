@@ -101,6 +101,23 @@ ios/Soulector/
   to go. A dive that leaves a different episode playing reports back through
   `EpisodeDetailSheet.onNavigate` so the sheet underneath retargets to where the
   user landed rather than describing the set they left
+- **Queued crossings (on deck):** with "Wait for the record to end" on (dive
+  settings menu), tapping a set in the sideways list doesn't jump — it arranges
+  a `QueuedTransition` for the moment the record playing now runs out, landing
+  where the *same record* ends over there. You hear the record once and come out
+  into what the other DJ played next. `PlayerStore` owns it: `queue`/
+  `cancelQueued`, a **deck** `AVPlayer` buffered and cued the instant it's
+  arranged (so the crossing is a volume change, not a load), the clock check in
+  the periodic time observer, and `promote` — which swaps the deck in as
+  `player` without stopping the sound and moves episode/tracks/accent/artwork
+  over with it. `transitionsFired` lets the dive follow the audio in. Audio
+  styles: **cut**, **fade** (duck out, come up), **blend** (both sets play the
+  record's outro at once — same recording at the same point, so it lands as one
+  record heard twice). Countdown styles: **minimal**, **ring** (drains),
+  **sweep** (the row fills and the screen's accent drifts toward the incoming
+  set via `AccentColor.blended(toward:amount:)`). A manual `play` cancels
+  whatever was on deck, and a crossing suppresses auto-advance so the two can't
+  race
 - **Radio mode:** `RadioStore` (wired in `EpisodesView.onAppear` via `configure`) owns tune-in/out, the slot-boundary timer, drift correction, and resume re-sync. `Models/RadioSchedule.swift` computes what's on air and must stay semantically identical to the web's `src/lib/radioSchedule.ts` (same hash, ordering, epoch) — change them together or iOS and web broadcasts diverge
 - **Home-screen widget:** `SoulectorWidget` shows the current mix on an
   album-accent-tinted card (Spotify-widget style — `Color.soulectorCard` clamps
