@@ -211,16 +211,17 @@ struct EpisodesView: View {
             Button(action: {
                 withAnimation(.spring(duration: 0.2)) { showCollectivePicker.toggle() }
             }) {
-                HStack(spacing: 5) {
-                    Text(episodesVM.selectedCollective.displayName)
-                        .font(.app(size: 22, weight: .bold))
-                        .foregroundColor(.white)
+                HStack(spacing: 8) {
+                    CollectiveLogo(collective: episodesVM.selectedCollective, placement: .navBar)
                     Image(systemName: showCollectivePicker ? "chevron.up" : "chevron.down")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.white.opacity(0.6))
                 }
             }
             .buttonStyle(.plain)
+            // The marks are resizable artwork, so without this the trailing
+            // Spacer would split the row with them and squash the wordmark.
+            .layoutPriority(1)
 
             Spacer()
 
@@ -412,8 +413,9 @@ struct EpisodesView: View {
                     episodesVM.selectCollective(collective)
                 }) {
                     HStack(spacing: 0) {
-                        collectiveLogo(collective)
-                        Spacer()
+                        CollectiveLogo(collective: collective)
+                            .layoutPriority(1)
+                        Spacer(minLength: 12)
                         if episodesVM.selectedCollective == collective {
                             Image(systemName: "checkmark")
                                 .font(.system(size: 14, weight: .bold))
@@ -436,51 +438,6 @@ struct EpisodesView: View {
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .zIndex(100)
-    }
-
-    @ViewBuilder
-    private func collectiveLogo(_ collective: CollectiveFilter) -> some View {
-        switch collective {
-        case .all:
-            HStack(spacing: 12) {
-                Image(systemName: "square.stack.fill")
-                    .font(.system(size: 22))
-                    .frame(width: 28)
-                    .foregroundColor(.white)
-                Text("All Collectives")
-                    .font(.app(size: 18, weight: .bold))
-                    .foregroundColor(.white)
-            }
-        case .soulection:
-            HStack(spacing: 12) {
-                Image("SoulectionIcon")
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 28, height: 19)
-                    .foregroundColor(.white)
-                Text("Soulection")
-                    .font(.app(size: 18, weight: .bold))
-                    .foregroundColor(.white)
-            }
-        case .sashaMarieRadio:
-            Text("SASHA MARIE RADIO")
-                .font(.app(size: 16, weight: .bold))
-                .tracking(1.5)
-                .foregroundColor(.white)
-        case .theLoveBelowHour:
-            HStack(spacing: 12) {
-                Image("TheLoveBelowIcon")
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 26, height: 26)
-                    .foregroundColor(.white)
-                Text("The Love Below Hour")
-                    .font(.app(size: 18, weight: .bold))
-                    .foregroundColor(.white)
-            }
-        }
     }
 
     private var emptyStateText: String {
