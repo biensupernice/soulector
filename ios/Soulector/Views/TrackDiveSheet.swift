@@ -10,6 +10,12 @@ struct TrackBranchButton: View {
     var tint: Color = .white
     let action: () -> Void
 
+    /// Every tracklist row reserves exactly this much room for the branch,
+    /// whether or not it has one — otherwise the timestamps ahead of it shift
+    /// column depending on the row, which reads as broken. Wide enough for the
+    /// two-digit counts the library actually reaches.
+    static let slotWidth: CGFloat = 44
+
     var body: some View {
         Button(action: {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -32,13 +38,34 @@ struct TrackBranchButton: View {
     }
 }
 
+/// The branch, or the space where one would be. Tracklist rows always render
+/// this so every row's timestamp lands on the same column.
+struct TrackBranchSlot: View {
+    let count: Int
+    var tint: Color = .white
+    let action: () -> Void
+
+    var body: some View {
+        Group {
+            if count > 0 {
+                TrackBranchButton(count: count, tint: tint, action: action)
+            } else {
+                Color.clear.frame(height: 1)
+            }
+        }
+        .frame(width: TrackBranchButton.slotWidth, alignment: .trailing)
+    }
+}
+
 // MARK: - Dive
 
 /// One step of a dive. A dive alternates between the two: a track shows the
-/// sets that played it, a set shows the tracks you can leave by.
+/// sets that played it, a set shows the tracks you can leave by. An episode
+/// step remembers which track carried you into it, so the screen can put that
+/// track in front of you.
 private enum DiveStep: Hashable {
     case track(TrackAppearance)
-    case episode(Episode)
+    case episode(Episode, landedOn: Int?)
 }
 
 /// The bits every screen in the dive needs but doesn't own.
@@ -51,6 +78,42 @@ private struct DiveActions {
     let close: () -> Void
 }
 
+/// Album accents for the episodes a dive passes through, fetched once and kept
+/// for the length of the dive so stepping back through the path doesn't refetch
+/// (or re-flash) colours the user has already seen.
+@MainActor
+private final class DiveAccents: ObservableObject {
+    @Published private var byEpisode: [String: AccentColor] = [:]
+    private var inFlight: Set<String> = []
+
+    init(seed: [String: AccentColor?] = [:]) {
+        for (id, accent) in seed {
+            if let accent { byEpisode[id] = accent }
+        }
+    }
+
+    /// This episode's accent resolved to the app's swatch (Vibrant), matching
+    /// the episode sheet.
+    func accent(for episodeId: String) -> AccentColor? { byEpisode[episodeId]?.appSwatch }
+
+    func load(_ episodeId: String, playing: PlayerStore) async {
+        guard byEpisode[episodeId] == nil, !inFlight.contains(episodeId) else { return }
+        inFlight.insert(episodeId)
+        defer { inFlight.remove(episodeId) }
+
+        // Whatever is already on hand paints the screen this frame; the fetch
+        // below only refines it.
+        if playing.currentEpisode?.id == episodeId, let accent = playing.accent {
+            byEpisode[episodeId] = accent
+        } else if let cached = DownloadsStore.shared.cachedMetadata(for: episodeId)?.accent {
+            byEpisode[episodeId] = cached
+        }
+        if let fetched = try? await APIClient.shared.fetchAccentColor(episodeId: episodeId) {
+            byEpisode[episodeId] = fetched
+        }
+    }
+}
+
 /// Moving *sideways*: from a track in the set you're listening to, out to the
 /// other sets that played the same record, into one of them, and on again from
 /// its tracklist. The navigation stack is the dive — every step is a push, so
@@ -58,14 +121,31 @@ private struct DiveActions {
 ///
 /// Everything here reads from `EpisodesViewModel.trackGraph`, which is built
 /// from the on-device search index: no request stands between a tap and the
-/// next set.
+/// next set. Each screen is painted in the album accent of the episode in
+/// view — a track screen in the accent of the set it came from — so a dive
+/// feels like walking between episode sheets rather than leaving them.
 struct TrackDiveSheet: View {
     /// The track the dive starts from, and the episode it was playing in.
     let origin: TrackAppearance
+    /// The origin episode's accent, already fetched by the sheet presenting
+    /// this one, so the first screen is painted without a flash of grey.
+    var seedAccent: AccentColor?
     var onLanded: (Episode) -> Void = { _ in }
 
     @State private var path: [DiveStep] = []
+    @StateObject private var accents: DiveAccents
     @Environment(\.dismiss) private var dismiss
+
+    init(
+        origin: TrackAppearance,
+        seedAccent: AccentColor? = nil,
+        onLanded: @escaping (Episode) -> Void = { _ in }
+    ) {
+        self.origin = origin
+        self.seedAccent = seedAccent
+        self.onLanded = onLanded
+        _accents = StateObject(wrappedValue: DiveAccents(seed: [origin.episode.id: seedAccent]))
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -74,11 +154,17 @@ struct TrackDiveSheet: View {
                     switch step {
                     case .track(let appearance):
                         DiveTrackScreen(appearance: appearance, path: $path, actions: actions)
-                    case .episode(let episode):
-                        DiveEpisodeScreen(episode: episode, path: $path, actions: actions)
+                    case .episode(let episode, let landedOn):
+                        DiveEpisodeScreen(
+                            episode: episode,
+                            landedOn: landedOn,
+                            path: $path,
+                            actions: actions
+                        )
                     }
                 }
         }
+        .environmentObject(accents)
         // The dive crosses the whole library, so its chrome stays monochrome
         // rather than picking up any one album's accent.
         .tint(.white)
@@ -99,12 +185,19 @@ private struct DiveTrackScreen: View {
     @EnvironmentObject var episodesVM: EpisodesViewModel
     @EnvironmentObject var playerStore: PlayerStore
     @EnvironmentObject var radioStore: RadioStore
+    @EnvironmentObject var accents: DiveAccents
 
     private var others: [TrackAppearance] {
         episodesVM.trackGraph.otherAppearances(
             of: appearance.track,
             excluding: appearance.episode.id
         )
+    }
+
+    /// Painted in the accent of the set this track came from — the screen the
+    /// user just stepped off.
+    private var accent: Color {
+        accents.accent(for: appearance.episode.id)?.raw ?? Color(white: 0.09)
     }
 
     var body: some View {
@@ -125,7 +218,10 @@ private struct DiveTrackScreen: View {
                 Color.clear.frame(height: 24)
             }
         }
-        .diveChrome(title: appearance.track.name, close: actions.close)
+        .diveChrome(title: appearance.track.name, accent: accent, close: actions.close)
+        .task(id: appearance.episode.id) {
+            await accents.load(appearance.episode.id, playing: playerStore)
+        }
     }
 
     private func header(count: Int) -> some View {
@@ -137,14 +233,14 @@ private struct DiveTrackScreen: View {
 
             Text(appearance.track.artist)
                 .font(.app(size: 15))
-                .foregroundColor(.white.opacity(0.6))
+                .foregroundColor(.white.opacity(0.7))
                 .fixedSize(horizontal: false, vertical: true)
 
             if count > 0 {
                 Text("ALSO PLAYED IN \(count) OTHER \(count == 1 ? "EPISODE" : "EPISODES")")
                     .font(.app(size: 11, weight: .semibold))
                     .tracking(1)
-                    .foregroundColor(.white.opacity(0.4))
+                    .foregroundColor(.white.opacity(0.5))
                     .padding(.top, 10)
             }
         }
@@ -158,7 +254,7 @@ private struct DiveTrackScreen: View {
         VStack(spacing: 8) {
             Image(systemName: episodesVM.isSearchIndexLoading ? "arrow.triangle.branch" : "circle.dashed")
                 .font(.system(size: 28))
-                .foregroundColor(.white.opacity(0.3))
+                .foregroundColor(.white.opacity(0.4))
                 .padding(.bottom, 2)
 
             Text(episodesVM.isSearchIndexLoading ? "Loading library…" : "No other set played this one")
@@ -171,7 +267,7 @@ private struct DiveTrackScreen: View {
                     : "Nothing sideways from here yet — try another track in the set."
             )
             .font(.app(size: 13))
-            .foregroundColor(.white.opacity(0.5))
+            .foregroundColor(.white.opacity(0.6))
             .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -199,7 +295,7 @@ private struct DiveTrackScreen: View {
         }
 
         actions.onLanded(other.episode)
-        path.append(.episode(other.episode))
+        path.append(.episode(other.episode, landedOn: other.track.order))
     }
 }
 
@@ -228,22 +324,24 @@ private struct DiveEpisodeRow: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(appearance.episode.name)
-                        .font(.app(size: 14, weight: .semibold))
-                        .foregroundColor(isCurrent ? playerStore.accentOnDark : .white)
+                        // On an accent field the playing row earns weight
+                        // rather than a second colour.
+                        .font(.app(size: 14, weight: isCurrent ? .bold : .semibold))
+                        .foregroundColor(.white)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
 
                     HStack(spacing: 6) {
                         Text(appearance.episode.formattedDate)
                             .font(.app(size: 12))
-                            .foregroundColor(.white.opacity(0.5))
+                            .foregroundColor(.white.opacity(0.7))
 
                         Text("·")
-                            .foregroundColor(.white.opacity(0.3))
+                            .foregroundColor(.white.opacity(0.5))
 
                         Text(appearance.episode.collectiveName)
                             .font(.app(size: 12))
-                            .foregroundColor(.white.opacity(0.5))
+                            .foregroundColor(.white.opacity(0.7))
                             .lineLimit(1)
                     }
                 }
@@ -253,10 +351,10 @@ private struct DiveEpisodeRow: View {
                 if let timestamp = appearance.track.formattedTimestamp {
                     Text(timestamp)
                         .font(.app(size: 11, weight: .medium))
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundColor(.white)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Capsule().fill(Color.white.opacity(0.1)))
+                        .background(Capsule().fill(Color.black.opacity(0.25)))
                 }
             }
             .padding(.horizontal, 20)
@@ -273,17 +371,29 @@ private struct DiveEpisodeRow: View {
 
 private struct DiveEpisodeScreen: View {
     let episode: Episode
+    /// The track that carried the user here, if they arrived sideways.
+    let landedOn: Int?
     @Binding var path: [DiveStep]
     let actions: DiveActions
 
     @EnvironmentObject var episodesVM: EpisodesViewModel
     @EnvironmentObject var playerStore: PlayerStore
     @EnvironmentObject var radioStore: RadioStore
+    @EnvironmentObject var accents: DiveAccents
 
     @State private var fetchedTracks: [EpisodeTrack] = []
     @State private var isLoadingTracks = false
+    @State private var didFocusLanding = false
+
+    /// Whether arriving in a set scrolls its tracklist to the track that
+    /// brought you. On by default; the toolbar toggles it so the two
+    /// behaviours can be felt against each other.
+    @AppStorage("soulector.dive.focusLanding") private var focusLanding = true
 
     private var isCurrent: Bool { playerStore.currentEpisode?.id == episode.id }
+
+    private var accentColor: AccentColor? { accents.accent(for: episode.id) }
+    private var accent: Color { accentColor?.raw ?? Color(white: 0.09) }
 
     /// The index already carries this set's cue sheet; the fetch below is only
     /// for the rare episode the snapshot has no tracks for.
@@ -294,42 +404,50 @@ private struct DiveEpisodeScreen: View {
         return fetchedTracks
     }
 
-    /// The track playing right now, when this is the set that's playing.
-    private var currentTrack: EpisodeTrack? {
-        guard isCurrent else { return nil }
-        let elapsed = playerStore.currentTime
-        return tracks.filter { track in
-            guard let timestamp = track.timestamp else { return false }
-            return elapsed >= Double(timestamp)
-        }.last
-    }
-
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                header
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    header
 
-                if tracks.isEmpty {
-                    tracklistPlaceholder
-                } else {
-                    ForEach(tracks) { track in
-                        DiveTrackRow(
-                            track: track,
-                            isCurrent: currentTrack?.id == track.id,
-                            connections: episodesVM.trackGraph.connectionCount(
-                                of: track,
-                                excluding: episode.id
-                            ),
-                            onPlay: { play(track) },
-                            onDive: { path.append(.track(TrackAppearance(episode: episode, track: track))) }
+                    if tracks.isEmpty {
+                        tracklistPlaceholder
+                    } else {
+                        // The same tracklist the episode sheet renders — same
+                        // panel, same rows, same ping on the playing track.
+                        // It's the same information, so it reads the same way.
+                        TracklistView(
+                            tracks: tracks,
+                            episode: episode,
+                            accent: accent,
+                            textColor: .white,
+                            graph: episodesVM.trackGraph,
+                            onPlay: play,
+                            onDive: { track in
+                                path.append(.track(TrackAppearance(episode: episode, track: track)))
+                            }
                         )
+                        .background(Color.black.opacity(0.2))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .padding(.horizontal, 20)
                     }
-                }
 
-                Color.clear.frame(height: 24)
+                    Color.clear.frame(height: 24)
+                }
             }
+            .onAppear { focusLandedTrack(proxy) }
+            .onChange(of: tracks.count) { _ in focusLandedTrack(proxy) }
         }
-        .diveChrome(title: episode.name, close: actions.close)
+        .diveChrome(
+            title: episode.name,
+            accent: accent,
+            // Only meaningful on a set you arrived at sideways.
+            focus: landedOn == nil ? nil : $focusLanding,
+            close: actions.close
+        )
+        .task(id: episode.id) {
+            await accents.load(episode.id, playing: playerStore)
+        }
         .task(id: episode.id) {
             guard tracks.isEmpty else { return }
             if let offline = DownloadsStore.shared.cachedMetadata(for: episode.id), !offline.tracks.isEmpty {
@@ -339,6 +457,24 @@ private struct DiveEpisodeScreen: View {
             isLoadingTracks = true
             fetchedTracks = (try? await APIClient.shared.fetchTracks(episodeId: episode.id)) ?? []
             isLoadingTracks = false
+        }
+    }
+
+    /// Puts the track you arrived on in front of you, once. Unanimated on
+    /// purpose: the push should land already looking at the right row rather
+    /// than scrolling once you're staring at the top of the set.
+    ///
+    /// Twice, a third of a second apart: the first pass rides the same runloop
+    /// turn as the push and usually lands it, the second covers the case where
+    /// the tracklist hadn't been laid out yet — still early enough to happen
+    /// under the push animation, and before there's any user scroll to fight.
+    private func focusLandedTrack(_ proxy: ScrollViewProxy) {
+        guard focusLanding, !didFocusLanding, let landedOn, !tracks.isEmpty else { return }
+        didFocusLanding = true
+        for delay in [0.0, 0.35] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                proxy.scrollTo(landedOn, anchor: .center)
+            }
         }
     }
 
@@ -357,7 +493,7 @@ private struct DiveEpisodeScreen: View {
 
                 Text("\(episode.formattedDate) · \(episode.formattedDuration)")
                     .font(.app(size: 12))
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(.white.opacity(0.7))
 
                 Spacer(minLength: 6)
 
@@ -368,7 +504,9 @@ private struct DiveEpisodeScreen: View {
                         Text(playLabel)
                             .font(.app(size: 12, weight: .semibold))
                     }
-                    .foregroundColor(.black)
+                    // White pill, accent-coloured glyph — the episode sheet's
+                    // play button, shrunk.
+                    .foregroundColor(accent)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .background(Capsule().fill(Color.white))
@@ -398,7 +536,7 @@ private struct DiveEpisodeScreen: View {
             } else {
                 Text("No tracklist for this episode")
                     .font(.app(size: 14))
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(.white.opacity(0.6))
             }
         }
         .frame(maxWidth: .infinity)
@@ -429,73 +567,52 @@ private struct DiveEpisodeScreen: View {
     }
 }
 
-/// A track in the dive's tracklist: tap the row to hear it here, tap the branch
-/// to see who else played it.
-private struct DiveTrackRow: View {
-    let track: EpisodeTrack
-    let isCurrent: Bool
-    let connections: Int
-    let onPlay: () -> Void
-    let onDive: () -> Void
-
-    var body: some View {
-        HStack(spacing: 8) {
-            HStack(alignment: .center, spacing: 12) {
-                Text("\(track.order)")
-                    .font(.app(size: 12, weight: isCurrent ? .bold : .regular))
-                    .foregroundColor(isCurrent ? .white : .white.opacity(0.4))
-                    .frame(width: 22, alignment: .trailing)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(track.name)
-                        .font(.app(size: 14, weight: isCurrent ? .bold : .medium))
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                    Text(track.artist)
-                        .font(.app(size: 12))
-                        .foregroundColor(.white.opacity(isCurrent ? 0.8 : 0.5))
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 8)
-
-                if let timestamp = track.formattedTimestamp {
-                    Text(timestamp)
-                        .font(.app(size: 11))
-                        .foregroundColor(.white.opacity(0.4))
-                }
-            }
-            .padding(.leading, 20)
-            .padding(.vertical, 8)
-            .contentShape(Rectangle())
-            .onTapGesture { onPlay() }
-
-            if connections > 0 {
-                TrackBranchButton(count: connections, action: onDive)
-            }
-        }
-        .padding(.trailing, 16)
-        .background(isCurrent ? Color.white.opacity(0.06) : Color.clear)
-    }
-}
-
 // MARK: - Chrome
 
-/// Every dive screen looks the same: black, an inline title that doubles as the
-/// back button's label one step later, and a way out of the whole dive.
+/// Every dive screen looks the same: the album accent of whatever is in view
+/// under the episode sheet's darkening gradient, an inline title that doubles
+/// as the back button's label one step later, and a way out of the whole dive.
 private struct DiveChrome: ViewModifier {
     let title: String
+    let accent: Color
+    /// Present only on screens where landing focus means something.
+    let focus: Binding<Bool>?
     let close: () -> Void
 
     func body(content: Content) -> some View {
         content
-            .background(Color.black.ignoresSafeArea())
+            .background {
+                ZStack {
+                    accent
+                    LinearGradient(
+                        colors: [
+                            Color.black.opacity(0.25),
+                            Color.black.opacity(0.55),
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                }
+                .ignoresSafeArea()
+            }
+            .animation(.easeInOut(duration: 0.5), value: accent)
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(Color.black, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    if let focus {
+                        Button(action: { focus.wrappedValue.toggle() }) {
+                            Image(systemName: focus.wrappedValue ? "viewfinder.circle.fill" : "viewfinder")
+                                .font(.system(size: 16))
+                                .foregroundColor(.white.opacity(focus.wrappedValue ? 1 : 0.5))
+                        }
+                        .accessibilityLabel(
+                            focus.wrappedValue
+                                ? "Stop jumping to the track I arrived on"
+                                : "Jump to the track I arrived on"
+                        )
+                    }
+
                     Button(action: close) {
                         Text("Done")
                             .font(.app(size: 15, weight: .semibold))
@@ -507,7 +624,12 @@ private struct DiveChrome: ViewModifier {
 }
 
 private extension View {
-    func diveChrome(title: String, close: @escaping () -> Void) -> some View {
-        modifier(DiveChrome(title: title, close: close))
+    func diveChrome(
+        title: String,
+        accent: Color,
+        focus: Binding<Bool>? = nil,
+        close: @escaping () -> Void
+    ) -> some View {
+        modifier(DiveChrome(title: title, accent: accent, focus: focus, close: close))
     }
 }

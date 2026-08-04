@@ -128,6 +128,14 @@ struct EpisodeDetailSheet: View {
                             accent: accentBackground,
                             textColor: fg,
                             graph: episodesVM.trackGraph,
+                            onPlay: { track in
+                                guard let ts = track.timestamp else { return }
+                                if playerStore.currentEpisode?.id == episode.id {
+                                    playerStore.seek(to: Double(ts))
+                                } else {
+                                    Task { await playerStore.play(episode: episode, startingAt: Double(ts)) }
+                                }
+                            },
                             onDive: { track in
                                 diveOrigin = TrackAppearance(episode: episode, track: track)
                             }
@@ -147,7 +155,14 @@ struct EpisodeDetailSheet: View {
                 if let landed = diveLanded, landed.id != episode.id { onNavigate?(landed) }
                 diveLanded = nil
             }) { origin in
-                TrackDiveSheet(origin: origin, onLanded: { diveLanded = $0 })
+                // Hand the dive this episode's accent so its first screen —
+                // the track's other homes — opens already wearing the colour of
+                // the set it was launched from.
+                TrackDiveSheet(
+                    origin: origin,
+                    seedAccent: episodeAccent,
+                    onLanded: { diveLanded = $0 }
+                )
             }
         }
         // Fixed top bar: dismiss and "more" balanced on either side of the drag
@@ -363,6 +378,10 @@ struct TracklistView: View {
     let textColor: Color
     /// Which other sets played each of these records — the sideways badge.
     let graph: TrackGraph
+    /// What a tap on the row means. Hoisted out of the row because the dive
+    /// renders this same tracklist and has more to do on a play than the sheet
+    /// does (leave the radio, tell the sheet underneath where we went).
+    let onPlay: (EpisodeTrack) -> Void
     let onDive: (EpisodeTrack) -> Void
     @EnvironmentObject var playerStore: PlayerStore
 
@@ -388,11 +407,11 @@ struct TracklistView: View {
                 let isCurrent = currentTrack?.id == track.id
                 TrackRow(
                     track: track,
-                    episode: episode,
                     accent: accent,
                     textColor: textColor,
                     isCurrent: isCurrent,
                     connections: graph.connectionCount(of: track, excluding: episode.id),
+                    onPlay: { onPlay(track) },
                     onDive: { onDive(track) }
                 )
             }
@@ -421,14 +440,14 @@ private struct PingRing: View {
 
 private struct TrackRow: View {
     let track: EpisodeTrack
-    let episode: Episode
     let accent: Color
     let textColor: Color
     let isCurrent: Bool
-    /// How many other sets played this record; 0 hides the branch entirely.
+    /// How many other sets played this record. 0 leaves the branch out but
+    /// keeps its column, so timestamps stay in line down the whole tracklist.
     let connections: Int
+    let onPlay: () -> Void
     let onDive: () -> Void
-    @EnvironmentObject var playerStore: PlayerStore
 
     var body: some View {
         // The seek area and the branch are siblings, not a button inside a
@@ -486,20 +505,11 @@ private struct TrackRow: View {
                 .padding(.leading, 16)
                 .padding(.vertical, 8)
                 .contentShape(Rectangle())
-                .onTapGesture {
-                    guard let ts = track.timestamp else { return }
-                    if playerStore.currentEpisode?.id == episode.id {
-                        playerStore.seek(to: Double(ts))
-                    } else {
-                        Task { await playerStore.play(episode: episode, startingAt: Double(ts)) }
-                    }
-                }
+                .onTapGesture { onPlay() }
                 .accessibilityElement(children: .combine)
                 .accessibilityAddTraits(.isButton)
 
-                if connections > 0 {
-                    TrackBranchButton(count: connections, tint: textColor, action: onDive)
-                }
+                TrackBranchSlot(count: connections, tint: textColor, action: onDive)
             }
             .padding(.trailing, 16)
         }
