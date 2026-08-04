@@ -118,19 +118,26 @@ struct EpisodesView: View {
             .padding(.bottom, playerStore.hasEpisode ? 76 : 16)
             .ignoresSafeArea(.keyboard, edges: .bottom)
 
-            // Mini player pinned to bottom
-            if playerStore.hasEpisode {
-                MiniPlayerView(onTap: { selectedEpisode = playerStore.currentEpisode })
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    // Pinned to the bottom of the *screen*, not to the top of
-                    // the keyboard. Search raises the keyboard, and riding it
-                    // up parks the bar — and the FAB cluster above it — right
-                    // on top of the results, which is the scarcest space there
-                    // is while typing. Left under the keyboard it costs
-                    // nothing, and scrolling the results dismisses the keyboard
-                    // (SearchResultsView), which hands the controls back.
-                    .ignoresSafeArea(.keyboard, edges: .bottom)
+            // Mini player pinned to the bottom of the *screen*, not to the top
+            // of the keyboard. Search raises the keyboard, and riding it up
+            // parks the bar right on top of the results — the scarcest space
+            // there is while typing. Left under the keyboard it costs nothing,
+            // and scrolling the results dismisses the keyboard
+            // (SearchResultsView), which hands the controls straight back.
+            //
+            // The full-height stack is what does the pinning, same as the FAB
+            // cluster above: `ignoresSafeArea` only lets a view extend into the
+            // unsafe region, it does not move one the ZStack has already
+            // bottom-aligned inside keyboard-shrunk bounds. The Spacer pushes
+            // the bar down through a container that keeps its full height.
+            VStack(spacing: 0) {
+                Spacer(minLength: 0)
+                if playerStore.hasEpisode {
+                    MiniPlayerView(onTap: { selectedEpisode = playerStore.currentEpisode })
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
+            .ignoresSafeArea(.keyboard, edges: .bottom)
         }
         // Attached out here rather than next to the detail sheet: two `.sheet`
         // modifiers on the same view fight over the presentation.
