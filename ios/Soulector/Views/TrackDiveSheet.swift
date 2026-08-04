@@ -63,8 +63,6 @@ struct TrackBranchSlot: View {
 /// Kept as bare keys so the chrome (which owns the menu) and the screens
 /// (which act on them) can read the same settings without threading state.
 enum DiveSettings {
-    static let onDeckKey = "soulector.dive.onDeck"
-    static let audioKey = "soulector.dive.audio"
     static let visualKey = "soulector.dive.visual"
     static let focusKey = "soulector.dive.focusLanding"
 }
@@ -204,8 +202,6 @@ private struct DiveTrackScreen: View {
     @EnvironmentObject var radioStore: RadioStore
     @EnvironmentObject var accents: DiveAccents
 
-    @AppStorage(DiveSettings.onDeckKey) private var onDeck = false
-    @AppStorage(DiveSettings.audioKey) private var audioStyle = TransitionAudio.blend
     @AppStorage(DiveSettings.visualKey) private var visualStyle = TransitionVisual.ring
 
     private var others: [TrackAppearance] {
@@ -242,7 +238,16 @@ private struct DiveTrackScreen: View {
                     emptyState
                 } else {
                     ForEach(elsewhere) { other in
-                        DiveEpisodeRow(appearance: other) { open(other) }
+                        DiveEpisodeRow(
+                            appearance: other,
+                            canCross: crossingPoint != nil,
+                            onTap: { open(other) },
+                            onCross: { style in cross(other, with: style) },
+                            onCallOff: {
+                                UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+                                playerStore.cancelQueued()
+                            }
+                        )
                     }
                 }
 
@@ -306,30 +311,10 @@ private struct DiveTrackScreen: View {
         .padding(.top, 48)
     }
 
-    /// Sideways: the same record, in a different set. Either right now, from
-    /// the moment it drops — or arranged for when the record finishes here, so
-    /// the two sets change hands over its outro.
+    /// Sideways, now: the same record, in a different set, from the moment it
+    /// drops. Waiting for the outro is the row menu's job — a tap is always
+    /// the direct route.
     private func open(_ other: TrackAppearance) {
-        if onDeck {
-            // Tapping what's already on deck calls it off.
-            if playerStore.queued?.episode.id == other.episode.id,
-               playerStore.queued?.track.order == other.track.order {
-                UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-                playerStore.cancelQueued()
-                return
-            }
-            if let transition = plannedCrossing(to: other) {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                playerStore.queue(transition)
-                // Load the destination's accent now: the sweep drifts this
-                // screen's colour toward it while the record plays out.
-                Task { await accents.load(other.episode.id, playing: playerStore) }
-                return
-            }
-            // Nothing playing, no cue sheet, or the record is already ending —
-            // there's no outro left to hand over on, so just go.
-        }
-
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         // A manual play takes over from the radio, same as anywhere else.
         radioStore.tuneOut()
@@ -351,11 +336,11 @@ private struct DiveTrackScreen: View {
         path.append(.episode(other.episode, landedOn: other.track.order))
     }
 
-    /// Works out where the record playing now runs out, and where the same
-    /// record runs out in the set being crossed into. Nil when there's nothing
-    /// to hand over from — no episode, no cue sheet, or the outro is already
-    /// upon us.
-    private func plannedCrossing(to other: TrackAppearance) -> QueuedTransition? {
+    /// Where the record playing now runs out — the moment a crossing would
+    /// happen. Nil when there's nothing to hand over from: no set playing, no
+    /// cue sheet to find the edge of the record in, or an outro already upon
+    /// us. That nil is also what greys the crossing out in the row menus.
+    private var crossingPoint: Double? {
         guard playerStore.hasEpisode else { return nil }
         let playing = playerStore.currentTracks
         guard !playing.isEmpty else { return nil }
@@ -366,7 +351,7 @@ private struct DiveTrackScreen: View {
             return Double(timestamp) <= now
         }) else { return nil }
 
-        // The end of the record playing here: the next cue, or the end of the set.
+        // The next cue, or the end of the set.
         let endsHere: Double
         if index + 1 < playing.count, let next = playing[index + 1].timestamp {
             endsHere = Double(next)
@@ -377,6 +362,22 @@ private struct DiveTrackScreen: View {
         }
         // Too close to arrange — by the time the tap registers it's already gone.
         guard endsHere - now > 2 else { return nil }
+        return endsHere
+    }
+
+    /// Arranges the crossing this row's menu asked for.
+    private func cross(_ other: TrackAppearance, with audio: TransitionAudio) {
+        guard let transition = plannedCrossing(to: other, audio: audio) else { return }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        playerStore.queue(transition)
+        // Load the destination's accent now: the sweep drifts this screen's
+        // colour toward it while the record plays out.
+        Task { await accents.load(other.episode.id, playing: playerStore) }
+    }
+
+    private func plannedCrossing(to other: TrackAppearance, audio: TransitionAudio) -> QueuedTransition? {
+        guard let endsHere = crossingPoint else { return nil }
+        let now = playerStore.currentTime
 
         // The end of the same record over there, which is where we come in.
         let target = episodesVM.trackGraph.tracks(forEpisode: other.episode.id)
@@ -398,16 +399,21 @@ private struct DiveTrackScreen: View {
             fireAt: endsHere,
             startAt: landsAt,
             armedFrom: now,
-            audio: audioStyle,
+            audio: audio,
             visual: visualStyle
         )
     }
 }
 
-/// An episode that played the track, with the timestamp where it lands.
+/// An episode that played the track. Tapping it goes there now; its trailing
+/// control holds the slower way — waiting for the record to end.
 private struct DiveEpisodeRow: View {
     let appearance: TrackAppearance
+    /// Whether there's a record playing that a crossing could hang off.
+    let canCross: Bool
     let onTap: () -> Void
+    let onCross: (TransitionAudio) -> Void
+    let onCallOff: () -> Void
 
     @EnvironmentObject var playerStore: PlayerStore
     @EnvironmentObject var downloadsStore: DownloadsStore
@@ -430,7 +436,9 @@ private struct DiveEpisodeRow: View {
     }
 
     var body: some View {
-        Button(action: onTap) {
+        // The tap area and the control are siblings rather than a menu nested
+        // in a button, so each keeps its own taps.
+        HStack(spacing: 12) {
             HStack(spacing: 12) {
                 EpisodeArtwork(episode: appearance.episode)
                     .frame(width: 48, height: 48)
@@ -461,28 +469,28 @@ private struct DiveEpisodeRow: View {
                 }
 
                 Spacer(minLength: 8)
-
-                if let crossing {
-                    OnDeckIndicator(
-                        crossing: crossing,
-                        remaining: playerStore.queuedRemaining ?? 0,
-                        isHandingOver: playerStore.isCrossing
-                    )
-                } else if let timestamp = appearance.track.formattedTimestamp {
-                    Text(timestamp)
-                        .font(.app(size: 11, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(Color.black.opacity(0.25)))
-                }
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 8)
             .contentShape(Rectangle())
+            .onTapGesture {
+                guard !unavailable else { return }
+                onTap()
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isButton)
+
+            CrossingControl(
+                timestamp: appearance.track.formattedTimestamp,
+                crossing: crossing,
+                remaining: playerStore.queuedRemaining ?? 0,
+                isHandingOver: playerStore.isCrossing,
+                canCross: canCross,
+                onCross: onCross,
+                onCallOff: onCallOff
+            )
+            .disabled(unavailable)
         }
-        .buttonStyle(.plain)
-        .disabled(unavailable)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
         .opacity(unavailable ? 0.4 : 1)
         // A row that's on deck sits on a lit background — and under the sweep,
         // that light fills across it as the record plays out.
@@ -493,70 +501,148 @@ private struct DiveEpisodeRow: View {
                         Rectangle()
                             .fill(Color.white.opacity(0.16))
                             .frame(width: geo.size.width * crossing.progress(at: playerStore.currentTime))
+                            // Scoped to the fill: the clock ticks twice a
+                            // second, and animating the whole row on that beat
+                            // would drag the menu into it.
+                            .animation(.linear(duration: 0.5), value: playerStore.currentTime)
                     }
                 } else {
                     Color.white.opacity(0.08)
                 }
             }
         }
-        .animation(.linear(duration: 0.5), value: playerStore.currentTime)
-        .accessibilityHint(crossing == nil ? "" : "On deck. Tap again to call it off.")
+        // The lit background arrives and leaves with the arrangement itself.
+        .animation(.easeInOut(duration: 0.3), value: crossing?.id)
     }
 }
 
-/// What a row says while it waits its turn. The three takes differ in how
-/// loudly they count: a line of text, a draining ring, or the row itself
-/// filling up.
-private struct OnDeckIndicator: View {
-    let crossing: QueuedTransition
+/// The row's trailing control, which is one thing wearing two faces.
+///
+/// At rest it's the timestamp the record lands at, with a menu tucked behind
+/// it holding the slower way across. Arrange a crossing and the same capsule
+/// grows into its countdown; call it off and it settles back. It stays a menu
+/// throughout, so the way out is where the way in was.
+private struct CrossingControl: View {
+    let timestamp: String?
+    /// The arrangement riding on this row, if there is one.
+    let crossing: QueuedTransition?
     let remaining: Double
     /// True once the crossing is actually under way — the last seconds, where
     /// the two sets are trading places.
     let isHandingOver: Bool
+    let canCross: Bool
+    let onCross: (TransitionAudio) -> Void
+    let onCallOff: () -> Void
 
     @State private var pulsing = false
 
     var body: some View {
-        HStack(spacing: 6) {
-            if crossing.visual == .ring {
-                ZStack {
-                    Circle()
-                        .stroke(Color.white.opacity(0.25), lineWidth: 2)
-                    Circle()
-                        .trim(from: 0, to: max(0.02, 1 - elapsed))
-                        .stroke(Color.white, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                }
-                .frame(width: 18, height: 18)
-            }
-
-            Text(label)
-                .font(.app(size: 10, weight: .semibold))
-                .tracking(0.6)
-                .foregroundColor(.white)
-                .monospacedDigit()
+        Menu {
+            menuContents
+        } label: {
+            capsuleLabel
         }
+        .buttonStyle(.plain)
+        // One spring for the whole change of face: the capsule takes its new
+        // width, the timestamp gives way to the count.
+        .animation(.spring(response: 0.38, dampingFraction: 0.78), value: crossing?.id)
+        .onChange(of: isHandingOver) { handing in
+            // Only the last seconds pulse, so the control is calm while it
+            // waits and alive once it's actually happening.
+            pulsing = handing
+        }
+        .accessibilityLabel(crossing == nil ? "Crossing options" : "On deck, \(spokenRemaining). Tap for options.")
+    }
+
+    @ViewBuilder
+    private var menuContents: some View {
+        if crossing != nil {
+            Button(role: .destructive, action: onCallOff) {
+                Label("Call it off", systemImage: "xmark")
+            }
+        }
+
+        Section(crossing == nil ? "Cross when the record ends" : "Cross with") {
+            ForEach(TransitionAudio.allCases) { style in
+                Button {
+                    onCross(style)
+                } label: {
+                    Label("\(style.title) · \(style.detail)", systemImage: style.symbol)
+                }
+                .disabled(!canCross)
+            }
+        }
+
+        if !canCross {
+            Section {
+                Button("Nothing playing to cross from") {}
+                    .disabled(true)
+            }
+        }
+    }
+
+    private var capsuleLabel: some View {
+        HStack(spacing: 6) {
+            if let crossing {
+                if crossing.visual == .ring {
+                    ZStack {
+                        Circle()
+                            .stroke(Color.white.opacity(0.25), lineWidth: 2)
+                        Circle()
+                            .trim(from: 0, to: max(0.02, 1 - elapsed(crossing)))
+                            .stroke(Color.white, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                    }
+                    .frame(width: 16, height: 16)
+                    .transition(.scale.combined(with: .opacity))
+                }
+
+                Text(countdown)
+                    .font(.app(size: 10, weight: .semibold))
+                    .tracking(0.6)
+                    .monospacedDigit()
+                    .transition(.opacity)
+            } else {
+                if let timestamp {
+                    Text(timestamp)
+                        .font(.app(size: 11, weight: .medium))
+                        .monospacedDigit()
+                        .transition(.opacity)
+                }
+
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 11, weight: .semibold))
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .foregroundColor(.white)
         .padding(.horizontal, 9)
         .padding(.vertical, 5)
-        .background(Capsule().fill(Color.black.opacity(0.3)))
+        .background(Capsule().fill(Color.black.opacity(crossing == nil ? 0.25 : 0.4)))
+        .overlay(
+            Capsule().strokeBorder(Color.white.opacity(crossing == nil ? 0 : 0.35), lineWidth: 1)
+        )
+        .contentShape(Capsule())
         .scaleEffect(pulsing ? 1.06 : 1)
         .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: pulsing)
-        .onChange(of: isHandingOver) { handing in
-            // Only the last seconds pulse, so the badge is calm while it waits
-            // and alive once it's actually happening.
-            pulsing = handing && crossing.visual != .minimal
-        }
     }
 
     /// How much of the wait is behind us — the ring shows what's left of it.
-    private var elapsed: Double {
+    private func elapsed(_ crossing: QueuedTransition) -> Double {
         crossing.progress(at: crossing.fireAt - remaining)
     }
 
-    private var label: String {
+    private var countdown: String {
         guard !isHandingOver else { return "CROSSING" }
         let seconds = Int(remaining.rounded())
-        return String(format: "ON DECK · %d:%02d", seconds / 60, seconds % 60)
+        return String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+
+    private var spokenRemaining: String {
+        let seconds = Int(remaining.rounded())
+        let minutes = seconds / 60
+        if minutes > 0 { return "\(minutes) minutes \(seconds % 60) seconds" }
+        return "\(seconds) seconds"
     }
 }
 
@@ -764,8 +850,6 @@ private struct DiveChrome: ViewModifier {
     let accent: Color
     let close: () -> Void
 
-    @AppStorage(DiveSettings.onDeckKey) private var onDeck = false
-    @AppStorage(DiveSettings.audioKey) private var audioStyle = TransitionAudio.blend
     @AppStorage(DiveSettings.visualKey) private var visualStyle = TransitionVisual.ring
     @AppStorage(DiveSettings.focusKey) private var focusLanding = true
 
@@ -801,25 +885,13 @@ private struct DiveChrome: ViewModifier {
             }
     }
 
-    /// Everything about how a dive behaves, in one place. These are all
-    /// "feel the difference" settings, so they live together rather than
-    /// spreading across the bar as icons.
+    /// How the dive behaves, as opposed to what any one row does — that lives
+    /// on the rows themselves now.
     private var settingsMenu: some View {
         Menu {
             Section {
-                Toggle(isOn: $onDeck) {
-                    Label("Wait for the record to end", systemImage: "hourglass")
-                }
                 Toggle(isOn: $focusLanding) {
                     Label("Focus the track I arrive on", systemImage: "viewfinder")
-                }
-            }
-
-            Section("Crossing") {
-                Picker("Sound", selection: $audioStyle) {
-                    ForEach(TransitionAudio.allCases) { style in
-                        Text("\(style.title) · \(style.detail)").tag(style)
-                    }
                 }
             }
 
@@ -831,8 +903,7 @@ private struct DiveChrome: ViewModifier {
                 }
             }
         } label: {
-            // The icon carries the one setting that changes what a tap does.
-            Image(systemName: onDeck ? "hourglass.circle.fill" : "slider.horizontal.3")
+            Image(systemName: "slider.horizontal.3")
                 .font(.system(size: 16))
                 .foregroundColor(.white)
         }

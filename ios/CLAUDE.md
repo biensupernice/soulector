@@ -67,6 +67,7 @@ ios/Soulector/
 ├── Models/
 │   ├── Episode.swift
 │   ├── EpisodeTrack.swift
+│   ├── TrackTransition.swift   # QueuedTransition + the crossing's audio/countdown styles
 │   └── RadioSchedule.swift     # Deterministic broadcast schedule — MUST match src/lib/radioSchedule.ts
 └── Networking/
     └── APIClient.swift         # tRPC over HTTPS; singleton
@@ -101,10 +102,14 @@ ios/Soulector/
   to go. A dive that leaves a different episode playing reports back through
   `EpisodeDetailSheet.onNavigate` so the sheet underneath retargets to where the
   user landed rather than describing the set they left
-- **Queued crossings (on deck):** with "Wait for the record to end" on (dive
-  settings menu), tapping a set in the sideways list doesn't jump — it arranges
-  a `QueuedTransition` for the moment the record playing now runs out, landing
-  where the *same record* ends over there. You hear the record once and come out
+- **Queued crossings (on deck):** tapping a set in the sideways list always goes
+  there now; the slower way lives in each row's own control (`CrossingControl`),
+  a menu that arranges a `QueuedTransition` for the moment the record playing
+  now runs out, landing where the *same record* ends over there. That control is
+  one thing wearing two faces — the landing timestamp with a menu behind it,
+  which grows into the countdown when something is arranged and settles back
+  when it's called off, staying a menu throughout so the way out is where the
+  way in was. You hear the record once and come out
   into what the other DJ played next. `PlayerStore` owns it: `queue`/
   `cancelQueued`, a **deck** `AVPlayer` buffered and cued the instant it's
   arranged (so the crossing is a volume change, not a load), the clock check in
@@ -113,11 +118,12 @@ ios/Soulector/
   over with it. `transitionsFired` lets the dive follow the audio in. Audio
   styles: **cut**, **fade** (duck out, come up), **blend** (both sets play the
   record's outro at once — same recording at the same point, so it lands as one
-  record heard twice). Countdown styles: **minimal**, **ring** (drains),
-  **sweep** (the row fills and the screen's accent drifts toward the incoming
-  set via `AccentColor.blended(toward:amount:)`). A manual `play` cancels
-  whatever was on deck, and a crossing suppresses auto-advance so the two can't
-  race
+  record heard twice) — picked per crossing from the row menu, so choosing the
+  style and arming it are one tap. Countdown styles: **minimal**, **ring**
+  (drains), **sweep** (the row fills and the screen's accent drifts toward the
+  incoming set via `AccentColor.blended(toward:amount:)`), set in the toolbar
+  menu alongside landing focus. A manual `play` cancels whatever was on deck,
+  and a crossing suppresses auto-advance so the two can't race
 - **Radio mode:** `RadioStore` (wired in `EpisodesView.onAppear` via `configure`) owns tune-in/out, the slot-boundary timer, drift correction, and resume re-sync. `Models/RadioSchedule.swift` computes what's on air and must stay semantically identical to the web's `src/lib/radioSchedule.ts` (same hash, ordering, epoch) — change them together or iOS and web broadcasts diverge
 - **Home-screen widget:** `SoulectorWidget` shows the current mix on an
   album-accent-tinted card (Spotify-widget style — `Color.soulectorCard` clamps

@@ -32,6 +32,14 @@ enum TransitionAudio: String, CaseIterable, Identifiable, Codable {
         }
     }
 
+    var symbol: String {
+        switch self {
+        case .cut:   return "scissors"
+        case .fade:  return "speaker.wave.2"
+        case .blend: return "waveform"
+        }
+    }
+
     /// How long before the record ends the crossing starts working.
     var lead: Double {
         switch self {
