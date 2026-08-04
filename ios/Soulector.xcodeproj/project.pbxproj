@@ -35,6 +35,7 @@
 		AA000033 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000033 /* NetworkMonitor.swift */; };
 		AA000034 /* EpisodeActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000034 /* EpisodeActions.swift */; };
 		AA000035 /* EpisodeArtwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000035 /* EpisodeArtwork.swift */; };
+		AA000037 /* CollectiveLogo.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000037 /* CollectiveLogo.swift */; };
 		AA000036 /* EpisodeActionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000036 /* EpisodeActionsSheet.swift */; };
 		AA000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000014 /* Assets.xcassets */; };
 		AA000015 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000015 /* Preview Assets.xcassets */; };
@@ -89,6 +90,7 @@
 		AB000033 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
 		AB000034 /* EpisodeActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeActions.swift; sourceTree = "<group>"; };
 		AB000035 /* EpisodeArtwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeArtwork.swift; sourceTree = "<group>"; };
+		AB000037 /* CollectiveLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectiveLogo.swift; sourceTree = "<group>"; };
 		AB000036 /* EpisodeActionsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeActionsSheet.swift; sourceTree = "<group>"; };
 		AB000014 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AB000015 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
@@ -218,6 +220,7 @@
 				AB000034 /* EpisodeActions.swift */,
 				AB000036 /* EpisodeActionsSheet.swift */,
 				AB000035 /* EpisodeArtwork.swift */,
+				AB000037 /* CollectiveLogo.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -406,6 +409,7 @@
 				AA000034 /* EpisodeActions.swift in Sources */,
 				AA000036 /* EpisodeActionsSheet.swift in Sources */,
 				AA000035 /* EpisodeArtwork.swift in Sources */,
+				AA000037 /* CollectiveLogo.swift in Sources */,
 				BA000001 /* NowPlaying.swift in Sources */,
 				BA000002 /* SoulectorLink.swift in Sources */,
 			);
