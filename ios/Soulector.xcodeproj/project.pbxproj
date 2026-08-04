@@ -36,6 +36,8 @@
 		AA000034 /* EpisodeActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000034 /* EpisodeActions.swift */; };
 		AA000035 /* EpisodeArtwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000035 /* EpisodeArtwork.swift */; };
 		AA000036 /* EpisodeActionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000036 /* EpisodeActionsSheet.swift */; };
+		AA000037 /* TrackConnections.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000037 /* TrackConnections.swift */; };
+		AA000038 /* TrackDiveSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000038 /* TrackDiveSheet.swift */; };
 		AA000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000014 /* Assets.xcassets */; };
 		AA000015 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000015 /* Preview Assets.xcassets */; };
 		BA000001 /* NowPlaying.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001 /* NowPlaying.swift */; };
@@ -90,6 +92,8 @@
 		AB000034 /* EpisodeActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeActions.swift; sourceTree = "<group>"; };
 		AB000035 /* EpisodeArtwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeArtwork.swift; sourceTree = "<group>"; };
 		AB000036 /* EpisodeActionsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeActionsSheet.swift; sourceTree = "<group>"; };
+		AB000037 /* TrackConnections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackConnections.swift; sourceTree = "<group>"; };
+		AB000038 /* TrackDiveSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackDiveSheet.swift; sourceTree = "<group>"; };
 		AB000014 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AB000015 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		AB000016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -201,6 +205,7 @@
 			children = (
 				AB000008 /* EpisodesViewModel.swift */,
 				AB000021 /* EpisodeSearch.swift */,
+				AB000037 /* TrackConnections.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -218,6 +223,7 @@
 				AB000034 /* EpisodeActions.swift */,
 				AB000036 /* EpisodeActionsSheet.swift */,
 				AB000035 /* EpisodeArtwork.swift */,
+				AB000038 /* TrackDiveSheet.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -406,6 +412,8 @@
 				AA000034 /* EpisodeActions.swift in Sources */,
 				AA000036 /* EpisodeActionsSheet.swift in Sources */,
 				AA000035 /* EpisodeArtwork.swift in Sources */,
+				AA000037 /* TrackConnections.swift in Sources */,
+				AA000038 /* TrackDiveSheet.swift in Sources */,
 				BA000001 /* NowPlaying.swift in Sources */,
 				BA000002 /* SoulectorLink.swift in Sources */,
 			);

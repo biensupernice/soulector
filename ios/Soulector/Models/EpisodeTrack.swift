@@ -1,6 +1,6 @@
 import Foundation
 
-struct EpisodeTrack: Identifiable, Equatable, Codable {
+struct EpisodeTrack: Identifiable, Equatable, Hashable, Codable {
     let order: Int
     let name: String
     let artist: String

@@ -79,7 +79,10 @@ struct EpisodesView: View {
                 }
             }
             .sheet(item: $selectedEpisode) { episode in
-                EpisodeDetailSheet(episode: episode)
+                // A sideways dive can leave a different episode playing; the
+                // sheet follows it there so closing the dive doesn't drop the
+                // user back onto the set they left.
+                EpisodeDetailSheet(episode: episode, onNavigate: { selectedEpisode = $0 })
                     .presentationDetents([.large])
                     .presentationDragIndicator(.hidden)
             }
@@ -150,6 +153,11 @@ struct EpisodesView: View {
             if isEmpty && selectedTab == .downloads { selectedTab = .all }
         }
         .task { await episodesVM.fetchEpisodes() }
+        // The tracks index isn't just for search any more — the sideways badges
+        // in every tracklist read from the graph it builds, so it comes down at
+        // launch instead of waiting for the search field to open. Cached on
+        // disk, so this is a refresh, not a cold fetch, after the first run.
+        .task { await episodesVM.refreshSearchIndex() }
         .onAppear {
             radioStore.configure(player: playerStore, episodesVM: episodesVM)
             playerStore.onEpisodeEnded = { [weak episodesVM, weak playerStore, weak radioStore] finished in

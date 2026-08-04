@@ -51,6 +51,7 @@ ios/Soulector/
 │   ├── EpisodeActionsSheet.swift # The kebab's destination: accent-painted action panel
 │   ├── EpisodeArtwork.swift    # Album art; prefers the downloaded copy over the network
 │   ├── EpisodeDetailSheet.swift # Single sheet for browse + playback; contains ProgressSlider, TracklistView
+│   ├── TrackDiveSheet.swift    # Sideways navigation: a track → the other sets that played it → on again
 │   ├── MiniPlayerView.swift    # Persistent bottom bar
 │   └── PlayerFabs.swift        # Floating radio/shuffle cluster (near-black pill, accent On Air fill)
 ├── Stores/
@@ -60,7 +61,9 @@ ios/Soulector/
 │   ├── NetworkMonitor.swift    # NWPathMonitor connectivity
 │   └── FavoritesStore.swift    # UserDefaults persistence
 ├── ViewModels/
-│   └── EpisodesViewModel.swift # Episode list + filter state
+│   ├── EpisodesViewModel.swift # Episode list + filter state + search index/track graph
+│   ├── EpisodeSearch.swift     # Client-side episode/track search over the index
+│   └── TrackConnections.swift  # TrackGraph + TrackIdentity — the same-record index
 ├── Models/
 │   ├── Episode.swift
 │   ├── EpisodeTrack.swift
@@ -78,6 +81,26 @@ ios/Soulector/
 - **Haptics:** `UIImpactFeedbackGenerator` (no iOS 17 requirement)
 - **Typography:** Space Grotesk everywhere via `Font.app(size:weight:)` (plus a root `.environment(\.font, ...)` default). SF Symbols keep `.system` fonts — symbols don't render in custom fonts
 - **Offline downloads:** `DownloadsStore` is a **singleton**, not a `@StateObject` — iOS relaunches the app to hand back finished background transfers (`SoulectorApp.backgroundTask(.urlSession:)`), which needs the session rebuilt from outside the view tree. Files live in `Application Support/Downloads` (excluded from backup), described by a `manifest.json` that also stores the `Episode` itself, since the episodes list lives in the evictable caches directory. Each download captures **sidecars** — artwork, tracklist, accent — so a downloaded episode looks and reads the same with no network; `PlayerStore` prefers the local audio/artwork/metadata, and `EpisodeArtwork` prefers the local image. Entry point is the kebab (`EpisodeKebabButton`), which opens `EpisodeActionsSheet` — a self-sizing sheet painted in that episode's album accent, holding download/favorite/SoundCloud. It stays open through an action so state changes are visible in place. **Presentation is owned by the screen** (`EpisodesView.actionsEpisode`), not the row — a sheet attached to a list row dies when the row recycles — and the two `.sheet` modifiers are attached to *different* views, since two on one view fight. Long-press still gets the native menu (`EpisodeActions`). State shows as a `DownloadBadge` in the metadata line, alongside a heart mark when favorited (favoriting is an action, not a row control). Offline (`NetworkMonitor`), non-downloaded rows dim and stop responding, the radio FAB disables, shuffle draws from downloads, and the list count reads "Offline · N downloaded"
+- **Sideways track navigation:** every tracklist row that another set also
+  played carries a branch badge (`TrackBranchButton`, count included); tapping
+  it opens `TrackDiveSheet`, whose `NavigationStack` *is* the dive — a track
+  screen lists the other episodes that played it (with the timestamp it lands
+  at), tapping one plays it there **and** pushes that episode's tracklist, from
+  which you can branch again. Back retraces the path. Everything is local:
+  `TrackGraph` (`ViewModels/TrackConnections.swift`) buckets every cue sheet in
+  the `episodes.searchIndex` snapshot by `TrackIdentity.key`, so the index is no
+  longer just for search and is fetched at launch (`EpisodesView.task`), and the
+  graph is rebuilt off the main actor whenever it changes.
+  `TrackIdentity` is deliberately exact, not fuzzy — a wrong connection is worse
+  than a missing one. It folds case/diacritics, normalizes `&`, drops guest
+  credits (bracketed *and* bare `feat.`), keeps remix parentheticals, cuts an
+  artist credit at its first name, and refuses to key placeholders ("ID",
+  "Intro") or station idents ("Soulection Radio — Hosted by Joe Kay", 252 rows
+  in the live library and the one cluster that would swamp everything). Against
+  the live index that keys 97% of ~20.6k tracks and gives 42% of them somewhere
+  to go. A dive that leaves a different episode playing reports back through
+  `EpisodeDetailSheet.onNavigate` so the sheet underneath retargets to where the
+  user landed rather than describing the set they left
 - **Radio mode:** `RadioStore` (wired in `EpisodesView.onAppear` via `configure`) owns tune-in/out, the slot-boundary timer, drift correction, and resume re-sync. `Models/RadioSchedule.swift` computes what's on air and must stay semantically identical to the web's `src/lib/radioSchedule.ts` (same hash, ordering, epoch) — change them together or iOS and web broadcasts diverge
 - **Home-screen widget:** `SoulectorWidget` shows the current mix on an
   album-accent-tinted card (Spotify-widget style — `Color.soulectorCard` clamps
