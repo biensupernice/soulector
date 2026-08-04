@@ -241,6 +241,7 @@ private struct DiveTrackScreen: View {
                         DiveEpisodeRow(
                             appearance: other,
                             canCross: crossingPoint != nil,
+                            accent: accent,
                             onTap: { open(other) },
                             onCross: { style in cross(other, with: style) },
                             onCallOff: {
@@ -405,12 +406,14 @@ private struct DiveTrackScreen: View {
     }
 }
 
-/// An episode that played the track. Tapping it goes there now; its trailing
-/// control holds the slower way — waiting for the record to end.
+/// An episode that played the track. Tapping it goes there now; the control on
+/// its right holds the slower way — waiting for the record to end.
 private struct DiveEpisodeRow: View {
     let appearance: TrackAppearance
     /// Whether there's a record playing that a crossing could hang off.
     let canCross: Bool
+    /// The screen's album accent, worn by the badge once something is armed.
+    let accent: Color
     let onTap: () -> Void
     let onCross: (TransitionAudio) -> Void
     let onCallOff: () -> Void
@@ -418,6 +421,9 @@ private struct DiveEpisodeRow: View {
     @EnvironmentObject var playerStore: PlayerStore
     @EnvironmentObject var downloadsStore: DownloadsStore
     @EnvironmentObject var network: NetworkMonitor
+
+    /// Whether this row's control is open on its choices.
+    @State private var open = false
 
     private var isCurrent: Bool { playerStore.currentEpisode?.id == appearance.episode.id }
 
@@ -436,8 +442,8 @@ private struct DiveEpisodeRow: View {
     }
 
     var body: some View {
-        // The tap area and the control are siblings rather than a menu nested
-        // in a button, so each keeps its own taps.
+        // The tap area and the control are siblings rather than one nested in
+        // the other, so each keeps its own taps.
         HStack(spacing: 12) {
             HStack(spacing: 12) {
                 EpisodeArtwork(episode: appearance.episode)
@@ -453,41 +459,57 @@ private struct DiveEpisodeRow: View {
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
 
-                    HStack(spacing: 6) {
-                        Text(appearance.episode.formattedDate)
-                            .font(.app(size: 12))
-                            .foregroundColor(.white.opacity(0.7))
+                    // Once something is arranged, the row says so in words —
+                    // the badge alone was too small to carry the news.
+                    if let crossing {
+                        HStack(spacing: 5) {
+                            Image(systemName: crossing.audio.symbol)
+                                .font(.system(size: 9, weight: .bold))
+                            Text(statusLine(for: crossing))
+                                .font(.app(size: 11, weight: .bold))
+                                .tracking(0.7)
+                                .lineLimit(1)
+                        }
+                        .foregroundColor(.white)
+                        .transition(.opacity)
+                    } else {
+                        HStack(spacing: 6) {
+                            Text(appearance.episode.formattedDate)
+                                .font(.app(size: 12))
+                                .foregroundColor(.white.opacity(0.7))
 
-                        Text("·")
-                            .foregroundColor(.white.opacity(0.5))
+                            Text("·")
+                                .foregroundColor(.white.opacity(0.5))
 
-                        Text(appearance.episode.collectiveName)
-                            .font(.app(size: 12))
-                            .foregroundColor(.white.opacity(0.7))
-                            .lineLimit(1)
+                            Text(appearance.episode.collectiveName)
+                                .font(.app(size: 12))
+                                .foregroundColor(.white.opacity(0.7))
+                                .lineLimit(1)
+                        }
+                        .transition(.opacity)
                     }
                 }
 
                 Spacer(minLength: 8)
             }
+            // The row steps back while its choices are out, so the tray reads
+            // as being on top of it rather than crowded in beside it.
+            .opacity(open ? 0.25 : 1)
             .contentShape(Rectangle())
             .onTapGesture {
+                // With the choices open, a tap anywhere else puts them away
+                // rather than moving the user.
+                if open {
+                    setOpen(false)
+                    return
+                }
                 guard !unavailable else { return }
                 onTap()
             }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isButton)
 
-            CrossingControl(
-                timestamp: appearance.track.formattedTimestamp,
-                crossing: crossing,
-                remaining: playerStore.queuedRemaining ?? 0,
-                isHandingOver: playerStore.isCrossing,
-                canCross: canCross,
-                onCross: onCross,
-                onCallOff: onCallOff
-            )
-            .disabled(unavailable)
+            trailingControl
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 8)
@@ -503,7 +525,7 @@ private struct DiveEpisodeRow: View {
                             .frame(width: geo.size.width * crossing.progress(at: playerStore.currentTime))
                             // Scoped to the fill: the clock ticks twice a
                             // second, and animating the whole row on that beat
-                            // would drag the menu into it.
+                            // would drag everything else along with it.
                             .animation(.linear(duration: 0.5), value: playerStore.currentTime)
                     }
                 } else {
@@ -511,140 +533,196 @@ private struct DiveEpisodeRow: View {
                 }
             }
         }
-        // The lit background arrives and leaves with the arrangement itself.
+        // The choices unfold over the row rather than shoving its text aside.
+        .overlay(alignment: .trailing) {
+            if open {
+                CrossingChoices(
+                    armed: crossing?.audio,
+                    canCross: canCross,
+                    canCallOff: crossing != nil,
+                    onPick: { style in
+                        setOpen(false)
+                        onCross(style)
+                    },
+                    onCallOff: {
+                        setOpen(false)
+                        onCallOff()
+                    }
+                )
+                .padding(.trailing, 20)
+                // Grown out of the button it replaced, at the same edge.
+                .transition(.scale(scale: 0.2, anchor: .trailing).combined(with: .opacity))
+            }
+        }
         .animation(.easeInOut(duration: 0.3), value: crossing?.id)
+    }
+
+    /// Idle, this is the landing time and the way in. Armed, it's the
+    /// countdown. Open, it's neither — the choices have taken its place.
+    private var trailingControl: some View {
+        HStack(spacing: 8) {
+            if let crossing {
+                CrossingBadge(
+                    crossing: crossing,
+                    remaining: playerStore.queuedRemaining ?? 0,
+                    isHandingOver: playerStore.isCrossing,
+                    accent: accent
+                )
+            } else if let timestamp = appearance.track.formattedTimestamp {
+                Text(timestamp)
+                    .font(.app(size: 11, weight: .medium))
+                    .foregroundColor(.white)
+                    .monospacedDigit()
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Color.black.opacity(0.25)))
+            }
+
+            Button(action: { setOpen(!open) }) {
+                Image(systemName: crossing == nil ? "hourglass" : "chevron.left")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(width: 30, height: 30)
+                    .background(Circle().fill(Color.black.opacity(0.3)))
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .disabled(unavailable)
+            .accessibilityLabel("Crossing options")
+        }
+        // The button doesn't sit next to its own expansion — it becomes it.
+        .opacity(open ? 0 : 1)
+    }
+
+    private func setOpen(_ value: Bool) {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) { open = value }
+    }
+
+    private func statusLine(for crossing: QueuedTransition) -> String {
+        playerStore.isCrossing
+            ? "CROSSING NOW"
+            : "ON DECK · \(crossing.audio.title.uppercased())"
     }
 }
 
-/// The row's trailing control, which is one thing wearing two faces.
-///
-/// At rest it's the timestamp the record lands at, with a menu tucked behind
-/// it holding the slower way across. Arrange a crossing and the same capsule
-/// grows into its countdown; call it off and it settles back. It stays a menu
-/// throughout, so the way out is where the way in was.
-private struct CrossingControl: View {
-    let timestamp: String?
-    /// The arrangement riding on this row, if there is one.
-    let crossing: QueuedTransition?
-    let remaining: Double
-    /// True once the crossing is actually under way — the last seconds, where
-    /// the two sets are trading places.
-    let isHandingOver: Bool
+/// The control's open state: the three ways across, laid out in the row itself
+/// rather than in a menu over it, so picking one is part of the same gesture
+/// that opened it.
+private struct CrossingChoices: View {
+    /// The style already arranged, if this row is on deck.
+    let armed: TransitionAudio?
     let canCross: Bool
-    let onCross: (TransitionAudio) -> Void
+    /// Only when there's something arranged to call off.
+    let canCallOff: Bool
+    let onPick: (TransitionAudio) -> Void
     let onCallOff: () -> Void
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if canCross {
+                if canCallOff {
+                    chip(title: "Call off", symbol: "xmark", filled: false, action: onCallOff)
+                }
+                ForEach(TransitionAudio.allCases) { style in
+                    chip(
+                        title: style.title,
+                        symbol: style.symbol,
+                        filled: armed == style,
+                        action: { onPick(style) }
+                    )
+                }
+            } else {
+                Text("Nothing playing to cross from")
+                    .font(.app(size: 11, weight: .medium))
+                    .foregroundColor(.white.opacity(0.75))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+            }
+        }
+        .padding(5)
+        .background(Capsule().fill(.ultraThinMaterial))
+        .background(Capsule().fill(Color.black.opacity(0.35)))
+        .overlay(Capsule().strokeBorder(Color.white.opacity(0.18), lineWidth: 1))
+    }
+
+    private func chip(
+        title: String,
+        symbol: String,
+        filled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Image(systemName: symbol)
+                    .font(.system(size: 10, weight: .semibold))
+                Text(title)
+                    .font(.app(size: 11, weight: .semibold))
+            }
+            .foregroundColor(filled ? .black : .white)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 6)
+            .background(Capsule().fill(filled ? Color.white : Color.white.opacity(0.16)))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// The armed state: a white pill wearing the screen's accent, which is how the
+/// rest of the app marks the one thing that's live. It counts the record down
+/// and pulses once the two sets are actually trading places.
+private struct CrossingBadge: View {
+    let crossing: QueuedTransition
+    let remaining: Double
+    let isHandingOver: Bool
+    let accent: Color
 
     @State private var pulsing = false
 
     var body: some View {
-        Menu {
-            menuContents
-        } label: {
-            capsuleLabel
+        HStack(spacing: 5) {
+            if crossing.visual == .ring {
+                ZStack {
+                    Circle()
+                        .stroke(accent.opacity(0.25), lineWidth: 2)
+                    Circle()
+                        .trim(from: 0, to: max(0.02, 1 - elapsed))
+                        .stroke(accent, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .animation(.linear(duration: 0.5), value: remaining)
+                }
+                .frame(width: 14, height: 14)
+            }
+
+            Text(countdown)
+                .font(.app(size: 12, weight: .bold))
+                .monospacedDigit()
         }
-        .buttonStyle(.plain)
-        // One spring for the whole change of face: the capsule takes its new
-        // width, the timestamp gives way to the count.
-        .animation(.spring(response: 0.38, dampingFraction: 0.78), value: crossing?.id)
+        .foregroundColor(accent)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Capsule().fill(Color.white))
+        .scaleEffect(pulsing ? 1.07 : 1)
+        .animation(.easeInOut(duration: 0.55).repeatForever(autoreverses: true), value: pulsing)
         .onChange(of: isHandingOver) { handing in
-            // Only the last seconds pulse, so the control is calm while it
-            // waits and alive once it's actually happening.
+            // Calm while it waits, alive once it's happening.
             pulsing = handing
         }
-        .accessibilityLabel(crossing == nil ? "Crossing options" : "On deck, \(spokenRemaining). Tap for options.")
-    }
-
-    @ViewBuilder
-    private var menuContents: some View {
-        if crossing != nil {
-            Button(role: .destructive, action: onCallOff) {
-                Label("Call it off", systemImage: "xmark")
-            }
-        }
-
-        Section(crossing == nil ? "Cross when the record ends" : "Cross with") {
-            ForEach(TransitionAudio.allCases) { style in
-                Button {
-                    onCross(style)
-                } label: {
-                    Label("\(style.title) · \(style.detail)", systemImage: style.symbol)
-                }
-                .disabled(!canCross)
-            }
-        }
-
-        if !canCross {
-            Section {
-                Button("Nothing playing to cross from") {}
-                    .disabled(true)
-            }
-        }
-    }
-
-    private var capsuleLabel: some View {
-        HStack(spacing: 6) {
-            if let crossing {
-                if crossing.visual == .ring {
-                    ZStack {
-                        Circle()
-                            .stroke(Color.white.opacity(0.25), lineWidth: 2)
-                        Circle()
-                            .trim(from: 0, to: max(0.02, 1 - elapsed(crossing)))
-                            .stroke(Color.white, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                            .rotationEffect(.degrees(-90))
-                    }
-                    .frame(width: 16, height: 16)
-                    .transition(.scale.combined(with: .opacity))
-                }
-
-                Text(countdown)
-                    .font(.app(size: 10, weight: .semibold))
-                    .tracking(0.6)
-                    .monospacedDigit()
-                    .transition(.opacity)
-            } else {
-                if let timestamp {
-                    Text(timestamp)
-                        .font(.app(size: 11, weight: .medium))
-                        .monospacedDigit()
-                        .transition(.opacity)
-                }
-
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 11, weight: .semibold))
-                    .transition(.scale.combined(with: .opacity))
-            }
-        }
-        .foregroundColor(.white)
-        .padding(.horizontal, 9)
-        .padding(.vertical, 5)
-        .background(Capsule().fill(Color.black.opacity(crossing == nil ? 0.25 : 0.4)))
-        .overlay(
-            Capsule().strokeBorder(Color.white.opacity(crossing == nil ? 0 : 0.35), lineWidth: 1)
-        )
-        .contentShape(Capsule())
-        .scaleEffect(pulsing ? 1.06 : 1)
-        .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: pulsing)
     }
 
     /// How much of the wait is behind us — the ring shows what's left of it.
-    private func elapsed(_ crossing: QueuedTransition) -> Double {
+    private var elapsed: Double {
         crossing.progress(at: crossing.fireAt - remaining)
     }
 
     private var countdown: String {
-        guard !isHandingOver else { return "CROSSING" }
+        guard !isHandingOver else { return "NOW" }
         let seconds = Int(remaining.rounded())
         return String(format: "%d:%02d", seconds / 60, seconds % 60)
     }
-
-    private var spokenRemaining: String {
-        let seconds = Int(remaining.rounded())
-        let minutes = seconds / 60
-        if minutes > 0 { return "\(minutes) minutes \(seconds % 60) seconds" }
-        return "\(seconds) seconds"
-    }
 }
+
 
 // MARK: - Episode screen (the tracks you can leave by)
 
