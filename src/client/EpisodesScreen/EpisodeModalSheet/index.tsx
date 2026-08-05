@@ -19,7 +19,7 @@ import {
 } from "../PlayerStore";
 import { useGetEpisode } from "../useEpisodeHooks";
 import { Sheet } from "react-modal-sheet";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useContext, useEffect, useRef, useState } from "react";
 import { create } from "zustand";
 import { trpc } from "@/utils/trpc";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,8 @@ import { EpisodeTrackProjection } from "@/server/router";
 import { useTrackGraph } from "../useTrackGraph";
 import { TrackBranchBadge } from "../TrackBranchBadge";
 import { useEpisodesScreenState } from "../useEpisodesScreenState";
+import { useTracksPanelActions } from "../TracksPanelStore";
+import { EpisodeListContext } from "@/pages";
 
 interface EpisodeModalSheetStore {
   isOpen: boolean;
@@ -368,9 +370,24 @@ function TrackConnections({
 }) {
   const graph = useTrackGraph();
   const { onTrackClick } = useEpisodesScreenState();
+  const tracksPanelActions = useTracksPanelActions();
+  const { focusEpisode } = useContext(EpisodeListContext);
   const connections = graph.connectionsFor(episodeId, order);
 
   if (connections.length === 0) return null;
+
+  function hopTo(targetEpisodeId: string, timestamp?: number) {
+    onTrackClick(targetEpisodeId, timestamp);
+    // Land with the set open and in view, so the move reads as carrying on
+    // rather than as the panel simply vanishing.
+    tracksPanelActions.open(targetEpisodeId);
+    onHopped();
+    // The panel being left behind collapses as this one opens, which moves
+    // everything below it. Scrolling on the next frame would aim at where the
+    // row used to be, so aim again once the list has settled.
+    requestAnimationFrame(() => focusEpisode(targetEpisodeId));
+    window.setTimeout(() => focusEpisode(targetEpisodeId), 300);
+  }
 
   return (
     <div className="relative bg-black/25 px-4 py-3">
@@ -382,10 +399,7 @@ function TrackConnections({
         {connections.map(({ episode, track }) => (
           <button
             key={episode.id}
-            onClick={() => {
-              onTrackClick(episode.id, track.timestamp);
-              onHopped();
-            }}
+            onClick={() => hopTo(episode.id, track.timestamp)}
             className="flex w-full items-center justify-between rounded px-2 py-2 text-left hover:bg-white/10"
           >
             <div className="min-w-0 pr-3">

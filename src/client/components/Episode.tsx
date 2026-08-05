@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import cx from "classnames";
 import { formatDate, formatTimeSecs } from "../helpers";
 import {
@@ -17,6 +17,10 @@ import {
   useEpisodeTracks,
 } from "../EpisodesScreen/EpisodeModalSheet";
 import { AnimatePresence, motion } from "motion/react";
+import {
+  useIsTracksPanelOpen,
+  useTracksPanelActions,
+} from "../EpisodesScreen/TracksPanelStore";
 
 export type EpisodeProps = {
   episode: EpisodeProjection;
@@ -27,7 +31,8 @@ export type EpisodeProps = {
 } & React.HTMLAttributes<HTMLDivElement>;
 
 export function Episode(props: EpisodeProps) {
-  const [showTracks, setShowTracks] = useState<boolean>(false);
+  const showTracks = useIsTracksPanelOpen(props.episode.id);
+  const tracksPanelActions = useTracksPanelActions();
 
   const {
     episode: episode,
@@ -108,7 +113,7 @@ export function Episode(props: EpisodeProps) {
                   title={showTracks ? "Close tracks" : "View Tracks"}
                   onClick={(e) => {
                     e.stopPropagation();
-                    setShowTracks((currentState) => !currentState);
+                    tracksPanelActions.toggle(episode.id);
                   }}
                 >
                   {showTracks ? (
