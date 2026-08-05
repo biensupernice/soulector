@@ -27,7 +27,10 @@ import { EpisodeTrackProjection } from "@/server/router";
 import { useTrackGraph } from "../useTrackGraph";
 import { TrackBranchBadge } from "../TrackBranchBadge";
 import { useEpisodesScreenState } from "../useEpisodesScreenState";
-import { useTracksPanelActions } from "../TracksPanelStore";
+import {
+  useTracksPanelActions,
+  useTracksPanelStore,
+} from "../TracksPanelStore";
 import { EpisodeListContext } from "@/pages";
 
 interface EpisodeModalSheetStore {
@@ -187,6 +190,15 @@ export function EpisodeTracksList({
   // Which row has its connections open. Only ever one — opening another
   // closes the last, so the list never turns into a wall of expansions.
   const [openOrder, setOpenOrder] = useState<number | null>(null);
+
+  // Arriving by a crossing, the record that carried you here is already the
+  // interesting one: open its connections so carrying on is a single click.
+  const landedOn = useTracksPanelStore((s) => s.landedOn);
+  useEffect(() => {
+    if (landedOn?.episodeId === episodeId) {
+      setOpenOrder(landedOn.order);
+    }
+  }, [landedOn, episodeId]);
 
   // Every tracklist gets branch badges unless a surface asks for something
   // else in the slot.
@@ -372,15 +384,32 @@ function TrackConnections({
   const { onTrackClick } = useEpisodesScreenState();
   const tracksPanelActions = useTracksPanelActions();
   const { focusEpisode } = useContext(EpisodeListContext);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const connections = graph.connectionsFor(episodeId, order);
+
+  // Opened by a landing, these choices can sit below the fold of the panel,
+  // which would make carrying on a scroll-then-click. Bring them into view.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() =>
+      containerRef.current?.scrollIntoView({ block: "nearest" }),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   if (connections.length === 0) return null;
 
-  function hopTo(targetEpisodeId: string, timestamp?: number) {
+  function hopTo(
+    targetEpisodeId: string,
+    targetOrder: number,
+    timestamp?: number,
+  ) {
     onTrackClick(targetEpisodeId, timestamp);
     // Land with the set open and in view, so the move reads as carrying on
     // rather than as the panel simply vanishing.
-    tracksPanelActions.open(targetEpisodeId);
+    tracksPanelActions.land({
+      episodeId: targetEpisodeId,
+      order: targetOrder,
+    });
     onHopped();
     // The panel being left behind collapses as this one opens, which moves
     // everything below it. Scrolling on the next frame would aim at where the
@@ -390,7 +419,7 @@ function TrackConnections({
   }
 
   return (
-    <div className="relative bg-black/25 px-4 py-3">
+    <div ref={containerRef} className="relative bg-black/25 px-4 py-3">
       <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-white/60">
         Also played in {connections.length} other{" "}
         {connections.length === 1 ? "episode" : "episodes"}
@@ -399,7 +428,7 @@ function TrackConnections({
         {connections.map(({ episode, track }) => (
           <button
             key={episode.id}
-            onClick={() => hopTo(episode.id, track.timestamp)}
+            onClick={() => hopTo(episode.id, track.order, track.timestamp)}
             className="flex w-full items-center justify-between rounded px-2 py-2 text-left hover:bg-white/10"
           >
             <div className="min-w-0 pr-3">
