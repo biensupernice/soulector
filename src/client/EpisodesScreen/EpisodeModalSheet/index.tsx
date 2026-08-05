@@ -32,6 +32,7 @@ import {
   useTracksPanelStore,
 } from "../TracksPanelStore";
 import { EpisodeListContext } from "@/pages";
+import { useCollectiveSelectStore } from "../Navbar";
 
 interface EpisodeModalSheetStore {
   isOpen: boolean;
@@ -383,7 +384,8 @@ function TrackConnections({
   const graph = useTrackGraph();
   const { onTrackClick } = useEpisodesScreenState();
   const tracksPanelActions = useTracksPanelActions();
-  const { focusEpisode } = useContext(EpisodeListContext);
+  const { focusEpisode, clearSearch } = useContext(EpisodeListContext);
+  const selectCollective = useCollectiveSelectStore((s) => s.setSelected);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const connections = graph.connectionsFor(episodeId, order);
 
@@ -403,6 +405,17 @@ function TrackConnections({
     targetOrder: number,
     timestamp?: number,
   ) {
+    // The graph spans the whole archive, but the list in front of you may be
+    // narrowed to one collective or to a search. Landing somewhere that isn't
+    // on screen would leave nothing to land on, so widen the view to follow.
+    const onScreen = document.querySelector(
+      `[data-episode-id="${targetEpisodeId}"]`,
+    );
+    if (!onScreen) {
+      selectCollective("all");
+      clearSearch();
+    }
+
     onTrackClick(targetEpisodeId, timestamp);
     // Land with the set open and in view, so the move reads as carrying on
     // rather than as the panel simply vanishing.
