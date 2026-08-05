@@ -12,10 +12,8 @@ import {
 import { usePlayEpisodeMutation } from "../EpisodesScreen/useEpisodesScreenState";
 import { usePlayerPlaying } from "../EpisodesScreen/PlayerStore";
 import { EpisodeProjection } from "@/server/router";
-import {
-  EpisodeTracksList,
-  useEpisodeTracks,
-} from "../EpisodesScreen/EpisodeModalSheet";
+import { useEpisodeTracks } from "../EpisodesScreen/EpisodeModalSheet";
+import { DivePanel } from "../EpisodesScreen/DivePanel";
 import { AnimatePresence, motion } from "motion/react";
 import {
   useIsTracksPanelOpen,
@@ -170,9 +168,9 @@ export function Episode(props: EpisodeProps) {
             initial={{ height: 0 }}
             animate={{ height: "auto" }}
             exit={{ height: 0 }}
-            className="hidden md:flex max-h-[calc(100vh*0.6)] items-stretch origin-top bg-accent rounded-lg overflow-y-auto relative"
+            className="relative hidden origin-top overflow-hidden rounded-lg bg-accent md:block"
           >
-            <EpisodeTracksList episodeId={episode.id} />
+            <DivePanel episodeId={episode.id} />
           </motion.div>
         )}
       </AnimatePresence>

@@ -7,13 +7,14 @@ import { useEpisodes } from "./useEpisodeHooks";
 import { useCustomMutation } from "../infra/useCustomMutation";
 import { useEpisodeModalSheetActions } from "./EpisodeModalSheet";
 import { useCollectiveSelectStore } from "./Navbar";
+import { useTracksPanelStore } from "./TracksPanelStore";
 
 export function useEpisodesScreenState() {
   const currentEpisodeId = usePlayerStore((state) => state.currentEpisodeId);
   const playing = usePlayerStore((state) => state.playing);
   const volume = usePlayerStore((state) => state.volume);
   const currentEpisodeStreamUrls = usePlayerStore(
-    (state) => state.currentEpisodeStreamUrls
+    (state) => state.currentEpisodeStreamUrls,
   );
 
   const selectedCollective = useCollectiveSelectStore((s) => s.selected);
@@ -38,6 +39,9 @@ export function useEpisodesScreenState() {
 
       episodeModalSheetActions.open();
       playerActions.loadEpisode(episodeId);
+      // Picking a set shows its cue sheet. The records that go somewhere are
+      // marked in there, and a panel behind a hover-hidden chevron hid them.
+      useTracksPanelStore.getState().actions.open(episodeId);
 
       mutate(episodeId);
     }
@@ -80,6 +84,7 @@ export function useEpisodesScreenState() {
       const episodeId = episode.id;
       playerActions.loadEpisode(episodeId);
       episodeModalSheetActions.open();
+      useTracksPanelStore.getState().actions.open(episodeId);
       mutate(episodeId);
     }
   }
@@ -109,7 +114,7 @@ export function usePlayEpisodeMutation() {
 
         {
           staleTime: Infinity,
-        }
+        },
       );
 
       // Handing the urls to the player here rather than in a caller's
@@ -126,7 +131,7 @@ export function usePlayEpisodeMutation() {
     },
     {
       onError: (err, va) => console.error(err, va),
-    }
+    },
   );
 }
 

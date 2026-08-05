@@ -27,12 +27,8 @@ import { EpisodeTrackProjection } from "@/server/router";
 import { useTrackGraph } from "../useTrackGraph";
 import { TrackBranchBadge } from "../TrackBranchBadge";
 import { useEpisodesScreenState } from "../useEpisodesScreenState";
-import {
-  useTracksPanelActions,
-  useTracksPanelStore,
-} from "../TracksPanelStore";
-import { EpisodeListContext } from "@/pages";
-import { useCollectiveSelectStore } from "../Navbar";
+import { useTracksPanelStore } from "../TracksPanelStore";
+import { TrackConnectionsInline } from "../TrackConnections";
 
 interface EpisodeModalSheetStore {
   isOpen: boolean;
@@ -188,6 +184,11 @@ export function EpisodeTracksList({
   const graph = useTrackGraph();
   const progressSecs = progress / 1000;
 
+  // A surface that supplies its own accessory is placing the connections
+  // itself — the desktop panel puts them in a column beside the list — so the
+  // list stops owning which row is open.
+  const controlled = rowAccessory !== undefined;
+
   // Which row has its connections open. Only ever one — opening another
   // closes the last, so the list never turns into a wall of expansions.
   const [openOrder, setOpenOrder] = useState<number | null>(null);
@@ -196,13 +197,11 @@ export function EpisodeTracksList({
   // interesting one: open its connections so carrying on is a single click.
   const landedOn = useTracksPanelStore((s) => s.landedOn);
   useEffect(() => {
-    if (landedOn?.episodeId === episodeId) {
+    if (!controlled && landedOn?.episodeId === episodeId) {
       setOpenOrder(landedOn.order);
     }
-  }, [landedOn, episodeId]);
+  }, [controlled, landedOn, episodeId]);
 
-  // Every tracklist gets branch badges unless a surface asks for something
-  // else in the slot.
   const accessory: TrackRowAccessory =
     rowAccessory ??
     ((track) => (
@@ -352,8 +351,8 @@ export function EpisodeTracksList({
                     {accessory(t)}
                   </div>
                 </div>
-                {openOrder === t.order && (
-                  <TrackConnections
+                {!controlled && openOrder === t.order && (
+                  <TrackConnectionsInline
                     episodeId={episodeId}
                     order={t.order}
                     onHopped={() => setOpenOrder(null)}
@@ -366,100 +365,6 @@ export function EpisodeTracksList({
       </div>
     </div>
   ) : null;
-}
-
-/**
- * The sets that also played this record, and the click that takes you into one
- * at the moment it lands there.
- */
-function TrackConnections({
-  episodeId,
-  order,
-  onHopped,
-}: {
-  episodeId: string;
-  order: number;
-  onHopped: () => void;
-}) {
-  const graph = useTrackGraph();
-  const { onTrackClick } = useEpisodesScreenState();
-  const tracksPanelActions = useTracksPanelActions();
-  const { focusEpisode, clearSearch } = useContext(EpisodeListContext);
-  const selectCollective = useCollectiveSelectStore((s) => s.setSelected);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const connections = graph.connectionsFor(episodeId, order);
-
-  // Opened by a landing, these choices can sit below the fold of the panel,
-  // which would make carrying on a scroll-then-click. Bring them into view.
-  useEffect(() => {
-    const frame = requestAnimationFrame(() =>
-      containerRef.current?.scrollIntoView({ block: "nearest" }),
-    );
-    return () => cancelAnimationFrame(frame);
-  }, []);
-
-  if (connections.length === 0) return null;
-
-  function hopTo(
-    targetEpisodeId: string,
-    targetOrder: number,
-    timestamp?: number,
-  ) {
-    // The graph spans the whole archive, but the list in front of you may be
-    // narrowed to one collective or to a search. Landing somewhere that isn't
-    // on screen would leave nothing to land on, so widen the view to follow.
-    const onScreen = document.querySelector(
-      `[data-episode-id="${targetEpisodeId}"]`,
-    );
-    if (!onScreen) {
-      selectCollective("all");
-      clearSearch();
-    }
-
-    onTrackClick(targetEpisodeId, timestamp);
-    // Land with the set open and in view, so the move reads as carrying on
-    // rather than as the panel simply vanishing.
-    tracksPanelActions.land({
-      episodeId: targetEpisodeId,
-      order: targetOrder,
-    });
-    onHopped();
-    // The panel being left behind collapses as this one opens, which moves
-    // everything below it. Scrolling on the next frame would aim at where the
-    // row used to be, so aim again once the list has settled.
-    requestAnimationFrame(() => focusEpisode(targetEpisodeId));
-    window.setTimeout(() => focusEpisode(targetEpisodeId), 300);
-  }
-
-  return (
-    <div ref={containerRef} className="relative bg-black/25 px-4 py-3">
-      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-white/60">
-        Also played in {connections.length} other{" "}
-        {connections.length === 1 ? "episode" : "episodes"}
-      </div>
-      <div className="space-y-px">
-        {connections.map(({ episode, track }) => (
-          <button
-            key={episode.id}
-            onClick={() => hopTo(episode.id, track.order, track.timestamp)}
-            className="flex w-full items-center justify-between rounded px-2 py-2 text-left hover:bg-white/10"
-          >
-            <div className="min-w-0 pr-3">
-              <div className="truncate text-sm font-medium">{episode.name}</div>
-              <div className="text-xs text-white/60">
-                {formatDate(episode.releasedAt)}
-              </div>
-            </div>
-            {track.timestamp !== undefined && (
-              <div className="shrink-0 text-xs tabular-nums text-white/80">
-                {formatTimeSecs(track.timestamp)}
-              </div>
-            )}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 export interface EpisodeSheetFavoriteToggleProps {
