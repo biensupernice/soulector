@@ -204,6 +204,10 @@ private struct DiveTrackScreen: View {
 
     @AppStorage(DiveSettings.visualKey) private var visualStyle = TransitionVisual.ring
 
+    /// Which row has its crossing choices out. One at a time, and owned here
+    /// rather than by the row, so a tap anywhere on the screen can close it.
+    @State private var openRow: String?
+
     private var others: [TrackAppearance] {
         episodesVM.trackGraph.otherAppearances(
             of: appearance.track,
@@ -230,35 +234,62 @@ private struct DiveTrackScreen: View {
     var body: some View {
         let elsewhere = others
 
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                header(count: elsewhere.count)
+        // The geometry is here so the content can be made at least a screen
+        // tall: an open row's choices close on a tap anywhere outside them, and
+        // "anywhere" has to include the empty space under a short list.
+        GeometryReader { geo in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    header(count: elsewhere.count)
 
-                if elsewhere.isEmpty {
-                    emptyState
-                } else {
-                    ForEach(elsewhere) { other in
-                        DiveEpisodeRow(
-                            appearance: other,
-                            canCross: crossingPoint != nil,
-                            accent: accent,
-                            onTap: { open(other) },
-                            onCross: { style in cross(other, with: style) },
-                            onCallOff: {
-                                UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-                                playerStore.cancelQueued()
-                            }
-                        )
+                    if elsewhere.isEmpty {
+                        emptyState
+                    } else {
+                        ForEach(elsewhere) { other in
+                            DiveEpisodeRow(
+                                appearance: other,
+                                canCross: crossingPoint != nil,
+                                accent: accent,
+                                isOpen: openRow == other.id,
+                                onSetOpen: { isOpen in setOpenRow(isOpen ? other.id : nil) },
+                                onTap: { open(other) },
+                                onCross: { style in cross(other, with: style) },
+                                onCallOff: {
+                                    UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+                                    playerStore.cancelQueued()
+                                }
+                            )
+                        }
                     }
-                }
 
-                Color.clear.frame(height: 24)
+                    Color.clear.frame(height: 24)
+                }
+                .frame(minHeight: geo.size.height, alignment: .top)
+                .contentShape(Rectangle())
+                // Rows and chips take their own taps first; everything that
+                // falls through means "put those away".
+                .onTapGesture { closeOpenRow(haptic: true) }
             }
+            // Scrolling puts them away too, without a second tap.
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 8).onChanged { _ in closeOpenRow(haptic: false) }
+            )
         }
         .diveChrome(title: appearance.track.name, accent: accent, close: actions.close)
         .task(id: appearance.episode.id) {
             await accents.load(appearance.episode.id, playing: playerStore)
         }
+    }
+
+    private func setOpenRow(_ id: String?) {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) { openRow = id }
+    }
+
+    private func closeOpenRow(haptic: Bool) {
+        guard openRow != nil else { return }
+        if haptic { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) { openRow = nil }
     }
 
     private func header(count: Int) -> some View {
@@ -414,6 +445,10 @@ private struct DiveEpisodeRow: View {
     let canCross: Bool
     /// The screen's album accent, worn by the badge once something is armed.
     let accent: Color
+    /// Whether this row's control is open on its choices. Owned by the screen —
+    /// only one row can be open, and a tap anywhere closes it.
+    let isOpen: Bool
+    let onSetOpen: (Bool) -> Void
     let onTap: () -> Void
     let onCross: (TransitionAudio) -> Void
     let onCallOff: () -> Void
@@ -421,9 +456,6 @@ private struct DiveEpisodeRow: View {
     @EnvironmentObject var playerStore: PlayerStore
     @EnvironmentObject var downloadsStore: DownloadsStore
     @EnvironmentObject var network: NetworkMonitor
-
-    /// Whether this row's control is open on its choices.
-    @State private var open = false
 
     private var isCurrent: Bool { playerStore.currentEpisode?.id == appearance.episode.id }
 
@@ -494,13 +526,13 @@ private struct DiveEpisodeRow: View {
             }
             // The row steps back while its choices are out, so the tray reads
             // as being on top of it rather than crowded in beside it.
-            .opacity(open ? 0.25 : 1)
+            .opacity(isOpen ? 0.3 : 1)
             .contentShape(Rectangle())
             .onTapGesture {
-                // With the choices open, a tap anywhere else puts them away
+                // With the choices open, a tap on the row puts them away
                 // rather than moving the user.
-                if open {
-                    setOpen(false)
+                if isOpen {
+                    onSetOpen(false)
                     return
                 }
                 guard !unavailable else { return }
@@ -535,17 +567,17 @@ private struct DiveEpisodeRow: View {
         }
         // The choices unfold over the row rather than shoving its text aside.
         .overlay(alignment: .trailing) {
-            if open {
+            if isOpen {
                 CrossingChoices(
                     armed: crossing?.audio,
                     canCross: canCross,
                     canCallOff: crossing != nil,
                     onPick: { style in
-                        setOpen(false)
+                        onSetOpen(false)
                         onCross(style)
                     },
                     onCallOff: {
-                        setOpen(false)
+                        onSetOpen(false)
                         onCallOff()
                     }
                 )
@@ -578,8 +610,11 @@ private struct DiveEpisodeRow: View {
                     .background(Capsule().fill(Color.black.opacity(0.25)))
             }
 
-            Button(action: { setOpen(!open) }) {
-                Image(systemName: crossing == nil ? "hourglass" : "chevron.left")
+            Button(action: { onSetOpen(!isOpen) }) {
+                // Merge, against the branch mark the tracklist uses to get
+                // here: one brings the sets together, the other sends you off
+                // to find them.
+                Image(systemName: "arrow.triangle.merge")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(width: 30, height: 30)
@@ -591,12 +626,7 @@ private struct DiveEpisodeRow: View {
             .accessibilityLabel("Crossing options")
         }
         // The button doesn't sit next to its own expansion — it becomes it.
-        .opacity(open ? 0 : 1)
-    }
-
-    private func setOpen(_ value: Bool) {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) { open = value }
+        .opacity(isOpen ? 0 : 1)
     }
 
     private func statusLine(for crossing: QueuedTransition) -> String {
