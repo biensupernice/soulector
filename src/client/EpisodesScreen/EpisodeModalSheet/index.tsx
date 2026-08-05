@@ -158,7 +158,22 @@ function getScrollParent(el: HTMLElement): HTMLElement | null {
   return null;
 }
 
-export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
+/**
+ * Rendered at the end of a track row, past the timestamp. Every row gets the
+ * same slot whether or not it has anything to put in it, so timestamps stay in
+ * one column.
+ */
+export type TrackRowAccessory = (
+  track: EpisodeTrackProjection,
+) => React.ReactNode;
+
+export function EpisodeTracksList({
+  episodeId,
+  rowAccessory,
+}: {
+  episodeId: string;
+  rowAccessory?: TrackRowAccessory;
+}) {
   const progress = usePlayerProgress();
   const playerActions = usePlayerActions();
   const progressSecs = progress / 1000;
@@ -234,11 +249,11 @@ export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
           {loadedData.map((t) => {
             const isCurrent = currentTrack?.order === t.order;
             return (
-              <button
+              // The row is a div, not a button: the accessory alongside it is
+              // itself a button, and nesting the two would be invalid markup.
+              <div
                 key={t.order}
-                ref={isCurrent ? currentTrackRef : undefined}
-                onClick={() => onTrackClick(t)}
-                className={cn("w-full relative hover:bg-white/10")}
+                className={cn("w-full relative flex items-center hover:bg-white/10")}
               >
                 <div
                   data-current-track={isCurrent}
@@ -246,7 +261,11 @@ export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
                     "absolute w-[2px] md:w-[4px] inset-y-0 bg-white opacity-0 fade-in-100 data-[current-track=true]:opacity-100 data-[current-track=true]:animate-in",
                   )}
                 ></div>
-                <div className="space-x-5 relative flex w-full justify-between items-center px-4 md:px-4 py-2">
+                <button
+                  ref={isCurrent ? currentTrackRef : undefined}
+                  onClick={() => onTrackClick(t)}
+                  className="space-x-5 relative flex min-w-0 w-full justify-between items-center px-4 md:px-4 py-2 text-left"
+                >
                   <div className="flex text-left items-center space-x-3 relative w-full">
                     <div
                       className={cn(
@@ -283,8 +302,11 @@ export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
                   ) : (
                     <></>
                   )}
-                </div>
-              </button>
+                </button>
+                {rowAccessory ? (
+                  <div className="relative shrink-0 pr-2">{rowAccessory(t)}</div>
+                ) : null}
+              </div>
             );
           })}
         </div>
