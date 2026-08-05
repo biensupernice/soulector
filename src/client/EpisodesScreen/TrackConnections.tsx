@@ -2,7 +2,8 @@ import { useContext, useEffect, useRef } from "react";
 import { formatDate, formatTimeSecs } from "@/client/helpers";
 import { EpisodeListContext } from "@/pages";
 import { TrackAppearance, useTrackGraph } from "./useTrackGraph";
-import { useTracksPanelActions } from "./TracksPanelStore";
+import { Hop, useTracksPanelActions } from "./TracksPanelStore";
+import { useGetEpisode } from "./useEpisodeHooks";
 import { useEpisodesScreenState } from "./useEpisodesScreenState";
 import { useCollectiveSelectStore } from "./Navbar";
 
@@ -16,38 +17,52 @@ export function useHopToConnection() {
   const { focusEpisode, clearSearch } = useContext(EpisodeListContext);
   const selectCollective = useCollectiveSelectStore((s) => s.setSelected);
 
-  return function hopTo(
-    targetEpisodeId: string,
-    targetOrder: number,
-    timestamp?: number,
-  ) {
+  return function hopTo(target: Hop, from: Hop) {
     // The graph spans the whole archive, but the list in front of you may be
     // narrowed to one collective or to a search. Landing somewhere that isn't
     // on screen would leave nothing to land on, so widen the view to follow.
     const onScreen = document.querySelector(
-      `[data-episode-id="${targetEpisodeId}"]`,
+      `[data-episode-id="${target.episodeId}"]`,
     );
     if (!onScreen) {
       selectCollective("all");
       clearSearch();
     }
 
-    onTrackClick(targetEpisodeId, timestamp);
-    tracksPanelActions.land({ episodeId: targetEpisodeId, order: targetOrder });
+    onTrackClick(target.episodeId, target.timestamp);
+    tracksPanelActions.land(target, from);
     // The panel being left behind collapses as this one opens, which moves
     // everything below it. Scrolling on the next frame would aim at where the
     // row used to be, so aim again once the list has settled.
-    requestAnimationFrame(() => focusEpisode(targetEpisodeId));
-    window.setTimeout(() => focusEpisode(targetEpisodeId), 300);
+    requestAnimationFrame(() => focusEpisode(target.episodeId));
+    window.setTimeout(() => focusEpisode(target.episodeId), 300);
+  };
+}
+
+/** Retracing: go back to a set already visited, at the record you left it by. */
+export function useRetrace() {
+  const tracksPanelActions = useTracksPanelActions();
+  const { onTrackClick } = useEpisodesScreenState();
+  const { focusEpisode } = useContext(EpisodeListContext);
+
+  return function retraceTo(index: number) {
+    const step = tracksPanelActions.retraceTo(index);
+    if (!step) return;
+    onTrackClick(step.episodeId, step.timestamp);
+    requestAnimationFrame(() => focusEpisode(step.episodeId));
+    window.setTimeout(() => focusEpisode(step.episodeId), 300);
   };
 }
 
 /** The sets on the other side of a record, each at the moment it lands there. */
 export function ConnectionTargets({
   connections,
+  from,
   onHopped,
 }: {
   connections: TrackAppearance[];
+  /** The set these connections are being left from, for the trail. */
+  from: Hop;
   onHopped?: () => void;
 }) {
   const hopTo = useHopToConnection();
@@ -58,7 +73,15 @@ export function ConnectionTargets({
         <button
           key={episode.id}
           onClick={() => {
-            hopTo(episode.id, track.order, track.timestamp);
+            hopTo(
+              {
+                episodeId: episode.id,
+                order: track.order,
+                name: episode.name,
+                timestamp: track.timestamp,
+              },
+              from,
+            );
             onHopped?.();
           }}
           className="flex w-full items-center justify-between rounded px-2 py-2 text-left hover:bg-white/10"
@@ -94,6 +117,7 @@ export function TrackConnectionsInline({
   onHopped: () => void;
 }) {
   const graph = useTrackGraph();
+  const episode = useGetEpisode(episodeId);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const connections = graph.connectionsFor(episodeId, order);
 
@@ -114,7 +138,11 @@ export function TrackConnectionsInline({
         Also played in {connections.length} other{" "}
         {connections.length === 1 ? "episode" : "episodes"}
       </div>
-      <ConnectionTargets connections={connections} onHopped={onHopped} />
+      <ConnectionTargets
+        connections={connections}
+        from={{ episodeId, order, name: episode?.name ?? "" }}
+        onHopped={onHopped}
+      />
     </div>
   );
 }
