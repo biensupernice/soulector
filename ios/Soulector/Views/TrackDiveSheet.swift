@@ -411,11 +411,16 @@ private struct DiveTrackScreen: View {
         guard let endsHere = crossingPoint else { return nil }
         let now = playerStore.currentTime
 
-        // The end of the same record over there, which is where we come in.
+        // Where we come in over there. Usually the far side of the shared
+        // record — you've just heard it, so you carry on into what that DJ
+        // played next. The run back instead lands on the record's own first
+        // beat, so it comes around again under the copy that's ending here.
         let target = episodesVM.trackGraph.tracks(forEpisode: other.episode.id)
         let landsAt: Double
-        if let match = target.firstIndex(where: { $0.order == other.track.order }),
-           match + 1 < target.count, let next = target[match + 1].timestamp {
+        if audio.landsAtRecordStart {
+            landsAt = other.track.timestamp.map(Double.init) ?? 0
+        } else if let match = target.firstIndex(where: { $0.order == other.track.order }),
+                  match + 1 < target.count, let next = target[match + 1].timestamp {
             landsAt = Double(next)
         } else if let timestamp = other.track.timestamp {
             // Last record in that set — nothing after it to land on, so take
@@ -652,7 +657,18 @@ private struct CrossingChoices: View {
         HStack(spacing: 6) {
             if canCross {
                 if canCallOff {
-                    chip(title: "Call off", symbol: "xmark", filled: false, action: onCallOff)
+                    // Icon alone: three named ways across plus a fourth word
+                    // would crowd the tray off the narrow phones.
+                    Button(action: onCallOff) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 28, height: 28)
+                            .background(Circle().fill(Color.white.opacity(0.16)))
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Call off the crossing")
                 }
                 ForEach(TransitionAudio.allCases) { style in
                     chip(

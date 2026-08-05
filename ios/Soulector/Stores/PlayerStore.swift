@@ -452,12 +452,9 @@ final class PlayerStore: ObservableObject {
         // than the style asked for, and the ramps should still finish on time.
         let remaining = max(0, transition.fireAt - currentTime)
 
-        switch transition.audio {
-        case .cut:
-            break
-        case .fade:
-            await ramp(player, to: 0, duration: max(0.3, remaining))
-        case .blend:
+        if transition.audio.overlaps {
+            // The incoming set comes up under the outgoing one and they trade
+            // places across what's left of the record.
             if let deck, deckReady {
                 deck.volume = 0
                 deck.play()
@@ -466,6 +463,8 @@ final class PlayerStore: ObservableObject {
                 async let incoming: Void = ramp(deck, to: 1, duration: span)
                 _ = await (outgoing, incoming)
             }
+        } else {
+            await ramp(player, to: 0, duration: max(0.3, remaining))
         }
 
         guard !Task.isCancelled else { return }
@@ -484,9 +483,9 @@ final class PlayerStore: ObservableObject {
             return
         }
 
-        if transition.audio != .blend {
-            // Cut and fade cue the deck exactly at the landing point, so it has
-            // nothing to do until now.
+        if !transition.audio.overlaps {
+            // A style that doesn't overlap cues the deck at the landing point
+            // and leaves it there until now.
             incoming.volume = transition.audio.fadeIn > 0 ? 0 : 1
             incoming.play()
         }

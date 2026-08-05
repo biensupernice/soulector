@@ -116,9 +116,11 @@ ios/Soulector/
   the periodic time observer, and `promote` — which swaps the deck in as
   `player` without stopping the sound and moves episode/tracks/accent/artwork
   over with it. `transitionsFired` lets the dive follow the audio in. Audio
-  styles: **cut**, **fade** (duck out, come up), **blend** (both sets play the
-  record's outro at once — same recording at the same point, so it lands as one
-  record heard twice) — picked per crossing from the row menu, so choosing the
+  styles: **blend** (both sets play the record's outro at once — same recording
+  at the same point, so it lands as one record heard twice), **run back** (the
+  reload: the other set drops the record again from the top underneath the copy
+  that's ending, so `landsAtRecordStart` puts the landing on the record's first
+  beat instead of its last), **fade** (duck out, come up) — picked per crossing from the row menu, so choosing the
   style and arming it are one tap. Countdown styles: **minimal**, **ring**
   (drains), **sweep** (the row fills and the screen's accent drifts toward the
   incoming set via `AccentColor.blended(toward:amount:)`), set in the toolbar
