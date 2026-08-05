@@ -24,6 +24,8 @@ import { create } from "zustand";
 import { trpc } from "@/utils/trpc";
 import { cn } from "@/lib/utils";
 import { EpisodeTrackProjection } from "@/server/router";
+import { useTrackGraph } from "../useTrackGraph";
+import { TrackBranchBadge } from "../TrackBranchBadge";
 
 interface EpisodeModalSheetStore {
   isOpen: boolean;
@@ -176,7 +178,19 @@ export function EpisodeTracksList({
 }) {
   const progress = usePlayerProgress();
   const playerActions = usePlayerActions();
+  const graph = useTrackGraph();
   const progressSecs = progress / 1000;
+
+  // Every tracklist gets branch badges unless a surface asks for something
+  // else in the slot.
+  const accessory: TrackRowAccessory =
+    rowAccessory ??
+    ((track) => (
+      <TrackBranchBadge
+        count={graph.connectionCountFor(episodeId, track.order)}
+        onClick={() => {}}
+      />
+    ));
 
   const { data, loaded } = useEpisodeTracks(episodeId);
   const loadedData = loaded ? (data ?? []) : [];
@@ -303,9 +317,9 @@ export function EpisodeTracksList({
                     <></>
                   )}
                 </button>
-                {rowAccessory ? (
-                  <div className="relative shrink-0 pr-2">{rowAccessory(t)}</div>
-                ) : null}
+                <div className="relative flex w-12 shrink-0 justify-end pr-2">
+                  {accessory(t)}
+                </div>
               </div>
             );
           })}

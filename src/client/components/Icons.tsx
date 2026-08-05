@@ -259,6 +259,26 @@ export function IconDotsHorizontal(props: any) {
   );
 }
 
+export function IconBranch(props: any) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={2.25}
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M6 4v11" />
+      <circle cx="6" cy="19" r="2.6" />
+      <circle cx="18" cy="7" r="2.6" />
+      <path d="M17.4 9.6a8.4 8.4 0 01-8.4 8.4" />
+    </svg>
+  );
+}
+
 export function IconChevron(props: any) {
   return (
     <svg
