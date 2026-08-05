@@ -59,6 +59,32 @@ struct AccentColor: Codable, Equatable {
         color { $0 }
     }
 
+    /// A step from this accent toward another, in HSL and around the short way
+    /// of the hue circle. Lets a screen's colour drift toward the set it's
+    /// about to hand over to instead of switching at the last instant.
+    func blended(toward other: AccentColor, amount: Double) -> AccentColor {
+        guard hsl.count >= 3, other.hsl.count >= 3 else { return self }
+        let t = min(1, max(0, amount))
+
+        var hueDelta = other.hsl[0] - hsl[0]
+        if hueDelta > 0.5 { hueDelta -= 1 }
+        if hueDelta < -0.5 { hueDelta += 1 }
+        var hue = hsl[0] + hueDelta * t
+        if hue < 0 { hue += 1 }
+        if hue > 1 { hue -= 1 }
+
+        func blend(_ a: Double, _ b: Double) -> Double { a + (b - a) * t }
+        let blendedRGB = rgb.count == other.rgb.count
+            ? zip(rgb, other.rgb).map { blend($0, $1) }
+            : rgb
+
+        return AccentColor(
+            rgb: blendedRGB,
+            hsl: [hue, blend(hsl[1], other.hsl[1]), blend(hsl[2], other.hsl[2])],
+            palette: nil
+        )
+    }
+
     /// Whether dark text reads better than white on this swatch
     /// (perceived-luminance threshold on the raw RGB).
     var prefersDarkText: Bool {

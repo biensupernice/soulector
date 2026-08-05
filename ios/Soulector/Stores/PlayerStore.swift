@@ -29,6 +29,17 @@ final class PlayerStore: ObservableObject {
     @Published private(set) var accent: AccentColor?
     @Published var isSeeking = false
 
+    /// A crossing into another set, arranged to happen when the record playing
+    /// now runs out. Nil when nothing is on deck.
+    @Published private(set) var queued: QueuedTransition?
+    /// True from the moment a crossing starts working (which for a fade or a
+    /// blend is seconds before the record actually ends) until it lands.
+    @Published private(set) var isCrossing = false
+
+    /// Emits each crossing as it completes, so a dive can follow the audio
+    /// into the set it just handed over to.
+    let transitionsFired = PassthroughSubject<QueuedTransition, Never>()
+
     /// Whether the radio is currently on air. Owned by `RadioStore`, mirrored
     /// here only so the now-playing snapshot the widget reads can show the
     /// "On Air" state on its Tune In button.
@@ -73,6 +84,14 @@ final class PlayerStore: ObservableObject {
     private var loadedArtwork: MPMediaItemArtwork?
     private var loadedArtworkEpisodeId: String?
     private var pendingSeek: Double?
+
+    /// The incoming set, buffered and cued while the current one plays out, so
+    /// a crossing is a volume change rather than a load.
+    private var deck: AVPlayer?
+    private var deckReady = false
+    private var deckTask: Task<Void, Never>?
+    private var deckCancellables = Set<AnyCancellable>()
+    private var crossingTask: Task<Void, Never>?
 
     // MARK: Init
 
@@ -143,6 +162,9 @@ final class PlayerStore: ObservableObject {
     /// `startingAt` seeds an initial seek applied once the audio is ready to play; while
     /// loading we reflect it in `currentTime` so the UI points at the target track immediately.
     func play(episode: Episode, startingAt seconds: Double? = nil) async {
+        // Choosing something by hand clears whatever was on deck — the
+        // arrangement was made against a record that's no longer playing.
+        cancelQueued()
         tearDown()
 
         currentEpisode = episode
@@ -209,8 +231,15 @@ final class PlayerStore: ObservableObject {
     private func startPlayback(url: URL) {
         let item = AVPlayerItem(url: url)
         playerItem = item
-        player = AVPlayer(playerItem: item)
+        let newPlayer = AVPlayer(playerItem: item)
+        player = newPlayer
+        attach(item: item, to: newPlayer, autoStart: true)
+    }
 
+    /// Wires the observers a playing item needs. Split out of `startPlayback`
+    /// because a crossing promotes an already-rolling deck into place, and that
+    /// player needs the same wiring without being told to start.
+    private func attach(item: AVPlayerItem, to attachedPlayer: AVPlayer, autoStart: Bool) {
         // Observe ready-to-play
         item.publisher(for: \.status)
             .receive(on: DispatchQueue.main)
@@ -219,6 +248,7 @@ final class PlayerStore: ObservableObject {
                 switch status {
                 case .readyToPlay:
                     self.updateDuration()
+                    guard autoStart else { return }
                     if let seek = self.pendingSeek {
                         self.pendingSeek = nil
                         self.seek(to: seek, userInitiated: false)
@@ -243,9 +273,12 @@ final class PlayerStore: ObservableObject {
 
         // Periodic time observer
         let interval = CMTime(seconds: 0.5, preferredTimescale: 600)
-        timeObserver = player?.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
+        timeObserver = attachedPlayer.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
             guard let self, !self.isSeeking else { return }
             self.currentTime = time.seconds.isNaN ? 0 : time.seconds
+            // A crossing is arranged against this clock, so every tick is also
+            // the check for whether it's time to start working.
+            self.advanceQueuedTransition()
             // No widget refresh here: WidgetKit's reload budget can't absorb a
             // ticking clock, and it doesn't need to — the snapshot carries
             // elapsed + duration so the widget's timeline advances the progress
@@ -257,6 +290,9 @@ final class PlayerStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 guard let self else { return }
+                // A crossing arranged on the last record owns what happens
+                // next; auto-advance would race it to a different episode.
+                guard self.queued == nil, !self.isCrossing else { return }
                 let finished = self.currentEpisode
                 self.state = .paused
                 self.currentTime = 0
@@ -317,6 +353,7 @@ final class PlayerStore: ObservableObject {
     }
 
     func stop() {
+        cancelQueued()
         tearDown()
         currentEpisode = nil
         state = .idle
@@ -325,6 +362,207 @@ final class PlayerStore: ObservableObject {
         currentTracks = []
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         publishNowPlaying()
+    }
+
+    // MARK: Queued crossings
+
+    /// How long until the arranged crossing, for the countdown.
+    var queuedRemaining: Double? {
+        guard let queued else { return nil }
+        return max(0, queued.fireAt - currentTime)
+    }
+
+    /// Arranges a crossing and starts buffering the set it goes to. Replaces
+    /// anything already on deck — only one thing can be next.
+    func queue(_ transition: QueuedTransition) {
+        cancelQueued()
+        queued = transition
+        deckTask = Task { [weak self] in await self?.prepareDeck(for: transition) }
+    }
+
+    func cancelQueued() {
+        queued = nil
+        isCrossing = false
+        crossingTask?.cancel()
+        crossingTask = nil
+        deckTask?.cancel()
+        deckTask = nil
+        deckCancellables.removeAll()
+        deck?.pause()
+        deck = nil
+        deckReady = false
+        // A cancelled fade would otherwise leave the set half ducked.
+        player?.volume = 1
+    }
+
+    /// Loads and cues the incoming set behind the one playing, so the crossing
+    /// itself is a volume change rather than a network round trip.
+    private func prepareDeck(for transition: QueuedTransition) async {
+        let url: URL?
+        if let local = DownloadsStore.shared.audioURL(for: transition.episode.id) {
+            url = local
+        } else if let urls = try? await APIClient.shared.fetchStreamUrl(episodeId: transition.episode.id),
+                  !urls.httpMp3128Url.isEmpty {
+            url = URL(string: urls.httpMp3128Url)
+        } else {
+            url = nil
+        }
+
+        guard let url, !Task.isCancelled, queued?.id == transition.id else { return }
+
+        let item = AVPlayerItem(url: url)
+        let player = AVPlayer(playerItem: item)
+        player.volume = 0
+        deck = player
+
+        // The cue point is the landing, pulled back by whatever head start the
+        // style wants: a blend needs the incoming set already inside the
+        // record's outro when the two meet.
+        let cue = max(0, transition.startAt - transition.audio.deckLead)
+        item.publisher(for: \.status)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] status in
+                guard status == .readyToPlay, let self, self.deck === player else { return }
+                player.seek(
+                    to: CMTime(seconds: cue, preferredTimescale: 600),
+                    toleranceBefore: .zero,
+                    toleranceAfter: .zero
+                ) { [weak self] finished in
+                    guard finished else { return }
+                    Task { @MainActor [weak self] in
+                        guard let self, self.deck === player else { return }
+                        self.deckReady = true
+                    }
+                }
+            }
+            .store(in: &deckCancellables)
+    }
+
+    /// Called on every clock tick: starts the crossing once we're inside its
+    /// lead-in. The work itself runs as a task so the ramps can take their time.
+    private func advanceQueuedTransition() {
+        guard let transition = queued, !isCrossing else { return }
+        guard currentTime >= transition.fireAt - transition.audio.lead else { return }
+        isCrossing = true
+        crossingTask = Task { [weak self] in await self?.performCrossing(transition) }
+    }
+
+    private func performCrossing(_ transition: QueuedTransition) async {
+        // However much of the record is actually left — a scrub can leave less
+        // than the style asked for, and the ramps should still finish on time.
+        let remaining = max(0, transition.fireAt - currentTime)
+
+        if transition.audio.overlaps {
+            // The incoming set comes up under the outgoing one and they trade
+            // places across what's left of the record.
+            if let deck, deckReady {
+                deck.volume = 0
+                deck.play()
+                let span = max(0.5, remaining)
+                async let outgoing: Void = ramp(player, to: 0, duration: span)
+                async let incoming: Void = ramp(deck, to: 1, duration: span)
+                _ = await (outgoing, incoming)
+            }
+        } else {
+            await ramp(player, to: 0, duration: max(0.3, remaining))
+        }
+
+        guard !Task.isCancelled else { return }
+        land(transition)
+    }
+
+    /// The moment itself.
+    private func land(_ transition: QueuedTransition) {
+        guard let incoming = deck, deckReady else {
+            // Nothing buffered in time — take the straight route and accept the
+            // load. Better a late crossing than a dropped one.
+            queued = nil
+            isCrossing = false
+            Task { await play(episode: transition.episode, startingAt: transition.startAt) }
+            transitionsFired.send(transition)
+            return
+        }
+
+        if !transition.audio.overlaps {
+            // A style that doesn't overlap cues the deck at the landing point
+            // and leaves it there until now.
+            incoming.volume = transition.audio.fadeIn > 0 ? 0 : 1
+            incoming.play()
+        }
+
+        promote(incoming, for: transition)
+
+        if transition.audio.fadeIn > 0 {
+            crossingTask = Task { [weak self] in
+                guard let self else { return }
+                await self.ramp(self.player, to: 1, duration: transition.audio.fadeIn)
+            }
+        }
+    }
+
+    /// Swaps the deck in as the player without stopping the sound, and moves
+    /// every piece of episode state over with it.
+    private func promote(_ incoming: AVPlayer, for transition: QueuedTransition) {
+        guard let item = incoming.currentItem else { return }
+
+        // Retire the outgoing player. Its observers go with it — `attach` will
+        // rebuild them around the incoming item.
+        if let observer = timeObserver {
+            player?.removeTimeObserver(observer)
+            timeObserver = nil
+        }
+        player?.pause()
+        cancellables.removeAll()
+        deckCancellables.removeAll()
+
+        player = incoming
+        playerItem = item
+        deck = nil
+        deckReady = false
+
+        currentEpisode = transition.episode
+        currentTracks = []
+        duration = 0
+        state = .playing
+        attach(item: item, to: incoming, autoStart: false)
+        updateDuration()
+        let position = incoming.currentTime().seconds
+        currentTime = position.isNaN ? transition.startAt : position
+
+        tracksLoadTask?.cancel()
+        tracksLoadTask = Task { [weak self] in await self?.loadTracks(for: transition.episode.id) }
+        accentColorTask?.cancel()
+        accent = nil
+        accentColorTask = Task { [weak self] in await self?.loadAccentColor(for: transition.episode.id) }
+
+        // Force the lock screen and widget to pick up the new artwork.
+        loadedArtwork = nil
+        loadedArtworkEpisodeId = nil
+        updateNowPlayingInfo()
+        publishNowPlaying()
+
+        queued = nil
+        isCrossing = false
+        transitionsFired.send(transition)
+    }
+
+    /// Walks a player's volume to `target`. Stepping it by hand rather than
+    /// through an audio mix keeps this to one place and stays cancellable.
+    private func ramp(_ player: AVPlayer?, to target: Float, duration: Double) async {
+        guard let player else { return }
+        guard duration > 0 else {
+            player.volume = target
+            return
+        }
+        let start = player.volume
+        let steps = max(1, Int(duration * 30))
+        let step = UInt64(duration / Double(steps) * 1_000_000_000)
+        for index in 1...steps {
+            try? await Task.sleep(nanoseconds: step)
+            if Task.isCancelled { return }
+            player.volume = start + (target - start) * (Float(index) / Float(steps))
+        }
+        player.volume = target
     }
 
     // MARK: Private helpers

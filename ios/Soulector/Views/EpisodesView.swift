@@ -78,10 +78,20 @@ struct EpisodesView: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .topLeading)))
                 }
             }
-            .sheet(item: $selectedEpisode) { episode in
-                EpisodeDetailSheet(episode: episode)
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.hidden)
+            // Presented on *whether* there's an episode, not on which one.
+            // `.sheet(item:)` ties the presentation's identity to the episode's
+            // id, so a crossing landing under the sheet tore it down and put a
+            // new one up — visibly a close and a reopen. Bound this way the
+            // sheet stays put and swaps its contents.
+            .sheet(isPresented: Binding(
+                get: { selectedEpisode != nil },
+                set: { presented in if !presented { selectedEpisode = nil } }
+            )) {
+                if let episode = selectedEpisode {
+                    EpisodeDetailSheet(episode: episode, onNavigate: { selectedEpisode = $0 })
+                        .presentationDetents([.large])
+                        .presentationDragIndicator(.hidden)
+                }
             }
 
             // Floating radio/shuffle cluster (mirrors the web PlayerFabs),
@@ -150,6 +160,11 @@ struct EpisodesView: View {
             if isEmpty && selectedTab == .downloads { selectedTab = .all }
         }
         .task { await episodesVM.fetchEpisodes() }
+        // The tracks index isn't just for search any more — the sideways badges
+        // in every tracklist read from the graph it builds, so it comes down at
+        // launch instead of waiting for the search field to open. Cached on
+        // disk, so this is a refresh, not a cold fetch, after the first run.
+        .task { await episodesVM.refreshSearchIndex() }
         .onAppear {
             radioStore.configure(player: playerStore, episodesVM: episodesVM)
             playerStore.onEpisodeEnded = { [weak episodesVM, weak playerStore, weak radioStore] finished in
