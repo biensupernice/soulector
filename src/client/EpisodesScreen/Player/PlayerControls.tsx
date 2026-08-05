@@ -10,7 +10,7 @@ import {
 } from "../../components/Icons";
 import cx from "classnames";
 import { Slider } from "@/client/components/Slider";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { EpisodeProjection } from "@/server/router";
 import { EpisodeListContext } from "@/pages";
 

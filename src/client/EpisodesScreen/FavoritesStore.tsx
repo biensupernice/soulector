@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import create from "zustand";
+import { create } from "zustand";
 
 export type FavoritesStore = {
   favorites: string[];
@@ -12,7 +12,7 @@ export type FavoritesStore = {
   persistFavorites: () => void;
 };
 
-export const useFavoritesStore = create<FavoritesStore>((set, get) => ({
+export const useFavoritesStore = create<FavoritesStore>()((set, get) => ({
   favorites: [],
   favoritesIndex: new Set<string>(),
   isFavorite: (id: string) => get().favorites.includes(id),

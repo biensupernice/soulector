@@ -2,13 +2,12 @@ import { RefObject, createContext, useRef, useState } from "react";
 import { EpisodesScreen } from "@/client/EpisodesScreen/EpisodesScreen";
 import { useShortcutHandlers } from "@/client/useKeyboardHandlers";
 import Navbar from "@/client/EpisodesScreen/Navbar";
-import "react-spring-bottom-sheet/dist/style.css";
 import { EpisodeOptionsModal } from "../client/EpisodesScreen/EpisodeOptionsModal";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useScroll, useTransform } from "motion/react";
 import { EpisodeListHandle } from "@/client/EpisodesScreen/EpisodeList";
 
 export type EpisodeListContext = {
-  ref: RefObject<EpisodeListHandle>;
+  ref: RefObject<EpisodeListHandle | null>;
   focusEpisode: (episodeId: string) => void;
 };
 

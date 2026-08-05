@@ -143,25 +143,6 @@ body {
   animation-delay: -1.3s;
 }
 
-:root {
-  --rsbs-max-w: 640px;
-  --rsbs-ml: auto;
-  --rsbs-mr: auto;
-}
-
-[data-rsbs-overlay],
-[data-rsbs-backdrop],
-[data-rsbs-root]:after {
-  @apply mt-safe-top !z-50;
-}
-
-.rsbs-not-full-height [data-rsbs-header] {
-  padding-top: calc(20px) !important;
-}
-.rsbs-not-full-height [data-rsbs-header]:before {
-  top: 8px !important;
-}
-
 .current-track-animation {
   animation: animateTrackVizHeight 500ms forwards infinite;
   transform-origin: bottom;

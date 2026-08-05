@@ -7,7 +7,7 @@ import React, { useEffect } from "react";
 import { IconChevron, IconSearch, Soulection } from "../../components/Icons";
 import NavbarSearch from "./NavbarSearch";
 import cx from "classnames";
-import create from "zustand";
+import { create } from "zustand";
 import {
   CollectiveSelect,
   CollectiveSelectContent,
@@ -28,7 +28,7 @@ export type NavbarStore = {
   closeSearch: () => void;
 };
 
-export const useNavbarStore = create<NavbarStore>((set, get) => ({
+export const useNavbarStore = create<NavbarStore>()((set, get) => ({
   searchOpen: false,
   openSearch() {
     set({
@@ -48,7 +48,7 @@ export type CollectiveSelectStore = {
   loadPersisted: () => void;
 };
 
-export const useCollectiveSelectStore = create<CollectiveSelectStore>(
+export const useCollectiveSelectStore = create<CollectiveSelectStore>()(
   (set, get) => ({
     selected: "soulection",
     setSelected(collective) {
