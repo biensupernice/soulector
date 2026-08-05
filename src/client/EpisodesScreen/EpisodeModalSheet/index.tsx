@@ -29,6 +29,7 @@ import { TrackBranchBadge } from "../TrackBranchBadge";
 import { useEpisodesScreenState } from "../useEpisodesScreenState";
 import { useTracksPanelStore } from "../TracksPanelStore";
 import { TrackConnectionsInline } from "../TrackConnections";
+import { DiveTrail } from "../DiveTrail";
 
 interface EpisodeModalSheetStore {
   isOpen: boolean;
@@ -115,6 +116,9 @@ function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
           <span>Open in SoundCloud</span>
         </a>
         <EpisodeSheetFavoriteToggle episodeId={episodeId} />
+      </div>
+      <div className="w-full px-3">
+        <DiveTrail />
       </div>
       {hasTracks && (
         <div className="relative mx-3 flex h-1/2 min-h-[14rem] shrink-0 flex-col self-stretch rounded-lg">

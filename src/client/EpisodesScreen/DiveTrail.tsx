@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { formatTimeSecs } from "@/client/helpers";
 import { IconTimes } from "@/client/components/Icons";
 import { useRetrace } from "./TrackConnections";
@@ -15,6 +15,14 @@ export function DiveTrail() {
   const trail = useTracksPanelStore((s) => s.trail);
   const { clearTrail } = useTracksPanelActions();
   const retraceTo = useRetrace();
+  const stripRef = useRef<HTMLDivElement | null>(null);
+
+  // A long path outruns a narrow strip, and the step you are standing on is
+  // the one that has to stay in sight.
+  useEffect(() => {
+    const strip = stripRef.current;
+    if (strip) strip.scrollLeft = strip.scrollWidth;
+  }, [trail.length]);
 
   // Escape leaves the thread without leaving the set you ended up in.
   useEffect(() => {
@@ -29,7 +37,10 @@ export function DiveTrail() {
   if (trail.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-1 overflow-x-auto border-b border-white/10 bg-black/25 px-3 py-2 text-white">
+    <div
+      ref={stripRef}
+      className="flex items-center gap-1 overflow-x-auto border-b border-white/10 bg-black/25 px-3 py-2 text-white"
+    >
       {trail.map((step, index) => {
         const isLast = index === trail.length - 1;
         return (
