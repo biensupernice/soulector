@@ -72,13 +72,7 @@ export function useRadio() {
       endsAtMs: next.endsAtMs,
     });
     playerActions.loadEpisode(next.episodeId, next.offsetMs);
-    mutate(next.episodeId, {
-      onSuccess(data) {
-        if (data) {
-          playerActions.setCurrentEpisodeStreamUrls(next.episodeId, data);
-        }
-      },
-    });
+    mutate(next.episodeId);
     return true;
   }, [episodes, selectedCollective, playerActions, radioActions, mutate]);
 

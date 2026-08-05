@@ -19,13 +19,14 @@ import {
 } from "../PlayerStore";
 import { useGetEpisode } from "../useEpisodeHooks";
 import { Sheet } from "react-modal-sheet";
-import { useEffect, useRef } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { create } from "zustand";
 import { trpc } from "@/utils/trpc";
 import { cn } from "@/lib/utils";
 import { EpisodeTrackProjection } from "@/server/router";
 import { useTrackGraph } from "../useTrackGraph";
 import { TrackBranchBadge } from "../TrackBranchBadge";
+import { useEpisodesScreenState } from "../useEpisodesScreenState";
 
 interface EpisodeModalSheetStore {
   isOpen: boolean;
@@ -181,6 +182,10 @@ export function EpisodeTracksList({
   const graph = useTrackGraph();
   const progressSecs = progress / 1000;
 
+  // Which row has its connections open. Only ever one — opening another
+  // closes the last, so the list never turns into a wall of expansions.
+  const [openOrder, setOpenOrder] = useState<number | null>(null);
+
   // Every tracklist gets branch badges unless a surface asks for something
   // else in the slot.
   const accessory: TrackRowAccessory =
@@ -188,7 +193,10 @@ export function EpisodeTracksList({
     ((track) => (
       <TrackBranchBadge
         count={graph.connectionCountFor(episodeId, track.order)}
-        onClick={() => {}}
+        active={openOrder === track.order}
+        onClick={() =>
+          setOpenOrder((open) => (open === track.order ? null : track.order))
+        }
       />
     ));
 
@@ -219,7 +227,10 @@ export function EpisodeTracksList({
       const elRect = el.getBoundingClientRect();
       // Already fully visible: leave it be, so we don't fight the user's
       // scroll position or yank a short list that fits without scrolling.
-      if (elRect.top >= containerRect.top && elRect.bottom <= containerRect.bottom) {
+      if (
+        elRect.top >= containerRect.top &&
+        elRect.bottom <= containerRect.bottom
+      ) {
         return;
       }
       const delta =
@@ -252,7 +263,7 @@ export function EpisodeTracksList({
   }
 
   return loaded && loadedData.length > 0 ? (
-    <div className="xs:slide-in-from-bottom-3 md:fade-in xs:animate-in duration-600 relative">
+    <div className="xs:slide-in-from-bottom-3 md:fade-in xs:animate-in duration-600 relative w-full">
       <div className="py-1" />
       <div className="py-4 rounded-lg text-white relative border-accent">
         {/* <div className="absolute rounded-lg inset-0 bg-black/20"></div> */}
@@ -263,70 +274,136 @@ export function EpisodeTracksList({
           {loadedData.map((t) => {
             const isCurrent = currentTrack?.order === t.order;
             return (
-              // The row is a div, not a button: the accessory alongside it is
-              // itself a button, and nesting the two would be invalid markup.
-              <div
-                key={t.order}
-                className={cn("w-full relative flex items-center hover:bg-white/10")}
-              >
+              <Fragment key={t.order}>
+                {/* The row is a div, not a button: the accessory alongside it
+                    is itself a button, and nesting the two would be invalid
+                    markup. */}
                 <div
-                  data-current-track={isCurrent}
                   className={cn(
-                    "absolute w-[2px] md:w-[4px] inset-y-0 bg-white opacity-0 fade-in-100 data-[current-track=true]:opacity-100 data-[current-track=true]:animate-in",
+                    "w-full relative flex items-center hover:bg-white/10",
                   )}
-                ></div>
-                <button
-                  ref={isCurrent ? currentTrackRef : undefined}
-                  onClick={() => onTrackClick(t)}
-                  className="space-x-5 relative flex min-w-0 w-full justify-between items-center px-4 md:px-4 py-2 text-left"
                 >
-                  <div className="flex text-left items-center space-x-3 relative w-full">
-                    <div
-                      className={cn(
-                        "text-xs h-5 w-5 inline-flex p-1 items-center justify-center relative",
-                        isCurrent && "bg-white text-accent rounded-full",
-                      )}
-                    >
-                      {isCurrent && (
-                        <div className="bg-white animate-ping [animation-duration:1500ms] absolute rounded-full origin-center p-2"></div>
-                      )}
-                      <div className="relative">{t.order}</div>
-                    </div>
-                    <div>
+                  <div
+                    data-current-track={isCurrent}
+                    className={cn(
+                      "absolute w-[2px] md:w-[4px] inset-y-0 bg-white opacity-0 fade-in-100 data-[current-track=true]:opacity-100 data-[current-track=true]:animate-in",
+                    )}
+                  ></div>
+                  <button
+                    ref={isCurrent ? currentTrackRef : undefined}
+                    onClick={() => onTrackClick(t)}
+                    className="space-x-5 relative flex min-w-0 w-full justify-between items-center px-4 md:px-4 py-2 text-left"
+                  >
+                    <div className="flex text-left items-center space-x-3 relative w-full">
                       <div
                         className={cn(
-                          "font-medium text-sm",
-                          isCurrent && "!font-bold md:!font-black",
+                          "text-xs h-5 w-5 inline-flex p-1 items-center justify-center relative",
+                          isCurrent && "bg-white text-accent rounded-full",
                         )}
                       >
-                        {t.name}
+                        {isCurrent && (
+                          <div className="bg-white animate-ping [animation-duration:1500ms] absolute rounded-full origin-center p-2"></div>
+                        )}
+                        <div className="relative">{t.order}</div>
                       </div>
-                      <div
-                        className={cn(
-                          "text-white/80 text-sm",
-                          isCurrent && "text-white/100",
-                        )}
-                      >
-                        {t.artist}
+                      <div>
+                        <div
+                          className={cn(
+                            "font-medium text-sm",
+                            isCurrent && "!font-bold md:!font-black",
+                          )}
+                        >
+                          {t.name}
+                        </div>
+                        <div
+                          className={cn(
+                            "text-white/80 text-sm",
+                            isCurrent && "text-white/100",
+                          )}
+                        >
+                          {t.artist}
+                        </div>
                       </div>
                     </div>
+                    {t.timestamp ? (
+                      <div className="text-xs">
+                        {formatTimeSecs(t.timestamp)}
+                      </div>
+                    ) : (
+                      <></>
+                    )}
+                  </button>
+                  <div className="relative flex w-12 shrink-0 justify-end pr-2">
+                    {accessory(t)}
                   </div>
-                  {t.timestamp ? (
-                    <div className="text-xs">{formatTimeSecs(t.timestamp)}</div>
-                  ) : (
-                    <></>
-                  )}
-                </button>
-                <div className="relative flex w-12 shrink-0 justify-end pr-2">
-                  {accessory(t)}
                 </div>
-              </div>
+                {openOrder === t.order && (
+                  <TrackConnections
+                    episodeId={episodeId}
+                    order={t.order}
+                    onHopped={() => setOpenOrder(null)}
+                  />
+                )}
+              </Fragment>
             );
           })}
         </div>
       </div>
     </div>
   ) : null;
+}
+
+/**
+ * The sets that also played this record, and the click that takes you into one
+ * at the moment it lands there.
+ */
+function TrackConnections({
+  episodeId,
+  order,
+  onHopped,
+}: {
+  episodeId: string;
+  order: number;
+  onHopped: () => void;
+}) {
+  const graph = useTrackGraph();
+  const { onTrackClick } = useEpisodesScreenState();
+  const connections = graph.connectionsFor(episodeId, order);
+
+  if (connections.length === 0) return null;
+
+  return (
+    <div className="relative bg-black/25 px-4 py-3">
+      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-white/60">
+        Also played in {connections.length} other{" "}
+        {connections.length === 1 ? "episode" : "episodes"}
+      </div>
+      <div className="space-y-px">
+        {connections.map(({ episode, track }) => (
+          <button
+            key={episode.id}
+            onClick={() => {
+              onTrackClick(episode.id, track.timestamp);
+              onHopped();
+            }}
+            className="flex w-full items-center justify-between rounded px-2 py-2 text-left hover:bg-white/10"
+          >
+            <div className="min-w-0 pr-3">
+              <div className="truncate text-sm font-medium">{episode.name}</div>
+              <div className="text-xs text-white/60">
+                {formatDate(episode.releasedAt)}
+              </div>
+            </div>
+            {track.timestamp !== undefined && (
+              <div className="shrink-0 text-xs tabular-nums text-white/80">
+                {formatTimeSecs(track.timestamp)}
+              </div>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export interface EpisodeSheetFavoriteToggleProps {

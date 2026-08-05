@@ -39,13 +39,7 @@ export function useEpisodesScreenState() {
       episodeModalSheetActions.open();
       playerActions.loadEpisode(episodeId);
 
-      mutate(episodeId, {
-        onSuccess(data) {
-          if (data) {
-            playerActions.setCurrentEpisodeStreamUrls(episodeId, data);
-          }
-        },
-      });
+      mutate(episodeId);
     }
   }
 
@@ -65,13 +59,7 @@ export function useEpisodesScreenState() {
         timestampSecs !== undefined ? timestampSecs * 1000 : undefined,
       );
 
-      mutate(episodeId, {
-        onSuccess(data) {
-          if (data) {
-            playerActions.setCurrentEpisodeStreamUrls(episodeId, data);
-          }
-        },
-      });
+      mutate(episodeId);
     }
   }
 
@@ -92,13 +80,7 @@ export function useEpisodesScreenState() {
       const episodeId = episode.id;
       playerActions.loadEpisode(episodeId);
       episodeModalSheetActions.open();
-      mutate(episodeId, {
-        onSuccess(data) {
-          if (data) {
-            playerActions.setCurrentEpisodeStreamUrls(episodeId, data);
-          }
-        },
-      });
+      mutate(episodeId);
     }
   }
 
@@ -129,6 +111,16 @@ export function usePlayEpisodeMutation() {
           staleTime: Infinity,
         }
       );
+
+      // Handing the urls to the player here rather than in a caller's
+      // onSuccess: those callbacks belong to the component that fired the
+      // mutation, and a move that swaps episodes can unmount it before the
+      // request lands — which left the new episode loaded but silent.
+      if (query) {
+        usePlayerStore
+          .getState()
+          .actions.setCurrentEpisodeStreamUrls(episodeId, query);
+      }
 
       return query;
     },
