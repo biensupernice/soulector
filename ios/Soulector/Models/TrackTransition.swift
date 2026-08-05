@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // MARK: - Audio
 
@@ -87,33 +88,90 @@ enum TransitionAudio: String, CaseIterable, Identifiable, Codable {
     }
 }
 
-// MARK: - Visual
+// MARK: - The mark on the row
 
-/// How the wait, and then the handover, look.
-enum TransitionVisual: String, CaseIterable, Identifiable, Codable {
-    /// A line of text on the queued row. Nothing else moves.
-    case minimal
-    /// A ring that drains as the record plays out.
-    case ring
-    /// The row fills like a loading bar, and the screen's colour drifts toward
-    /// the set it's about to hand over to.
-    case sweep
+/// The glyph on the control that arranges a crossing. Which one reads as
+/// "put this next" turns out to be a matter of taste, so it's a setting.
+enum CrossingMark: String, CaseIterable, Identifiable, Codable {
+    case swap
+    case queue
+    case timer
+    case merge
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .minimal: return "Minimal"
-        case .ring:    return "Ring"
-        case .sweep:   return "Sweep"
+        case .swap:  return "Swap"
+        case .queue: return "Queue"
+        case .timer: return "Timer"
+        case .merge: return "Merge"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .swap:  return "arrow.left.arrow.right"
+        case .queue: return "text.append"
+        case .timer: return "timer"
+        case .merge: return "arrow.triangle.merge"
+        }
+    }
+}
+
+// MARK: - Handing the sheet over
+
+/// What the episode sheet does when a crossing lands under it and the set it's
+/// describing is no longer the set that's playing.
+enum SheetHandover: String, CaseIterable, Identifiable, Codable {
+    /// The old set dissolves into the new one.
+    case crossfade
+    /// The new set rises over the old, like a page arriving.
+    case rise
+    /// Straight swap, no ceremony.
+    case hold
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .crossfade: return "Crossfade"
+        case .rise:      return "Rise"
+        case .hold:      return "Hold"
         }
     }
 
     var detail: String {
         switch self {
-        case .minimal: return "Just the count"
-        case .ring:    return "Draining ring"
-        case .sweep:   return "Fills, and the colour drifts"
+        case .crossfade: return "One dissolves into the other"
+        case .rise:      return "The new set comes up"
+        case .hold:      return "No ceremony"
+        }
+    }
+}
+
+extension SheetHandover {
+    var animation: Animation? {
+        switch self {
+        case .crossfade: return .easeInOut(duration: 0.55)
+        case .rise:      return .spring(response: 0.5, dampingFraction: 0.85)
+        case .hold:      return nil
+        }
+    }
+
+    var transition: AnyTransition {
+        switch self {
+        case .crossfade:
+            return .opacity
+        case .rise:
+            // The arriving set comes up over the one leaving, which stays put
+            // and fades — otherwise both slide and nothing holds the frame.
+            return .asymmetric(
+                insertion: .move(edge: .bottom).combined(with: .opacity),
+                removal: .opacity
+            )
+        case .hold:
+            return .identity
         }
     }
 }
@@ -141,7 +199,6 @@ struct QueuedTransition: Identifiable, Equatable {
     /// be drawn as a fraction of itself.
     let armedFrom: Double
     let audio: TransitionAudio
-    let visual: TransitionVisual
 
     var id: String { "\(episode.id)#\(track.order)" }
 

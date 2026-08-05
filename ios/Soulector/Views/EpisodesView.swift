@@ -78,13 +78,20 @@ struct EpisodesView: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .topLeading)))
                 }
             }
-            .sheet(item: $selectedEpisode) { episode in
-                // A sideways dive can leave a different episode playing; the
-                // sheet follows it there so closing the dive doesn't drop the
-                // user back onto the set they left.
-                EpisodeDetailSheet(episode: episode, onNavigate: { selectedEpisode = $0 })
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.hidden)
+            // Presented on *whether* there's an episode, not on which one.
+            // `.sheet(item:)` ties the presentation's identity to the episode's
+            // id, so a crossing landing under the sheet tore it down and put a
+            // new one up — visibly a close and a reopen. Bound this way the
+            // sheet stays put and swaps its contents.
+            .sheet(isPresented: Binding(
+                get: { selectedEpisode != nil },
+                set: { presented in if !presented { selectedEpisode = nil } }
+            )) {
+                if let episode = selectedEpisode {
+                    EpisodeDetailSheet(episode: episode, onNavigate: { selectedEpisode = $0 })
+                        .presentationDetents([.large])
+                        .presentationDragIndicator(.hidden)
+                }
             }
 
             // Floating radio/shuffle cluster (mirrors the web PlayerFabs),

@@ -120,11 +120,16 @@ ios/Soulector/
   at the same point, so it lands as one record heard twice), **run back** (the
   reload: the other set drops the record again from the top underneath the copy
   that's ending, so `landsAtRecordStart` puts the landing on the record's first
-  beat instead of its last), **fade** (duck out, come up) — picked per crossing from the row menu, so choosing the
-  style and arming it are one tap. Countdown styles: **minimal**, **ring**
-  (drains), **sweep** (the row fills and the screen's accent drifts toward the
-  incoming set via `AccentColor.blended(toward:amount:)`), set in the toolbar
-  menu alongside landing focus. A manual `play` cancels whatever was on deck,
+  beat instead of its last), **fade** (duck out, come up) — picked per crossing from the row's own
+  control, so choosing the style and arming it are one tap, and tapping the lit
+  one calls it off. The wait is drawn by the row filling while the screen's
+  accent drifts toward the incoming set (`AccentColor.blended(toward:amount:)`).
+  The toolbar menu holds landing focus, which glyph marks the control
+  (`CrossingMark`), and how the episode sheet changes hands (`SheetHandover`).
+  That sheet is presented on *whether* there's an episode rather than which one
+  — `.sheet(item:)` ties presentation identity to the id, so a landing crossing
+  tore the sheet down and put a new one up — and it swaps its contents in place,
+  carrying an `OnDeckPanel` with what's next while a crossing is arranged. A manual `play` cancels whatever was on deck,
   and a crossing suppresses auto-advance so the two can't race
 - **Radio mode:** `RadioStore` (wired in `EpisodesView.onAppear` via `configure`) owns tune-in/out, the slot-boundary timer, drift correction, and resume re-sync. `Models/RadioSchedule.swift` computes what's on air and must stay semantically identical to the web's `src/lib/radioSchedule.ts` (same hash, ordering, epoch) — change them together or iOS and web broadcasts diverge
 - **Home-screen widget:** `SoulectorWidget` shows the current mix on an

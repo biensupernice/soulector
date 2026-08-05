@@ -63,8 +63,9 @@ struct TrackBranchSlot: View {
 /// Kept as bare keys so the chrome (which owns the menu) and the screens
 /// (which act on them) can read the same settings without threading state.
 enum DiveSettings {
-    static let visualKey = "soulector.dive.visual"
     static let focusKey = "soulector.dive.focusLanding"
+    static let markKey = "soulector.dive.mark"
+    static let handoverKey = "soulector.dive.handover"
 }
 
 /// One step of a dive. A dive alternates between the two: a track shows the
@@ -202,8 +203,6 @@ private struct DiveTrackScreen: View {
     @EnvironmentObject var radioStore: RadioStore
     @EnvironmentObject var accents: DiveAccents
 
-    @AppStorage(DiveSettings.visualKey) private var visualStyle = TransitionVisual.ring
-
     /// Which row has its crossing choices out. One at a time, and owned here
     /// rather than by the row, so a tap anywhere on the screen can close it.
     @State private var openRow: String?
@@ -222,7 +221,6 @@ private struct DiveTrackScreen: View {
     private var accent: Color {
         guard let base = accents.accent(for: appearance.episode.id) else { return Color(white: 0.09) }
         if let crossing = playerStore.queued,
-           crossing.visual == .sweep,
            let destination = accents.accent(for: crossing.episode.id) {
             return base
                 .blended(toward: destination, amount: crossing.progress(at: playerStore.currentTime))
@@ -436,8 +434,7 @@ private struct DiveTrackScreen: View {
             fireAt: endsHere,
             startAt: landsAt,
             armedFrom: now,
-            audio: audio,
-            visual: visualStyle
+            audio: audio
         )
     }
 }
@@ -461,6 +458,8 @@ private struct DiveEpisodeRow: View {
     @EnvironmentObject var playerStore: PlayerStore
     @EnvironmentObject var downloadsStore: DownloadsStore
     @EnvironmentObject var network: NetworkMonitor
+
+    @AppStorage(DiveSettings.markKey) private var mark = CrossingMark.swap
 
     private var isCurrent: Bool { playerStore.currentEpisode?.id == appearance.episode.id }
 
@@ -555,18 +554,14 @@ private struct DiveEpisodeRow: View {
         // that light fills across it as the record plays out.
         .background(alignment: .leading) {
             if let crossing {
-                if crossing.visual == .sweep {
-                    GeometryReader { geo in
-                        Rectangle()
-                            .fill(Color.white.opacity(0.16))
-                            .frame(width: geo.size.width * crossing.progress(at: playerStore.currentTime))
-                            // Scoped to the fill: the clock ticks twice a
-                            // second, and animating the whole row on that beat
-                            // would drag everything else along with it.
-                            .animation(.linear(duration: 0.5), value: playerStore.currentTime)
-                    }
-                } else {
-                    Color.white.opacity(0.08)
+                GeometryReader { geo in
+                    Rectangle()
+                        .fill(Color.white.opacity(0.16))
+                        .frame(width: geo.size.width * crossing.progress(at: playerStore.currentTime))
+                        // Scoped to the fill: the clock ticks twice a second,
+                        // and animating the whole row on that beat would drag
+                        // everything else along with it.
+                        .animation(.linear(duration: 0.5), value: playerStore.currentTime)
                 }
             }
         }
@@ -576,7 +571,6 @@ private struct DiveEpisodeRow: View {
                 CrossingChoices(
                     armed: crossing?.audio,
                     canCross: canCross,
-                    canCallOff: crossing != nil,
                     onPick: { style in
                         onSetOpen(false)
                         onCross(style)
@@ -616,10 +610,7 @@ private struct DiveEpisodeRow: View {
             }
 
             Button(action: { onSetOpen(!isOpen) }) {
-                // Merge, against the branch mark the tracklist uses to get
-                // here: one brings the sets together, the other sends you off
-                // to find them.
-                Image(systemName: "arrow.triangle.merge")
+                Image(systemName: mark.symbol)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(width: 30, height: 30)
@@ -648,34 +639,21 @@ private struct CrossingChoices: View {
     /// The style already arranged, if this row is on deck.
     let armed: TransitionAudio?
     let canCross: Bool
-    /// Only when there's something arranged to call off.
-    let canCallOff: Bool
     let onPick: (TransitionAudio) -> Void
     let onCallOff: () -> Void
 
     var body: some View {
         HStack(spacing: 6) {
             if canCross {
-                if canCallOff {
-                    // Icon alone: three named ways across plus a fourth word
-                    // would crowd the tray off the narrow phones.
-                    Button(action: onCallOff) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.white)
-                            .frame(width: 28, height: 28)
-                            .background(Circle().fill(Color.white.opacity(0.16)))
-                            .contentShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Call off the crossing")
-                }
                 ForEach(TransitionAudio.allCases) { style in
+                    let isArmed = armed == style
                     chip(
                         title: style.title,
                         symbol: style.symbol,
-                        filled: armed == style,
-                        action: { onPick(style) }
+                        filled: isArmed,
+                        // The lit one is the way out as well as the way in:
+                        // tapping what's already arranged calls it off.
+                        action: { isArmed ? onCallOff() : onPick(style) }
                     )
                 }
             } else {
@@ -727,25 +705,12 @@ private struct CrossingBadge: View {
     @State private var pulsing = false
 
     var body: some View {
-        HStack(spacing: 5) {
-            if crossing.visual == .ring {
-                ZStack {
-                    Circle()
-                        .stroke(accent.opacity(0.25), lineWidth: 2)
-                    Circle()
-                        .trim(from: 0, to: max(0.02, 1 - elapsed))
-                        .stroke(accent, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .animation(.linear(duration: 0.5), value: remaining)
-                }
-                .frame(width: 14, height: 14)
-            }
-
-            Text(countdown)
-                .font(.app(size: 12, weight: .bold))
-                .monospacedDigit()
-        }
-        .foregroundColor(accent)
+        // The wait is drawn by the row filling behind it, so the badge itself
+        // only has to say how long is left.
+        Text(countdown)
+            .font(.app(size: 12, weight: .bold))
+            .monospacedDigit()
+            .foregroundColor(accent)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(Capsule().fill(Color.white))
@@ -755,11 +720,6 @@ private struct CrossingBadge: View {
             // Calm while it waits, alive once it's happening.
             pulsing = handing
         }
-    }
-
-    /// How much of the wait is behind us — the ring shows what's left of it.
-    private var elapsed: Double {
-        crossing.progress(at: crossing.fireAt - remaining)
     }
 
     private var countdown: String {
@@ -974,8 +934,9 @@ private struct DiveChrome: ViewModifier {
     let accent: Color
     let close: () -> Void
 
-    @AppStorage(DiveSettings.visualKey) private var visualStyle = TransitionVisual.ring
     @AppStorage(DiveSettings.focusKey) private var focusLanding = true
+    @AppStorage(DiveSettings.markKey) private var mark = CrossingMark.swap
+    @AppStorage(DiveSettings.handoverKey) private var handover = SheetHandover.crossfade
 
     func body(content: Content) -> some View {
         content
@@ -1019,9 +980,18 @@ private struct DiveChrome: ViewModifier {
                 }
             }
 
-            Section("Countdown") {
-                Picker("Look", selection: $visualStyle) {
-                    ForEach(TransitionVisual.allCases) { style in
+            Section("Crossing mark") {
+                Picker("Mark", selection: $mark) {
+                    ForEach(CrossingMark.allCases) { option in
+                        // The row previews the glyph it sets.
+                        Label(option.title, systemImage: option.symbol).tag(option)
+                    }
+                }
+            }
+
+            Section("When a crossing lands") {
+                Picker("Handover", selection: $handover) {
+                    ForEach(SheetHandover.allCases) { style in
                         Text("\(style.title) · \(style.detail)").tag(style)
                     }
                 }
