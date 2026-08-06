@@ -1,12 +1,15 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { create } from "zustand";
 import { Sheet } from "react-modal-sheet";
 import { Drawer } from "vaul";
 import {
   AnimatePresence,
+  animate,
   motion,
   useMotionValue,
   useTransform,
+  type PanInfo,
 } from "motion/react";
 import { cn } from "@/lib/utils";
 
@@ -149,42 +152,64 @@ export function VaulSheet({ isOpen, onClose, children }: SheetShellProps) {
 
 // ---------------------------------------------------------------------------
 
-/** Close if dragged past a quarter of the way, or flicked hard enough. */
-const DISMISS_OFFSET_RATIO = 0.25;
-const DISMISS_VELOCITY = 500;
+/**
+ * The numbers react-modal-sheet 1.8.1 shipped with — the build this app felt
+ * right on. Light mass is what makes it snap rather than glide.
+ */
+const V1_SPRING = {
+  type: "spring" as const,
+  stiffness: 300,
+  damping: 30,
+  mass: 0.2,
+};
+const DRAG_CLOSE_THRESHOLD = 0.6;
+const DRAG_VELOCITY_THRESHOLD = 500;
 
 /**
- * Hand-rolled on motion, for the one thing neither library gives us: a real
- * spring that inherits the velocity of your finger, so a flick snaps shut fast
- * and a slow drag eases back.
+ * The old library's sheet, rebuilt on motion directly.
  *
- * Dragging is only armed while the content is scrolled to the top, which is
- * how iOS decides between scrolling the sheet and moving it.
+ * The part that matters, and the part the first attempt at this got wrong:
+ * framer's own drag is switched *off* as a mover — `dragElastic: 0`, both
+ * constraints pinned to 0, no momentum — and `y` is driven by hand instead.
+ * Letting framer move the element means it damps the offset toward the
+ * constraint, so a real drag never reaches the dismiss threshold and the sheet
+ * just rubber-bands. Setting `y` ourselves keeps the finger and the sheet on
+ * exactly the same pixel.
+ *
+ * On release the spring animates `y` to its resting place, picking up the
+ * motion value's current velocity, which is what carries a flick through.
  */
 export function SpringSheet({ isOpen, onClose, children }: SheetShellProps) {
   const y = useMotionValue(0);
-  const [height, setHeight] = useState(0);
+  const [windowHeight, setWindowHeight] = useState(0);
   const [atTop, setAtTop] = useState(true);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  // `document` isn't there while rendering on the server.
+  const [mounted, setMounted] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!sheetRef.current) return;
-    setHeight(sheetRef.current.offsetHeight);
-  }, [isOpen]);
+  useEffect(() => setMounted(true), []);
 
-  const backdropOpacity = useTransform(y, [0, Math.max(height, 1)], [1, 0]);
-  // 1 when the sheet is fully up, 0 when it's off the bottom.
-  const presented = useTransform(y, [Math.max(height, 1), 0], [0, 1]);
-
-  // The sheet is closed by unmounting, so reset the offset it was left at.
   useEffect(() => {
-    if (isOpen) y.set(0);
-  }, [isOpen, y]);
+    const measure = () => setWindowHeight(window.innerHeight);
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+
+  const backdropOpacity = useTransform(
+    y,
+    [0, Math.max(windowHeight, 1)],
+    [1, 0],
+  );
+  const presented = useTransform(y, [Math.max(windowHeight, 1), 0], [0, 1]);
+
+  // Deliberately no "reset y on open": AnimatePresence remounts the card each
+  // time, so `initial` puts it off the bottom and the spring brings it up.
+  // Forcing y to its resting place here would land the sheet before it had a
+  // chance to animate at all.
 
   // The page behind recedes as the card comes up, and follows your finger back
-  // when you drag it down — the other two variants get this from their library,
-  // so this one has to earn it to be judged fairly.
+  // when you drag it down.
   useEffect(() => {
     const root = document.getElementById(SHEET_BACKGROUND_ID);
     if (!root || !isOpen) return;
@@ -212,17 +237,44 @@ export function SpringSheet({ isOpen, onClose, children }: SheetShellProps) {
     };
   }, [presented, isOpen]);
 
-  return (
+  // Framer must not move the sheet itself; it only reports the gesture.
+  const dragProps = {
+    drag: "y" as const,
+    dragElastic: 0,
+    dragConstraints: { top: 0, bottom: 0 },
+    dragMomentum: false,
+    onDrag: (_: unknown, info: PanInfo) => {
+      // Clamped at 0 so the sheet cannot be pulled above its resting place.
+      y.set(Math.max(y.get() + info.delta.y, 0));
+    },
+    onDragEnd: (_: unknown, info: PanInfo) => {
+      if (info.velocity.y > DRAG_VELOCITY_THRESHOLD) {
+        onClose();
+        return;
+      }
+      const sheetHeight =
+        sheetRef.current?.getBoundingClientRect().height ?? windowHeight;
+      const draggedPast =
+        sheetHeight > 0 && y.get() / sheetHeight > DRAG_CLOSE_THRESHOLD;
+      animate(y, draggedPast ? sheetHeight : 0, V1_SPRING);
+      if (draggedPast) onClose();
+    },
+  };
+
+  // The card has to live outside the element being scaled. A transformed
+  // ancestor becomes the containing block for `position: fixed`, so rendering
+  // in place meant the sheet was scaled and clipped along with the page behind
+  // it — which is what made this variant look broken. Both libraries portal
+  // out to the body for the same reason.
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
           <motion.div
             className="fixed inset-0 z-40 bg-black/50"
             style={{ opacity: backdropOpacity }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
             onClick={onClose}
           />
           <motion.div
@@ -232,41 +284,33 @@ export function SpringSheet({ isOpen, onClose, children }: SheetShellProps) {
               "h-[96%] rounded-t-2xl bg-accent",
             )}
             style={{ y }}
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{
-              type: "spring",
-              stiffness: 380,
-              damping: 38,
-              mass: 0.9,
-            }}
-            drag="y"
-            dragConstraints={{ top: 0, bottom: 0 }}
-            // Almost no give upward — iOS sheets feel pinned at the top — and
-            // a soft pull downward.
-            dragElastic={{ top: 0.02, bottom: 0.6 }}
-            dragListener={atTop}
-            onDragEnd={(_, info) => {
-              const draggedFarEnough =
-                info.offset.y > height * DISMISS_OFFSET_RATIO;
-              const flickedShut = info.velocity.y > DISMISS_VELOCITY;
-              if (draggedFarEnough || flickedShut) onClose();
-            }}
+            // Pixels, not "100%": `y` is a motion value the drag also writes
+            // to, and a percentage string cannot be reconciled with it.
+            initial={{ y: windowHeight }}
+            animate={{ y: 0, transition: V1_SPRING }}
+            exit={{ y: windowHeight, transition: V1_SPRING }}
           >
             <div className="absolute inset-0 rounded-t-2xl bg-gradient-to-t from-gray-700/30 to-white/5" />
-            <div className="relative shrink-0 pt-3 pb-1" />
-            <div
-              ref={scrollRef}
-              onScroll={(event) => setAtTop(event.currentTarget.scrollTop <= 0)}
+            {/* The grab handle area always drags. */}
+            <motion.div className="relative shrink-0 pt-3 pb-1" {...dragProps}>
+              <div className="mx-auto h-1 w-9 rounded-full bg-white/25" />
+            </motion.div>
+            {/* The body drags only when it has no scrolling left to give,
+                which is how iOS chooses between scrolling and moving. */}
+            <motion.div
+              onScroll={(event) =>
+                setAtTop((event.target as HTMLDivElement).scrollTop <= 0)
+              }
               className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain"
+              {...(atTop ? dragProps : {})}
             >
               {children}
-            </div>
+            </motion.div>
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
 

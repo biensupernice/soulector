@@ -28,7 +28,25 @@ export type EpisodeProps = {
   onOptionsClick?: () => void;
 } & React.HTMLAttributes<HTMLDivElement>;
 
-export function Episode(props: EpisodeProps) {
+/**
+ * Selecting an episode changes state the whole list subscribes to, which used
+ * to re-render all ~785 rows and block the main thread for most of a second —
+ * long enough that the sheet appeared to hang before animating in.
+ *
+ * Only two rows ever actually change: the one being left and the one being
+ * picked. The handlers are excluded from the comparison because they're new
+ * closures on every parent render; what they close over is stores and query
+ * data that are stable for the life of a row.
+ */
+export const Episode = React.memo(
+  EpisodeRow,
+  (prev, next) =>
+    prev.episode === next.episode &&
+    prev.selected === next.selected &&
+    prev.favorite === next.favorite,
+);
+
+function EpisodeRow(props: EpisodeProps) {
   const showTracks = useIsTracksPanelOpen(props.episode.id);
   const tracksPanelActions = useTracksPanelActions();
 

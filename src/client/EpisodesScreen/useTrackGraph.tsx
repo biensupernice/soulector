@@ -41,16 +41,28 @@ export function useTrackGraph(): TrackGraph {
   return useMemo(() => buildTrackGraph(deferredIndex), [deferredIndex]);
 }
 
+const EMPTY_GRAPH: TrackGraph = {
+  connectionsFor: () => EMPTY,
+  connectionCountFor: () => 0,
+  ready: false,
+};
+
+/**
+ * One graph for the whole app, keyed on the snapshot it was built from.
+ *
+ * `useMemo` is per-component, and opening a set mounts several things that all
+ * want the graph — the sheet's tracklist, the desktop panel's, the connections
+ * list. Each was rebuilding all 20k rows for itself, which stacked up into
+ * most of a second of blocked main thread every time a sheet opened.
+ */
+let cachedIndex: SearchIndexEpisode[] | null = null;
+let cachedGraph: TrackGraph | null = null;
+
 export function buildTrackGraph(
   index: SearchIndexEpisode[] | null,
 ): TrackGraph {
-  if (!index) {
-    return {
-      connectionsFor: () => EMPTY,
-      connectionCountFor: () => 0,
-      ready: false,
-    };
-  }
+  if (!index) return EMPTY_GRAPH;
+  if (index === cachedIndex && cachedGraph) return cachedGraph;
 
   const appearancesByKey = new Map<string, TrackAppearance[]>();
   // Saves re-keying a track every time a row asks for its badge count.
@@ -90,12 +102,16 @@ export function buildTrackGraph(
     return connections;
   }
 
-  return {
+  const graph: TrackGraph = {
     connectionsFor,
     connectionCountFor: (episodeId, order) =>
       connectionsFor(episodeId, order).length,
     ready: true,
   };
+
+  cachedIndex = index;
+  cachedGraph = graph;
+  return graph;
 }
 
 function trackSlot(episodeId: string, order: number) {
