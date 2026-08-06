@@ -68,7 +68,7 @@ function EpisodeRow(props: EpisodeProps) {
     <>
       <div
         data-episode-id={episode.id}
-        className="flex h-full w-full items-stretch"
+        className="episode-row flex h-full w-full items-stretch"
       >
         <div
           onClick={onClick}
