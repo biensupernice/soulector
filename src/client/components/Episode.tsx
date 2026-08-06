@@ -19,6 +19,7 @@ import {
   useIsTracksPanelOpen,
   useTracksPanelActions,
 } from "../EpisodesScreen/TracksPanelStore";
+import { useMedia } from "../infra/useMedia";
 
 export type EpisodeProps = {
   episode: EpisodeProjection;
@@ -58,11 +59,6 @@ function EpisodeRow(props: EpisodeProps) {
     onFavoriteClick = () => {},
     onOptionsClick = () => {},
   } = props;
-
-  const { hasTracks, loaded: hasTracksLoaded } = useEpisodeTracks(
-    episode.id,
-    selected,
-  );
 
   return (
     <>
@@ -118,26 +114,12 @@ function EpisodeRow(props: EpisodeProps) {
           </div>
           <div className="hidden items-center justify-end space-x-8 md:flex">
             <div className="w-full flex space-x-3">
-              {hasTracks && selected && (
-                <button
-                  className={cx(
-                    "inline-block rounded-full p-2",
-                    "transition-all duration-200 ease-in-out opacity-0",
-                    "focus:outline-none hover:bg-gray-200 group-hover:opacity-100",
-                    showTracks && "!opacity-100",
-                  )}
-                  title={showTracks ? "Close tracks" : "View Tracks"}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    tracksPanelActions.toggle(episode.id);
-                  }}
-                >
-                  {showTracks ? (
-                    <BarsArrowUp className="h-5 w-5 fill-current" />
-                  ) : (
-                    <BarsArrowDown className="h-5 w-5 stroke-current" />
-                  )}
-                </button>
+              {selected && (
+                <TracksToggle
+                  episodeId={episode.id}
+                  open={showTracks}
+                  onToggle={() => tracksPanelActions.toggle(episode.id)}
+                />
               )}
 
               <button
@@ -180,19 +162,83 @@ function EpisodeRow(props: EpisodeProps) {
         </div>
       </div>
       <AnimatePresence>
-        {selected && showTracks && (
-          <motion.div
-            transition={{ type: "spring", mass: 0.15, duration: 0.02 }}
-            initial={{ height: 0 }}
-            animate={{ height: "auto" }}
-            exit={{ height: 0 }}
-            className="relative hidden origin-top overflow-hidden rounded-lg bg-accent md:block"
-          >
-            <DivePanel episodeId={episode.id} />
-          </motion.div>
-        )}
+        {selected && showTracks && <EpisodeDivePanel episodeId={episode.id} />}
       </AnimatePresence>
     </>
+  );
+}
+
+/**
+ * The chevron that opens a set's cue sheet under its row.
+ *
+ * Only the playing row renders one, because asking whether a set has tracks is
+ * a query, and a query per row is 785 live subscriptions to the cache for an
+ * answer 784 of them never show.
+ */
+function TracksToggle({
+  episodeId,
+  open,
+  onToggle,
+}: {
+  episodeId: string;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const { hasTracks } = useEpisodeTracks(episodeId);
+
+  if (!hasTracks) {
+    return null;
+  }
+
+  return (
+    <button
+      className={cx(
+        "inline-block rounded-full p-2",
+        "transition-all duration-200 ease-in-out opacity-0",
+        "focus:outline-none hover:bg-gray-200 group-hover:opacity-100",
+        open && "!opacity-100",
+      )}
+      title={open ? "Close tracks" : "View Tracks"}
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+    >
+      {open ? (
+        <BarsArrowUp className="h-5 w-5 fill-current" />
+      ) : (
+        <BarsArrowDown className="h-5 w-5 stroke-current" />
+      )}
+    </button>
+  );
+}
+
+/**
+ * The set's cue sheet, laid out under the row it belongs to.
+ *
+ * Desktop only — on a phone the same list is already in the sheet. It used to
+ * be hidden with a class, which still built the whole ~600-node tracklist a
+ * second time on every tap, so it asks the viewport instead. The question is
+ * asked here rather than in the row because only the open row should be
+ * holding a media query listener; asking in the row would mean 785 of them.
+ */
+function EpisodeDivePanel({ episodeId }: { episodeId: string }) {
+  const isWideScreen = useMedia("(min-width: 768px)");
+
+  if (!isWideScreen) {
+    return null;
+  }
+
+  return (
+    <motion.div
+      transition={{ type: "spring", mass: 0.15, duration: 0.02 }}
+      initial={{ height: 0 }}
+      animate={{ height: "auto" }}
+      exit={{ height: 0 }}
+      className="relative origin-top overflow-hidden rounded-lg bg-accent"
+    >
+      <DivePanel episodeId={episodeId} />
+    </motion.div>
   );
 }
 
