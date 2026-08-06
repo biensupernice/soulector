@@ -2,6 +2,8 @@ import {
   IconSoundcloud,
   HeartFilled,
   HeartOutline,
+  IconChevron,
+  IconDotsHorizontal,
 } from "@/client/components/Icons";
 import { formatDate, formatTimeSecs } from "@/client/helpers";
 import classNames from "classnames";
@@ -30,6 +32,7 @@ import { useEpisodesScreenState } from "../useEpisodesScreenState";
 import { useTracksPanelStore } from "../TracksPanelStore";
 import { TrackConnectionsInline } from "../TrackConnections";
 import { DiveTrail } from "../DiveTrail";
+import { useEpisodeOptionsStore } from "../EpisodeOptionsModal";
 
 interface EpisodeModalSheetStore {
   isOpen: boolean;
@@ -90,15 +93,63 @@ export function EpisodeModalSheet({
         >
           <Drawer.Title className="sr-only">Episode</Drawer.Title>
           <div className="absolute inset-0 rounded-t-2xl bg-gradient-to-t from-gray-700/30 to-white/5" />
-          {/* iOS hides the grabber on this sheet, so this strip is bare — but
-              vaul needs somewhere that doesn't scroll to drag from. */}
-          <div className="relative shrink-0 pt-3 pb-1" />
           <div className="relative min-h-0 flex-1 overflow-hidden pb-safe-bottom">
             {episodeId ? <EpisodeSheetContent episodeId={episodeId} /> : null}
           </div>
+          {/* Laid over the content rather than above it, so it stays put while
+              the set scrolls under — and so it doubles as the area vaul can
+              drag from, which a scrolling region can't. */}
+          <EpisodeSheetTopBar
+            episodeId={episodeId}
+            onClose={onCloseModal}
+            className="absolute inset-x-0 top-0 z-10"
+          />
         </Drawer.Content>
       </Drawer.Portal>
     </Drawer.Root>
+  );
+}
+
+/**
+ * Close, grab handle, and "more", balanced across the top of the sheet — the
+ * iOS app's arrangement, where the two corners answer each other instead of
+ * leaving one lonely kebab.
+ */
+function EpisodeSheetTopBar({
+  episodeId,
+  onClose,
+  className,
+}: {
+  episodeId?: string;
+  onClose: () => void;
+  className?: string;
+}) {
+  const setOptionsEpisode = useEpisodeOptionsStore((s) => s.setEpisode);
+  const episode = useGetEpisode(episodeId ?? "");
+
+  return (
+    <div
+      className={cn("flex items-center justify-between px-2 pt-1.5", className)}
+    >
+      <button
+        onClick={onClose}
+        aria-label="Close"
+        // 44px, the tap target iOS gives these.
+        className="flex h-11 w-11 items-center justify-center text-white/80 focus:outline-none"
+      >
+        <IconChevron className="h-4 w-4 stroke-current" />
+      </button>
+
+      <div className="h-1 w-10 rounded-full bg-white/30" />
+
+      <button
+        onClick={() => episode && setOptionsEpisode(episode)}
+        aria-label="More"
+        className="flex h-11 w-11 items-center justify-center text-white/80 focus:outline-none"
+      >
+        <IconDotsHorizontal className="h-5 w-5 stroke-current" />
+      </button>
+    </div>
   );
 }
 
@@ -108,7 +159,8 @@ function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
 
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-between space-y-3 overflow-auto pb-safe-top">
-      <div className="w-full flex-col space-y-3 px-4 md:px-6 pt-6">
+      {/* Clears the fixed top bar, the same 52px iOS leaves for it. */}
+      <div className="w-full flex-col space-y-3 px-4 md:px-6 pt-[52px]">
         <img
           className="min-h-40 min-w-40 mx-auto w-full max-w-sm rounded-lg object-fill"
           src={episode.artworkUrl}

@@ -41,9 +41,12 @@ export function EpisodeOptionsModal() {
       }}
     >
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-40 bg-black/50" />
+        {/* Above the episode sheet's own z-40/z-50: this one can be opened
+            from inside it, and an overlay stacked underneath would leave
+            tapping outside hitting the sheet behind instead of dismissing. */}
+        <Drawer.Overlay className="fixed inset-0 z-[60] bg-black/50" />
         {/* No height: this one sizes to its content, the way it always did. */}
-        <Drawer.Content className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-2xl rounded-t-2xl bg-white outline-none">
+        <Drawer.Content className="fixed inset-x-0 bottom-0 z-[70] mx-auto w-full max-w-2xl rounded-t-2xl bg-white outline-none">
           <Drawer.Title className="sr-only">Episode options</Drawer.Title>
           <div className="mx-auto mt-3 h-1 w-9 rounded-full bg-gray-300" />
           <div className="mb-safe-bottom w-full">
