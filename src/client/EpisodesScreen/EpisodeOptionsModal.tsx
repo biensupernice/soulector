@@ -10,7 +10,7 @@ import {
 } from "@/client/components/Icons";
 import {
   useFavorites,
-  useIsFavoriteFast,
+  useIsFavorite,
 } from "@/client/EpisodesScreen/FavoritesStore";
 import {
   usePlayerActions,
@@ -28,10 +28,9 @@ export function EpisodeOptionsModal() {
   const playerActions = usePlayerActions();
 
   const { addFavorite, removeFavorite } = useFavorites();
-  const isFavoriteFast = useIsFavoriteFast();
 
   const isPlaying = currentEpisodeId === episode?.id;
-  const isFavorited = isFavoriteFast(episode?.id ?? "");
+  const isFavorited = useIsFavorite(episode?.id ?? "");
 
   return (
     <Drawer.Root

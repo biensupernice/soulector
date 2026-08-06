@@ -7,7 +7,7 @@ import {
 } from "@/client/components/Icons";
 import { formatDate, formatTimeSecs } from "@/client/helpers";
 import classNames from "classnames";
-import { useFavorites, useIsFavoriteFast } from "../FavoritesStore";
+import { useFavorites, useIsFavorite } from "../FavoritesStore";
 import { MobilePlayerControls } from "../Player/MobilePlayerControls";
 import {
   usePlayerPlaying,
@@ -452,8 +452,7 @@ export function EpisodeSheetFavoriteToggle({
   episodeId,
 }: EpisodeSheetFavoriteToggleProps) {
   const { addFavorite, removeFavorite } = useFavorites();
-  const isFavoriteFast = useIsFavoriteFast();
-  const isFavorited = isFavoriteFast(episodeId);
+  const isFavorited = useIsFavorite(episodeId);
 
   return (
     <button

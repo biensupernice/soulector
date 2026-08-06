@@ -58,6 +58,23 @@ export const useFavoritesCount = () =>
 
 export const useIsFavoriteFast = () => useFavoritesStore((s) => s.isFavorite);
 
+/**
+ * Whether one episode is favourited, as a value rather than a question.
+ *
+ * `useIsFavoriteFast` hands back a function that reads the store when called,
+ * which means the answer arrives outside React's knowledge: a component that
+ * only ever calls it re-renders with the old answer, or does not re-render at
+ * all. That is why the sheet's favourite button used to sit on "Add Favorite"
+ * after being pressed, and press again into a duplicate.
+ *
+ * Selecting the boolean puts the subscription where the answer is used.
+ * Read off `favorites` rather than the index beside it: `addFavorite` replaces
+ * the array before it touches the index, so the index is still a beat behind
+ * when subscribers are told to look.
+ */
+export const useIsFavorite = (episodeId: string) =>
+  useFavoritesStore((s) => s.favorites.includes(episodeId));
+
 export function useFavorites() {
   const favorites = useFavoritesStore((state) => state.favorites);
   const isFavorite = useFavoritesStore((state) => state.isFavorite);
