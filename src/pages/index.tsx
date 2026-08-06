@@ -5,6 +5,7 @@ import Navbar from "@/client/EpisodesScreen/Navbar";
 import { EpisodeOptionsModal } from "../client/EpisodesScreen/EpisodeOptionsModal";
 import { motion, useScroll, useTransform } from "motion/react";
 import { EpisodeListHandle } from "@/client/EpisodesScreen/EpisodeList";
+import { SHEET_BACKGROUND_ID } from "@/client/EpisodesScreen/EpisodeModalSheet/SheetVariants";
 
 export type EpisodeListContext = {
   ref: RefObject<EpisodeListHandle | null>;
@@ -43,7 +44,14 @@ export default function Home() {
         clearSearch: () => setSearchText(""),
       }}
     >
-      <div className="h-full w-full text-gray-900">
+      {/* The sheet variants scale this back as the card comes up, the way iOS
+          recedes the page behind a presented sheet. react-modal-sheet finds it
+          by id, vaul by the data attribute. */}
+      <div
+        id={SHEET_BACKGROUND_ID}
+        vaul-drawer-wrapper=""
+        className="h-full w-full bg-white text-gray-900"
+      >
         <div className="h-15 fixed top-0 z-20 w-full bg-white">
           <motion.div
             style={{ opacity }}

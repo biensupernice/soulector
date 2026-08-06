@@ -18,7 +18,13 @@ import {
   usePlayerCuePosition,
 } from "../PlayerStore";
 import { useGetEpisode } from "../useEpisodeHooks";
-import { Sheet } from "react-modal-sheet";
+import {
+  SheetVariantSwitcher,
+  SpringSheet,
+  TunedSheet,
+  VaulSheet,
+  useSheetVariantStore,
+} from "./SheetVariants";
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
 import { create } from "zustand";
 import { trpc } from "@/utils/trpc";
@@ -56,27 +62,30 @@ interface EpisodeModalSheetProps {
   onCloseModal: () => void;
   episodeId?: string;
 }
+const SHEET_SHELLS = {
+  tuned: TunedSheet,
+  vaul: VaulSheet,
+  spring: SpringSheet,
+};
+
 export function EpisodeModalSheet({
   showEpisodeModal,
   onCloseModal,
   episodeId,
 }: EpisodeModalSheetProps) {
-  return (
-    <Sheet
-      className="full-height-sheet mx-auto w-full max-w-2xl"
-      isOpen={showEpisodeModal}
-      onClose={onCloseModal}
-    >
-      <Sheet.Container>
-        <div className="absolute inset-0 bg-gradient-to-t from-gray-700/30 to-white/5"></div>
-        <Sheet.Header />
-        <Sheet.Content>
-          {episodeId ? <EpisodeSheetContent episodeId={episodeId} /> : null}
-        </Sheet.Content>
-      </Sheet.Container>
+  const variant = useSheetVariantStore((s) => s.variant);
+  const loadPersisted = useSheetVariantStore((s) => s.loadPersisted);
 
-      <Sheet.Backdrop />
-    </Sheet>
+  useEffect(() => {
+    loadPersisted();
+  }, [loadPersisted]);
+
+  const Shell = SHEET_SHELLS[variant];
+
+  return (
+    <Shell isOpen={showEpisodeModal} onClose={onCloseModal}>
+      {episodeId ? <EpisodeSheetContent episodeId={episodeId} /> : null}
+    </Shell>
   );
 }
 
@@ -117,6 +126,7 @@ function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
         </a>
         <EpisodeSheetFavoriteToggle episodeId={episodeId} />
       </div>
+      <SheetVariantSwitcher />
       <div className="w-full px-3">
         <DiveTrail />
       </div>
