@@ -153,18 +153,6 @@ body {
   animation-delay: -400ms;
 }
 
-@layer components {
-  /* 96%, not 100%: iOS's large detent stops short of the top so the page it
-     scaled away is still visible behind the card. A full-height sheet hides
-     the effect entirely. Matches the other sheet variants. */
-  .full-height-sheet .react-modal-sheet-container {
-    height: 96% !important;
-    padding-top: env(safe-area-inset-top) !important;
-    padding-bottom: calc(env(safe-area-inset-bottom));
-
-    @apply !bg-accent transition-colors
-  }
-}
 
 @keyframes animateTrackVizHeight {
   0% {

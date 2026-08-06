@@ -18,13 +18,7 @@ import {
   usePlayerCuePosition,
 } from "../PlayerStore";
 import { useGetEpisode } from "../useEpisodeHooks";
-import {
-  SheetVariantSwitcher,
-  SpringSheet,
-  TunedSheet,
-  VaulSheet,
-  useSheetVariantStore,
-} from "./SheetVariants";
+import { Drawer } from "vaul";
 import { Fragment, useContext, useEffect, useRef, useState } from "react";
 import { create } from "zustand";
 import { trpc } from "@/utils/trpc";
@@ -62,30 +56,49 @@ interface EpisodeModalSheetProps {
   onCloseModal: () => void;
   episodeId?: string;
 }
-const SHEET_SHELLS = {
-  tuned: TunedSheet,
-  vaul: VaulSheet,
-  spring: SpringSheet,
-};
-
+/**
+ * The episode sheet, on vaul.
+ *
+ * Chosen over the library this app used to have after feeling all three on a
+ * phone: react-modal-sheet v5 animates on a fixed tween, so a hard flick and a
+ * slow drag settle at the same speed. Vaul is built to behave like an iOS
+ * sheet — rubber-band resistance, dismissal on velocity, and the page behind
+ * scaling away as the card comes up.
+ */
 export function EpisodeModalSheet({
   showEpisodeModal,
   onCloseModal,
   episodeId,
 }: EpisodeModalSheetProps) {
-  const variant = useSheetVariantStore((s) => s.variant);
-  const loadPersisted = useSheetVariantStore((s) => s.loadPersisted);
-
-  useEffect(() => {
-    loadPersisted();
-  }, [loadPersisted]);
-
-  const Shell = SHEET_SHELLS[variant];
-
   return (
-    <Shell isOpen={showEpisodeModal} onClose={onCloseModal}>
-      {episodeId ? <EpisodeSheetContent episodeId={episodeId} /> : null}
-    </Shell>
+    <Drawer.Root
+      open={showEpisodeModal}
+      onOpenChange={(open) => {
+        if (!open) onCloseModal();
+      }}
+      shouldScaleBackground
+    >
+      <Drawer.Portal>
+        <Drawer.Overlay className="fixed inset-0 z-40 bg-black/50" />
+        <Drawer.Content
+          className={cn(
+            "fixed inset-x-0 bottom-0 z-50 mx-auto flex w-full max-w-2xl flex-col",
+            // 96%, not full height: iOS's large detent stops short of the top
+            // so the page it scaled away stays visible behind the card.
+            "h-[96%] rounded-t-2xl bg-accent outline-none",
+          )}
+        >
+          <Drawer.Title className="sr-only">Episode</Drawer.Title>
+          <div className="absolute inset-0 rounded-t-2xl bg-gradient-to-t from-gray-700/30 to-white/5" />
+          {/* iOS hides the grabber on this sheet, so this strip is bare — but
+              vaul needs somewhere that doesn't scroll to drag from. */}
+          <div className="relative shrink-0 pt-3 pb-1" />
+          <div className="relative min-h-0 flex-1 overflow-hidden pb-safe-bottom">
+            {episodeId ? <EpisodeSheetContent episodeId={episodeId} /> : null}
+          </div>
+        </Drawer.Content>
+      </Drawer.Portal>
+    </Drawer.Root>
   );
 }
 
@@ -126,7 +139,6 @@ function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
         </a>
         <EpisodeSheetFavoriteToggle episodeId={episodeId} />
       </div>
-      <SheetVariantSwitcher />
       <div className="w-full px-3">
         <DiveTrail />
       </div>
