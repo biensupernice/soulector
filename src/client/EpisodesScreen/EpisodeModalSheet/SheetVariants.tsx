@@ -140,8 +140,10 @@ export function VaulSheet({ isOpen, onClose, children }: SheetShellProps) {
           <div className="absolute inset-0 rounded-t-2xl bg-gradient-to-t from-gray-700/30 to-white/5" />
           {/* vaul drags from any non-scrollable area; this is the grab zone
               that stands in for the sheet header. */}
+          {/* The grab zone. iOS hides the grabber on this sheet, so this is
+              bare — but vaul needs a non-scrolling area to drag from. */}
           <div className="relative shrink-0 pt-3 pb-1" />
-          <div className="relative min-h-0 flex-1 overflow-hidden">
+          <div className="relative min-h-0 flex-1 overflow-hidden pb-safe-bottom">
             {children}
           </div>
         </Drawer.Content>
@@ -301,7 +303,7 @@ export function SpringSheet({ isOpen, onClose, children }: SheetShellProps) {
               onScroll={(event) =>
                 setAtTop((event.target as HTMLDivElement).scrollTop <= 0)
               }
-              className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain"
+              className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain pb-safe-bottom"
               {...(atTop ? dragProps : {})}
             >
               {children}
