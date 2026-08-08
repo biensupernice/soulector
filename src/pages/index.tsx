@@ -9,6 +9,11 @@ import { EpisodeListHandle } from "@/client/EpisodesScreen/EpisodeList";
 export type EpisodeListContext = {
   ref: RefObject<EpisodeListHandle | null>;
   focusEpisode: (episodeId: string) => void;
+  /**
+   * Drops the search that's narrowing the list. Moving sideways can land on a
+   * set the current search doesn't match, and the list has to follow.
+   */
+  clearSearch: () => void;
 };
 
 export const EpisodeListContext = createContext<EpisodeListContext>(
@@ -32,7 +37,11 @@ export default function Home() {
 
   return (
     <EpisodeListContext.Provider
-      value={{ ref: episodeListContextRef, focusEpisode }}
+      value={{
+        ref: episodeListContextRef,
+        focusEpisode,
+        clearSearch: () => setSearchText(""),
+      }}
     >
       <div className="h-full w-full text-gray-900">
         <div className="h-15 fixed top-0 z-20 w-full bg-white">

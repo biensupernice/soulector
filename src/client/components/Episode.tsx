@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import cx from "classnames";
 import { formatDate, formatTimeSecs } from "../helpers";
 import {
@@ -12,11 +12,13 @@ import {
 import { usePlayEpisodeMutation } from "../EpisodesScreen/useEpisodesScreenState";
 import { usePlayerPlaying } from "../EpisodesScreen/PlayerStore";
 import { EpisodeProjection } from "@/server/router";
-import {
-  EpisodeTracksList,
-  useEpisodeTracks,
-} from "../EpisodesScreen/EpisodeModalSheet";
+import { useEpisodeTracks } from "../EpisodesScreen/EpisodeModalSheet";
+import { DivePanel } from "../EpisodesScreen/DivePanel";
 import { AnimatePresence, motion } from "motion/react";
+import {
+  useIsTracksPanelOpen,
+  useTracksPanelActions,
+} from "../EpisodesScreen/TracksPanelStore";
 
 export type EpisodeProps = {
   episode: EpisodeProjection;
@@ -27,7 +29,8 @@ export type EpisodeProps = {
 } & React.HTMLAttributes<HTMLDivElement>;
 
 export function Episode(props: EpisodeProps) {
-  const [showTracks, setShowTracks] = useState<boolean>(false);
+  const showTracks = useIsTracksPanelOpen(props.episode.id);
+  const tracksPanelActions = useTracksPanelActions();
 
   const {
     episode: episode,
@@ -108,7 +111,7 @@ export function Episode(props: EpisodeProps) {
                   title={showTracks ? "Close tracks" : "View Tracks"}
                   onClick={(e) => {
                     e.stopPropagation();
-                    setShowTracks((currentState) => !currentState);
+                    tracksPanelActions.toggle(episode.id);
                   }}
                 >
                   {showTracks ? (
@@ -165,9 +168,9 @@ export function Episode(props: EpisodeProps) {
             initial={{ height: 0 }}
             animate={{ height: "auto" }}
             exit={{ height: 0 }}
-            className="hidden md:flex max-h-[calc(100vh*0.6)] items-stretch origin-top bg-accent rounded-lg overflow-y-auto relative"
+            className="relative hidden origin-top overflow-hidden rounded-lg bg-accent md:block"
           >
-            <EpisodeTracksList episodeId={episode.id} />
+            <DivePanel episodeId={episode.id} />
           </motion.div>
         )}
       </AnimatePresence>
