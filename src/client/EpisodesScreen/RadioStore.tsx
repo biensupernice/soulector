@@ -1,4 +1,4 @@
-import create from "zustand";
+import { create } from "zustand";
 
 export type RadioSlotState = {
   episodeId: string;
@@ -24,7 +24,7 @@ export type RadioStore = {
   };
 };
 
-export const useRadioStore = create<RadioStore>((set) => ({
+export const useRadioStore = create<RadioStore>()((set) => ({
   isOn: false,
   slot: null,
   waitingForBoundary: false,

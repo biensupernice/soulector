@@ -2,7 +2,7 @@ import React, { useRef, useLayoutEffect, useState } from "react";
 import { formatDate } from "../../helpers";
 import { IconPause, IconPlay, IconSkipThirty } from "../../components/Icons";
 import cx from "classnames";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { PlayerControlsProps } from "./PlayerControls";
 
 // Marquee animation configuration

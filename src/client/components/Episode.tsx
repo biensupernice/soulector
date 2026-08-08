@@ -16,7 +16,7 @@ import {
   EpisodeTracksList,
   useEpisodeTracks,
 } from "../EpisodesScreen/EpisodeModalSheet";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 
 export type EpisodeProps = {
   episode: EpisodeProjection;
@@ -202,13 +202,13 @@ export function PlayingAnimation() {
 }
 
 function AlbumArtOverlay() {
-  const { isLoading } = usePlayEpisodeMutation();
+  const { isPending } = usePlayEpisodeMutation();
 
   return (
     <div className="absolute inset-0 flex items-center justify-center">
       <div className="absolute inset-0 bg-accent opacity-75" />
       <div className="relative rounded-full bg-white p-1 leading-none text-accent hover:shadow-sm">
-        {isLoading ? (
+        {isPending ? (
           <svg
             viewBox="0 0 20 20"
             xmlns="http://www.w3.org/2000/svg"

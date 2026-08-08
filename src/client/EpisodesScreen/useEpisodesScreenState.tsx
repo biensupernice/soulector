@@ -1,6 +1,6 @@
 import { trpc } from "@/utils/trpc";
 import { sample } from "lodash-es";
-import { event } from "nextjs-google-analytics";
+import { event } from "../analytics";
 import { usePlayerActions, usePlayerStore } from "./PlayerStore";
 import { useRadioStore } from "./RadioStore";
 import { useEpisodes } from "./useEpisodeHooks";

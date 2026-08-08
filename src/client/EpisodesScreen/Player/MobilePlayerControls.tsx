@@ -8,7 +8,7 @@ import {
 } from "../../components/Icons";
 import cx from "classnames";
 import { Slider } from "@/client/components/Slider";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { PlayerControlsProps } from "./PlayerControls";
 
 export function MobilePlayerControls({

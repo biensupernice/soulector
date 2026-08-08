@@ -23,35 +23,37 @@ export const useCustomMutation = <
   >
 ): UseMutationResult<TData, TError, TVariables, TContext> => {
   const queryClient = useQueryClient();
-  const query = useQuery<TData, TError>(
-    ["CustomMutation", mutationKey],
-    async () => await Promise.resolve(false as unknown as TData),
-    { retry: false, cacheTime: Infinity, staleTime: Infinity }
-  );
-  const queryError = useQuery<TError, TData>(
-    ["CustomMutationError", mutationKey],
-    async () => await Promise.resolve(false as unknown as TError),
-    { retry: false, cacheTime: Infinity, staleTime: Infinity }
-  );
-  const mutation = useMutation<TData, TError, TVariables, TContext>(
+  const query = useQuery<TData, TError>({
+    queryKey: ["CustomMutation", mutationKey],
+    queryFn: async () => false as unknown as TData,
+    retry: false,
+    gcTime: Infinity,
+    staleTime: Infinity,
+  });
+  const queryError = useQuery<TError, TData>({
+    queryKey: ["CustomMutationError", mutationKey],
+    queryFn: async () => false as unknown as TError,
+    retry: false,
+    gcTime: Infinity,
+    staleTime: Infinity,
+  });
+  const mutation = useMutation<TData, TError, TVariables, TContext>({
     mutationKey,
-    async (...params) => {
+    mutationFn: async (variables, context) => {
       queryClient.setQueryData(["CustomMutationError", mutationKey], false);
-      return await mutationFn(...params);
+      return await mutationFn(variables, context);
     },
-    {
-      ...options,
-      onSuccess: (data, variables, context) => {
-        queryClient.setQueryData(["CustomMutation", mutationKey], data);
-        if (options?.onSuccess) options.onSuccess(data, variables, context);
-      },
-      onError: (err, variables, context) => {
-        queryClient.setQueryData(["CustomMutationError", mutationKey], err);
-        if (options?.onError) options.onError(err, variables, context);
-      },
-    }
-  );
-  const isLoading = useIsMutating(mutationKey);
+    ...options,
+    onSuccess: (data, variables, onMutateResult, context) => {
+      queryClient.setQueryData(["CustomMutation", mutationKey], data);
+      options?.onSuccess?.(data, variables, onMutateResult, context);
+    },
+    onError: (err, variables, onMutateResult, context) => {
+      queryClient.setQueryData(["CustomMutationError", mutationKey], err);
+      options?.onError?.(err, variables, onMutateResult, context);
+    },
+  });
+  const isMutating = useIsMutating({ mutationKey });
 
   // We need typecasting here due the ADT about the mutation result, and as we're using a data not related to the mutation result
   // The typescript can't infer the type correctly.
@@ -59,7 +61,7 @@ export const useCustomMutation = <
   return {
     ...mutation,
     data: query.data,
-    isLoading: !!isLoading,
+    isPending: !!isMutating,
     error: queryError.data,
     isError: !!queryError.data,
   } as UseMutationResult<TData, TError, TVariables, TContext>;
