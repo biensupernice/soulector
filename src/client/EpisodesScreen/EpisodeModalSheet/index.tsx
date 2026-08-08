@@ -2,10 +2,12 @@ import {
   IconSoundcloud,
   HeartFilled,
   HeartOutline,
+  IconChevron,
+  IconDotsHorizontal,
 } from "@/client/components/Icons";
 import { formatDate, formatTimeSecs } from "@/client/helpers";
 import classNames from "classnames";
-import { useFavorites, useIsFavoriteFast } from "../FavoritesStore";
+import { useFavorites, useIsFavorite } from "../FavoritesStore";
 import { MobilePlayerControls } from "../Player/MobilePlayerControls";
 import {
   usePlayerPlaying,
@@ -18,12 +20,14 @@ import {
   usePlayerCuePosition,
 } from "../PlayerStore";
 import { useGetEpisode } from "../useEpisodeHooks";
-import { Sheet } from "react-modal-sheet";
+import { Drawer } from "vaul";
 import { useEffect, useRef } from "react";
 import { create } from "zustand";
 import { trpc } from "@/utils/trpc";
 import { cn } from "@/lib/utils";
 import { EpisodeTrackProjection } from "@/server/router";
+import { useEpisodesScreenState } from "../useEpisodesScreenState";
+import { useEpisodeOptionsStore } from "../EpisodeOptionsModal";
 
 interface EpisodeModalSheetStore {
   isOpen: boolean;
@@ -50,27 +54,97 @@ interface EpisodeModalSheetProps {
   onCloseModal: () => void;
   episodeId?: string;
 }
+/**
+ * The episode sheet, on vaul.
+ *
+ * Chosen over the library this app used to have after feeling all three on a
+ * phone: react-modal-sheet v5 animates on a fixed tween, so a hard flick and a
+ * slow drag settle at the same speed. Vaul is built to behave like an iOS
+ * sheet — rubber-band resistance, dismissal on velocity, and the page behind
+ * scaling away as the card comes up.
+ */
 export function EpisodeModalSheet({
   showEpisodeModal,
   onCloseModal,
   episodeId,
 }: EpisodeModalSheetProps) {
   return (
-    <Sheet
-      className="full-height-sheet mx-auto w-full max-w-2xl"
-      isOpen={showEpisodeModal}
-      onClose={onCloseModal}
+    <Drawer.Root
+      open={showEpisodeModal}
+      onOpenChange={(open) => {
+        if (!open) onCloseModal();
+      }}
+      shouldScaleBackground
     >
-      <Sheet.Container>
-        <div className="absolute inset-0 bg-gradient-to-t from-gray-700/30 to-white/5"></div>
-        <Sheet.Header />
-        <Sheet.Content>
-          {episodeId ? <EpisodeSheetContent episodeId={episodeId} /> : null}
-        </Sheet.Content>
-      </Sheet.Container>
+      <Drawer.Portal>
+        <Drawer.Overlay className="fixed inset-0 z-40 bg-black/50" />
+        <Drawer.Content
+          className={cn(
+            "fixed inset-x-0 bottom-0 z-50 mx-auto flex w-full max-w-2xl flex-col",
+            // 96%, not full height: iOS's large detent stops short of the top
+            // so the page it scaled away stays visible behind the card.
+            "h-[96%] rounded-t-2xl bg-accent outline-none",
+          )}
+        >
+          <Drawer.Title className="sr-only">Episode</Drawer.Title>
+          <div className="absolute inset-0 rounded-t-2xl bg-gradient-to-t from-gray-700/30 to-white/5" />
+          <div className="relative min-h-0 flex-1 overflow-hidden pb-safe-bottom">
+            {episodeId ? <EpisodeSheetContent episodeId={episodeId} /> : null}
+          </div>
+          {/* Laid over the content rather than above it, so it stays put while
+              the set scrolls under — and so it doubles as the area vaul can
+              drag from, which a scrolling region can't. */}
+          <EpisodeSheetTopBar
+            episodeId={episodeId}
+            onClose={onCloseModal}
+            className="absolute inset-x-0 top-0 z-10"
+          />
+        </Drawer.Content>
+      </Drawer.Portal>
+    </Drawer.Root>
+  );
+}
 
-      <Sheet.Backdrop />
-    </Sheet>
+/**
+ * Close, grab handle, and "more", balanced across the top of the sheet — the
+ * iOS app's arrangement, where the two corners answer each other instead of
+ * leaving one lonely kebab.
+ */
+function EpisodeSheetTopBar({
+  episodeId,
+  onClose,
+  className,
+}: {
+  episodeId?: string;
+  onClose: () => void;
+  className?: string;
+}) {
+  const setOptionsEpisode = useEpisodeOptionsStore((s) => s.setEpisode);
+  const episode = useGetEpisode(episodeId ?? "");
+
+  return (
+    <div
+      className={cn("flex items-center justify-between px-2 pt-1.5", className)}
+    >
+      <button
+        onClick={onClose}
+        aria-label="Close"
+        // 44px, the tap target iOS gives these.
+        className="flex h-11 w-11 items-center justify-center text-white/80 focus:outline-none"
+      >
+        <IconChevron className="h-4 w-4 stroke-current" />
+      </button>
+
+      <div className="h-1 w-10 rounded-full bg-white/30" />
+
+      <button
+        onClick={() => episode && setOptionsEpisode(episode)}
+        aria-label="More"
+        className="flex h-11 w-11 items-center justify-center text-white/80 focus:outline-none"
+      >
+        <IconDotsHorizontal className="h-5 w-5 stroke-current" />
+      </button>
+    </div>
   );
 }
 
@@ -80,7 +154,8 @@ function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
 
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-between space-y-3 overflow-auto pb-safe-top">
-      <div className="w-full flex-col space-y-3 px-4 md:px-6 pt-6">
+      {/* Clears the fixed top bar, the same 52px iOS leaves for it. */}
+      <div className="w-full flex-col space-y-3 px-4 md:px-6 pt-[52px]">
         <img
           className="min-h-40 min-w-40 mx-auto w-full max-w-sm rounded-lg object-fill"
           src={episode.artworkUrl}
@@ -190,7 +265,10 @@ export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
       const elRect = el.getBoundingClientRect();
       // Already fully visible: leave it be, so we don't fight the user's
       // scroll position or yank a short list that fits without scrolling.
-      if (elRect.top >= containerRect.top && elRect.bottom <= containerRect.bottom) {
+      if (
+        elRect.top >= containerRect.top &&
+        elRect.bottom <= containerRect.bottom
+      ) {
         return;
       }
       const delta =
@@ -223,7 +301,7 @@ export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
   }
 
   return loaded && loadedData.length > 0 ? (
-    <div className="xs:slide-in-from-bottom-3 md:fade-in xs:animate-in duration-600 relative">
+    <div className="xs:slide-in-from-bottom-3 md:fade-in xs:animate-in duration-600 relative w-full">
       <div className="py-1" />
       <div className="py-4 rounded-lg text-white relative border-accent">
         {/* <div className="absolute rounded-lg inset-0 bg-black/20"></div> */}
@@ -234,11 +312,11 @@ export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
           {loadedData.map((t) => {
             const isCurrent = currentTrack?.order === t.order;
             return (
-              <button
+              <div
                 key={t.order}
-                ref={isCurrent ? currentTrackRef : undefined}
-                onClick={() => onTrackClick(t)}
-                className={cn("w-full relative hover:bg-white/10")}
+                className={cn(
+                  "w-full relative flex items-center hover:bg-white/10",
+                )}
               >
                 <div
                   data-current-track={isCurrent}
@@ -246,7 +324,11 @@ export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
                     "absolute w-[2px] md:w-[4px] inset-y-0 bg-white opacity-0 fade-in-100 data-[current-track=true]:opacity-100 data-[current-track=true]:animate-in",
                   )}
                 ></div>
-                <div className="space-x-5 relative flex w-full justify-between items-center px-4 md:px-4 py-2">
+                <button
+                  ref={isCurrent ? currentTrackRef : undefined}
+                  onClick={() => onTrackClick(t)}
+                  className="space-x-5 relative flex min-w-0 w-full justify-between items-center px-4 md:px-4 py-2 text-left"
+                >
                   <div className="flex text-left items-center space-x-3 relative w-full">
                     <div
                       className={cn(
@@ -283,8 +365,8 @@ export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
                   ) : (
                     <></>
                   )}
-                </div>
-              </button>
+                </button>
+              </div>
             );
           })}
         </div>
@@ -300,8 +382,7 @@ export function EpisodeSheetFavoriteToggle({
   episodeId,
 }: EpisodeSheetFavoriteToggleProps) {
   const { addFavorite, removeFavorite } = useFavorites();
-  const isFavoriteFast = useIsFavoriteFast();
-  const isFavorited = isFavoriteFast(episodeId);
+  const isFavorited = useIsFavorite(episodeId);
 
   return (
     <button

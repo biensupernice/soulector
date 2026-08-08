@@ -47,6 +47,7 @@ import { EpisodeProjection } from "@/server/router";
 import { EpisodeListContext } from "@/pages";
 import { useSearchIndex } from "./useSearchIndex";
 import { useEpisodeSearch } from "./useEpisodeSearch";
+import { useWarmIndexes } from "./useWarmIndexes";
 import { SearchResults } from "./SearchResults";
 
 type Props = {
@@ -91,6 +92,7 @@ export function EpisodesScreen({ searchText }: Props) {
   const selectedCollective = useCollectiveSelectStore((s) => s.selected);
 
   useEpisodeAlbumArtColors();
+  useWarmIndexes();
 
   const favorites = useMemo(() => {
     if (episodes) {

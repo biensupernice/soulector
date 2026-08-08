@@ -1,4 +1,4 @@
-import { Sheet } from "react-modal-sheet";
+import { Drawer } from "vaul";
 import { create } from "zustand";
 import { formatDate, formatTimeSecs } from "@/client/helpers";
 import cx from "classnames";
@@ -10,7 +10,7 @@ import {
 } from "@/client/components/Icons";
 import {
   useFavorites,
-  useIsFavoriteFast,
+  useIsFavorite,
 } from "@/client/EpisodesScreen/FavoritesStore";
 import {
   usePlayerActions,
@@ -28,21 +28,26 @@ export function EpisodeOptionsModal() {
   const playerActions = usePlayerActions();
 
   const { addFavorite, removeFavorite } = useFavorites();
-  const isFavoriteFast = useIsFavoriteFast();
 
   const isPlaying = currentEpisodeId === episode?.id;
-  const isFavorited = isFavoriteFast(episode?.id ?? "");
+  const isFavorited = useIsFavorite(episode?.id ?? "");
 
   return (
-    <Sheet
-      isOpen={open}
-      onClose={onClose}
-      detent="content"
-      className="mx-auto w-full max-w-2xl"
+    <Drawer.Root
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
     >
-      <Sheet.Container>
-        <Sheet.Header />
-        <Sheet.Content>
+      <Drawer.Portal>
+        {/* Above the episode sheet's own z-40/z-50: this one can be opened
+            from inside it, and an overlay stacked underneath would leave
+            tapping outside hitting the sheet behind instead of dismissing. */}
+        <Drawer.Overlay className="fixed inset-0 z-[60] bg-black/50" />
+        {/* No height: this one sizes to its content, the way it always did. */}
+        <Drawer.Content className="fixed inset-x-0 bottom-0 z-[70] mx-auto w-full max-w-2xl rounded-t-2xl bg-white outline-none">
+          <Drawer.Title className="sr-only">Episode options</Drawer.Title>
+          <div className="mx-auto mt-3 h-1 w-9 rounded-full bg-gray-300" />
           <div className="mb-safe-bottom w-full">
             {episode ? (
               <div className="flex w-full flex-col space-y-2">
@@ -137,10 +142,9 @@ export function EpisodeOptionsModal() {
               </div>
             ) : null}
           </div>
-        </Sheet.Content>
-      </Sheet.Container>
-      <Sheet.Backdrop onTap={onClose} />
-    </Sheet>
+        </Drawer.Content>
+      </Drawer.Portal>
+    </Drawer.Root>
   );
 }
 interface EpisodeOptionsStore {
