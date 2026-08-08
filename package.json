@@ -37,9 +37,9 @@
     "node-vibrant": "^3.2.1-alpha.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-modal-sheet": "^5.6.0",
     "tailwind-merge": "^1.14.0",
     "tailwindcss-animate": "^1.0.7",
+    "vaul": "^1.1.2",
     "zod": "^3.25.76",
     "zustand": "^5.0.14"
   },
@@ -47,6 +47,7 @@
     "@types/eslint": "^9.6.1",
     "@types/lodash": "^4.17.24",
     "autoprefixer": "^10.5.3",
+    "babel-plugin-react-compiler": "^1.0.0",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.2.10",
     "lodash": "^4.18.1",
