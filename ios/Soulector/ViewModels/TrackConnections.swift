@@ -66,9 +66,9 @@ struct TrackGraph {
         otherAppearances(of: track, excluding: episodeId).count
     }
 
-    /// An episode's tracklist as the index has it. The dive reads cue sheets
+    /// An episode's tracklist as the index has it. The journey reads cue sheets
     /// out of the snapshot rather than making a request per episode, which is
-    /// what keeps a fast dive fast.
+    /// what keeps a fast journey fast.
     func tracks(forEpisode episodeId: String) -> [EpisodeTrack] {
         tracksByEpisode[episodeId] ?? []
     }

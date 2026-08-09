@@ -80,7 +80,7 @@ struct EpisodesView: View {
             }
             // Presented on *whether* there's an episode, not on which one.
             // `.sheet(item:)` ties the presentation's identity to the episode's
-            // id, so a crossing landing under the sheet tore it down and put a
+            // id, so a transition landing under the sheet tore it down and put a
             // new one up — visibly a close and a reopen. Bound this way the
             // sheet stays put and swaps its contents.
             .sheet(isPresented: Binding(

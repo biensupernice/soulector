@@ -29,14 +29,14 @@ final class PlayerStore: ObservableObject {
     @Published private(set) var accent: AccentColor?
     @Published var isSeeking = false
 
-    /// A crossing into another set, arranged to happen when the record playing
+    /// A transition into another set, arranged to happen when the record playing
     /// now runs out. Nil when nothing is on deck.
     @Published private(set) var queued: QueuedTransition?
-    /// True from the moment a crossing starts working (which for a fade or a
+    /// True from the moment a transition starts working (which for a fade or a
     /// blend is seconds before the record actually ends) until it lands.
-    @Published private(set) var isCrossing = false
+    @Published private(set) var isTransitioning = false
 
-    /// Emits each crossing as it completes, so a dive can follow the audio
+    /// Emits each transition as it completes, so a journey can follow the audio
     /// into the set it just handed over to.
     let transitionsFired = PassthroughSubject<QueuedTransition, Never>()
 
@@ -86,12 +86,12 @@ final class PlayerStore: ObservableObject {
     private var pendingSeek: Double?
 
     /// The incoming set, buffered and cued while the current one plays out, so
-    /// a crossing is a volume change rather than a load.
+    /// a transition is a volume change rather than a load.
     private var deck: AVPlayer?
     private var deckReady = false
     private var deckTask: Task<Void, Never>?
     private var deckCancellables = Set<AnyCancellable>()
-    private var crossingTask: Task<Void, Never>?
+    private var transitionTask: Task<Void, Never>?
 
     // MARK: Init
 
@@ -237,7 +237,7 @@ final class PlayerStore: ObservableObject {
     }
 
     /// Wires the observers a playing item needs. Split out of `startPlayback`
-    /// because a crossing promotes an already-rolling deck into place, and that
+    /// because a transition promotes an already-rolling deck into place, and that
     /// player needs the same wiring without being told to start.
     private func attach(item: AVPlayerItem, to attachedPlayer: AVPlayer, autoStart: Bool) {
         // Observe ready-to-play
@@ -276,7 +276,7 @@ final class PlayerStore: ObservableObject {
         timeObserver = attachedPlayer.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
             guard let self, !self.isSeeking else { return }
             self.currentTime = time.seconds.isNaN ? 0 : time.seconds
-            // A crossing is arranged against this clock, so every tick is also
+            // A transition is arranged against this clock, so every tick is also
             // the check for whether it's time to start working.
             self.advanceQueuedTransition()
             // No widget refresh here: WidgetKit's reload budget can't absorb a
@@ -290,9 +290,9 @@ final class PlayerStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 guard let self else { return }
-                // A crossing arranged on the last record owns what happens
+                // A transition arranged on the last record owns what happens
                 // next; auto-advance would race it to a different episode.
-                guard self.queued == nil, !self.isCrossing else { return }
+                guard self.queued == nil, !self.isTransitioning else { return }
                 let finished = self.currentEpisode
                 self.state = .paused
                 self.currentTime = 0
@@ -364,15 +364,15 @@ final class PlayerStore: ObservableObject {
         publishNowPlaying()
     }
 
-    // MARK: Queued crossings
+    // MARK: Queued transitions
 
-    /// How long until the arranged crossing, for the countdown.
+    /// How long until the arranged transition, for the countdown.
     var queuedRemaining: Double? {
         guard let queued else { return nil }
         return max(0, queued.fireAt - currentTime)
     }
 
-    /// Arranges a crossing and starts buffering the set it goes to. Replaces
+    /// Arranges a transition and starts buffering the set it goes to. Replaces
     /// anything already on deck — only one thing can be next.
     func queue(_ transition: QueuedTransition) {
         cancelQueued()
@@ -382,9 +382,9 @@ final class PlayerStore: ObservableObject {
 
     func cancelQueued() {
         queued = nil
-        isCrossing = false
-        crossingTask?.cancel()
-        crossingTask = nil
+        isTransitioning = false
+        transitionTask?.cancel()
+        transitionTask = nil
         deckTask?.cancel()
         deckTask = nil
         deckCancellables.removeAll()
@@ -395,7 +395,7 @@ final class PlayerStore: ObservableObject {
         player?.volume = 1
     }
 
-    /// Loads and cues the incoming set behind the one playing, so the crossing
+    /// Loads and cues the incoming set behind the one playing, so the transition
     /// itself is a volume change rather than a network round trip.
     private func prepareDeck(for transition: QueuedTransition) async {
         let url: URL?
@@ -438,16 +438,16 @@ final class PlayerStore: ObservableObject {
             .store(in: &deckCancellables)
     }
 
-    /// Called on every clock tick: starts the crossing once we're inside its
+    /// Called on every clock tick: starts the transition once we're inside its
     /// lead-in. The work itself runs as a task so the ramps can take their time.
     private func advanceQueuedTransition() {
-        guard let transition = queued, !isCrossing else { return }
+        guard let transition = queued, !isTransitioning else { return }
         guard currentTime >= transition.fireAt - transition.audio.lead else { return }
-        isCrossing = true
-        crossingTask = Task { [weak self] in await self?.performCrossing(transition) }
+        isTransitioning = true
+        transitionTask = Task { [weak self] in await self?.performTransition(transition) }
     }
 
-    private func performCrossing(_ transition: QueuedTransition) async {
+    private func performTransition(_ transition: QueuedTransition) async {
         // However much of the record is actually left — a scrub can leave less
         // than the style asked for, and the ramps should still finish on time.
         let remaining = max(0, transition.fireAt - currentTime)
@@ -475,9 +475,9 @@ final class PlayerStore: ObservableObject {
     private func land(_ transition: QueuedTransition) {
         guard let incoming = deck, deckReady else {
             // Nothing buffered in time — take the straight route and accept the
-            // load. Better a late crossing than a dropped one.
+            // load. Better a late transition than a dropped one.
             queued = nil
-            isCrossing = false
+            isTransitioning = false
             Task { await play(episode: transition.episode, startingAt: transition.startAt) }
             transitionsFired.send(transition)
             return
@@ -493,7 +493,7 @@ final class PlayerStore: ObservableObject {
         promote(incoming, for: transition)
 
         if transition.audio.fadeIn > 0 {
-            crossingTask = Task { [weak self] in
+            transitionTask = Task { [weak self] in
                 guard let self else { return }
                 await self.ramp(self.player, to: 1, duration: transition.audio.fadeIn)
             }
@@ -542,7 +542,7 @@ final class PlayerStore: ObservableObject {
         publishNowPlaying()
 
         queued = nil
-        isCrossing = false
+        isTransitioning = false
         transitionsFired.send(transition)
     }
 

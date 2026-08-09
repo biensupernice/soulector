@@ -1,16 +1,16 @@
 import SwiftUI
 
-// MARK: - Sideways affordance
+// MARK: - Connections affordance
 
-/// The way sideways: how many other sets played this track, and the tap that
-/// opens them. Sized to sit at the end of a tracklist row without competing
+/// A track's connections: how many other episodes played this record, and the
+/// tap that opens them. Sized to sit at the end of a tracklist row without competing
 /// with the row's own tap.
-struct TrackBranchButton: View {
+struct TrackConnectionsButton: View {
     let count: Int
     var tint: Color = .white
     let action: () -> Void
 
-    /// Every tracklist row reserves exactly this much room for the branch,
+    /// Every tracklist row reserves exactly this much room for the connection,
     /// whether or not it has one — otherwise the timestamps ahead of it shift
     /// column depending on the row, which reads as broken. Wide enough for the
     /// two-digit counts the library actually reaches.
@@ -38,9 +38,9 @@ struct TrackBranchButton: View {
     }
 }
 
-/// The branch, or the space where one would be. Tracklist rows always render
+/// The connection, or the space where one would be. Tracklist rows always render
 /// this so every row's timestamp lands on the same column.
-struct TrackBranchSlot: View {
+struct TrackConnectionsSlot: View {
     let count: Int
     var tint: Color = .white
     let action: () -> Void
@@ -48,41 +48,42 @@ struct TrackBranchSlot: View {
     var body: some View {
         Group {
             if count > 0 {
-                TrackBranchButton(count: count, tint: tint, action: action)
+                TrackConnectionsButton(count: count, tint: tint, action: action)
             } else {
                 Color.clear.frame(height: 1)
             }
         }
-        .frame(width: TrackBranchButton.slotWidth, alignment: .trailing)
+        .frame(width: TrackConnectionsButton.slotWidth, alignment: .trailing)
     }
 }
 
-// MARK: - Dive
+// MARK: - Journey
 
-/// One step of a dive. A dive alternates between the two: a track shows the
-/// sets that played it, a set shows the tracks you can leave by. An episode
-/// step remembers which track carried you into it, so the screen can put that
-/// track in front of you.
-private enum DiveStep: Hashable {
+/// One step of a journey. A journey alternates between the two, always: Track
+/// Episodes (a track, and the episodes that played it) then Episode Tracks (an
+/// episode, and its track list), never two of a kind in a row. An episode step
+/// remembers which track carried you into it, so the screen can put that track
+/// in front of you.
+private enum JourneyStep: Hashable {
     case track(TrackAppearance)
     case episode(Episode, landedOn: Int?)
 }
 
-/// The bits every screen in the dive needs but doesn't own.
-private struct DiveActions {
-    /// Reports the episode the dive is now playing, so the screen underneath
+/// The bits every screen in the journey needs but doesn't own.
+private struct JourneyActions {
+    /// Reports the episode the journey is now playing, so the screen underneath
     /// can catch up instead of still showing where the user started.
     let onLanded: (Episode) -> Void
-    /// Leaves the dive entirely. `@Environment(\.dismiss)` inside a pushed
+    /// Leaves the journey entirely. `@Environment(\.dismiss)` inside a pushed
     /// screen would only pop a step, so the sheet's own dismiss is passed down.
     let close: () -> Void
 }
 
-/// Album accents for the episodes a dive passes through, fetched once and kept
-/// for the length of the dive so stepping back through the path doesn't refetch
+/// Album accents for the episodes a journey passes through, fetched once and kept
+/// for the length of the journey so stepping back through the path doesn't refetch
 /// (or re-flash) colours the user has already seen.
 @MainActor
-private final class DiveAccents: ObservableObject {
+private final class JourneyAccents: ObservableObject {
     @Published private var byEpisode: [String: AccentColor] = [:]
     private var inFlight: Set<String> = []
 
@@ -116,24 +117,24 @@ private final class DiveAccents: ObservableObject {
 
 /// Moving *sideways*: from a track in the set you're listening to, out to the
 /// other sets that played the same record, into one of them, and on again from
-/// its tracklist. The navigation stack is the dive — every step is a push, so
+/// its tracklist. The navigation stack is the journey — every step is a push, so
 /// back retraces the path you took through the library.
 ///
 /// Everything here reads from `EpisodesViewModel.trackGraph`, which is built
 /// from the on-device search index: no request stands between a tap and the
 /// next set. Each screen is painted in the album accent of the episode in
-/// view — a track screen in the accent of the set it came from — so a dive
+/// view — a track screen in the accent of the set it came from — so a journey
 /// feels like walking between episode sheets rather than leaving them.
-struct TrackDiveSheet: View {
-    /// The track the dive starts from, and the episode it was playing in.
+struct TrackJourneySheet: View {
+    /// The track the journey starts from, and the episode it was playing in.
     let origin: TrackAppearance
     /// The origin episode's accent, already fetched by the sheet presenting
     /// this one, so the first screen is painted without a flash of grey.
     var seedAccent: AccentColor?
     var onLanded: (Episode) -> Void = { _ in }
 
-    @State private var path: [DiveStep] = []
-    @StateObject private var accents: DiveAccents
+    @State private var path: [JourneyStep] = []
+    @StateObject private var accents: JourneyAccents
     @EnvironmentObject private var playerStore: PlayerStore
     @Environment(\.dismiss) private var dismiss
 
@@ -145,18 +146,18 @@ struct TrackDiveSheet: View {
         self.origin = origin
         self.seedAccent = seedAccent
         self.onLanded = onLanded
-        _accents = StateObject(wrappedValue: DiveAccents(seed: [origin.episode.id: seedAccent]))
+        _accents = StateObject(wrappedValue: JourneyAccents(seed: [origin.episode.id: seedAccent]))
     }
 
     var body: some View {
         NavigationStack(path: $path) {
-            DiveTrackScreen(appearance: origin, path: $path, actions: actions)
-                .navigationDestination(for: DiveStep.self) { step in
+            TrackEpisodesScreen(appearance: origin, path: $path, actions: actions)
+                .navigationDestination(for: JourneyStep.self) { step in
                     switch step {
                     case .track(let appearance):
-                        DiveTrackScreen(appearance: appearance, path: $path, actions: actions)
+                        TrackEpisodesScreen(appearance: appearance, path: $path, actions: actions)
                     case .episode(let episode, let landedOn):
-                        DiveEpisodeScreen(
+                        EpisodeTracksScreen(
                             episode: episode,
                             landedOn: landedOn,
                             path: $path,
@@ -166,35 +167,35 @@ struct TrackDiveSheet: View {
                 }
         }
         .environmentObject(accents)
-        // The dive crosses the whole library, so its chrome stays monochrome
+        // The journey crosses the whole library, so its chrome stays monochrome
         // rather than picking up any one album's accent.
         .tint(.white)
-        // An arranged crossing lands on its own schedule. When it does, the
-        // dive follows the audio in — the whole point was to go there.
+        // An arranged transition lands on its own schedule. When it does, the
+        // journey follows the audio in — the whole point was to go there.
         .onReceive(playerStore.transitionsFired) { transition in
             onLanded(transition.episode)
             path.append(.episode(transition.episode, landedOn: transition.track.order))
         }
     }
 
-    private var actions: DiveActions {
-        DiveActions(onLanded: onLanded, close: { dismiss() })
+    private var actions: JourneyActions {
+        JourneyActions(onLanded: onLanded, close: { dismiss() })
     }
 }
 
-// MARK: - Track screen (the sets that played it)
+// MARK: - Track Episodes (the episodes that played this track)
 
-private struct DiveTrackScreen: View {
+private struct TrackEpisodesScreen: View {
     let appearance: TrackAppearance
-    @Binding var path: [DiveStep]
-    let actions: DiveActions
+    @Binding var path: [JourneyStep]
+    let actions: JourneyActions
 
     @EnvironmentObject var episodesVM: EpisodesViewModel
     @EnvironmentObject var playerStore: PlayerStore
     @EnvironmentObject var radioStore: RadioStore
-    @EnvironmentObject var accents: DiveAccents
+    @EnvironmentObject var accents: JourneyAccents
 
-    /// Which row has its crossing choices out. One at a time, and owned here
+    /// Which row has its transition choices out. One at a time, and owned here
     /// rather than by the row, so a tap anywhere on the screen can close it.
     @State private var openRow: String?
 
@@ -206,15 +207,15 @@ private struct DiveTrackScreen: View {
     }
 
     /// Painted in the accent of the set this track came from — the screen the
-    /// user just stepped off. With a sweep crossing on deck it drifts toward
+    /// user just stepped off. With a sweep transition on deck it drifts toward
     /// the colour of the set it's about to hand over to, arriving as the
     /// record ends.
     private var accent: Color {
         guard let base = accents.accent(for: appearance.episode.id) else { return Color(white: 0.09) }
-        if let crossing = playerStore.queued,
-           let destination = accents.accent(for: crossing.episode.id) {
+        if let transition = playerStore.queued,
+           let destination = accents.accent(for: transition.episode.id) {
             return base
-                .blended(toward: destination, amount: crossing.progress(at: playerStore.currentTime))
+                .blended(toward: destination, amount: transition.progress(at: playerStore.currentTime))
                 .raw
         }
         return base.raw
@@ -235,14 +236,14 @@ private struct DiveTrackScreen: View {
                         emptyState
                     } else {
                         ForEach(elsewhere) { other in
-                            DiveEpisodeRow(
+                            TrackEpisodeRow(
                                 appearance: other,
-                                canCross: crossingPoint != nil,
+                                canQueue: transitionPoint != nil,
                                 accent: accent,
                                 isOpen: openRow == other.id,
                                 onSetOpen: { isOpen in setOpenRow(isOpen ? other.id : nil) },
                                 onTap: { open(other) },
-                                onCross: { style in cross(other, with: style) },
+                                onQueue: { style in queueTransition(other, with: style) },
                                 onCallOff: {
                                     UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
                                     playerStore.cancelQueued()
@@ -264,7 +265,7 @@ private struct DiveTrackScreen: View {
                 DragGesture(minimumDistance: 8).onChanged { _ in closeOpenRow(haptic: false) }
             )
         }
-        .diveChrome(title: appearance.track.name, accent: accent, close: actions.close)
+        .journeyChrome(title: appearance.track.name, accent: accent, close: actions.close)
         .task(id: appearance.episode.id) {
             await accents.load(appearance.episode.id, playing: playerStore)
         }
@@ -357,11 +358,11 @@ private struct DiveTrackScreen: View {
         path.append(.episode(other.episode, landedOn: other.track.order))
     }
 
-    /// Where the record playing now runs out — the moment a crossing would
+    /// Where the record playing now runs out — the moment a transition would
     /// happen. Nil when there's nothing to hand over from: no set playing, no
     /// cue sheet to find the edge of the record in, or an outro already upon
-    /// us. That nil is also what greys the crossing out in the row menus.
-    private var crossingPoint: Double? {
+    /// us. That nil is also what greys the transition out in the row menus.
+    private var transitionPoint: Double? {
         guard playerStore.hasEpisode else { return nil }
         let playing = playerStore.currentTracks
         guard !playing.isEmpty else { return nil }
@@ -386,9 +387,9 @@ private struct DiveTrackScreen: View {
         return endsHere
     }
 
-    /// Arranges the crossing this row's menu asked for.
-    private func cross(_ other: TrackAppearance, with audio: TransitionAudio) {
-        guard let transition = plannedCrossing(to: other, audio: audio) else { return }
+    /// Arranges the transition this row's menu asked for.
+    private func queueTransition(_ other: TrackAppearance, with audio: TransitionAudio) {
+        guard let transition = plannedTransition(to: other, audio: audio) else { return }
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         playerStore.queue(transition)
         // Load the destination's accent now: the sweep drifts this screen's
@@ -396,8 +397,8 @@ private struct DiveTrackScreen: View {
         Task { await accents.load(other.episode.id, playing: playerStore) }
     }
 
-    private func plannedCrossing(to other: TrackAppearance, audio: TransitionAudio) -> QueuedTransition? {
-        guard let endsHere = crossingPoint else { return nil }
+    private func plannedTransition(to other: TrackAppearance, audio: TransitionAudio) -> QueuedTransition? {
+        guard let endsHere = transitionPoint else { return nil }
         let now = playerStore.currentTime
 
         // Where we come in over there. Usually the far side of the shared
@@ -432,10 +433,10 @@ private struct DiveTrackScreen: View {
 
 /// An episode that played the track. Tapping it goes there now; the control on
 /// its right holds the slower way — waiting for the record to end.
-private struct DiveEpisodeRow: View {
+private struct TrackEpisodeRow: View {
     let appearance: TrackAppearance
-    /// Whether there's a record playing that a crossing could hang off.
-    let canCross: Bool
+    /// Whether there's a record playing that a transition could hang off.
+    let canQueue: Bool
     /// The screen's album accent, worn by the badge once something is armed.
     let accent: Color
     /// Whether this row's control is open on its choices. Owned by the screen —
@@ -443,7 +444,7 @@ private struct DiveEpisodeRow: View {
     let isOpen: Bool
     let onSetOpen: (Bool) -> Void
     let onTap: () -> Void
-    let onCross: (TransitionAudio) -> Void
+    let onQueue: (TransitionAudio) -> Void
     let onCallOff: () -> Void
 
     @EnvironmentObject var playerStore: PlayerStore
@@ -457,8 +458,8 @@ private struct DiveEpisodeRow: View {
         !network.isOnline && downloadsStore.state(for: appearance.episode.id) != .downloaded
     }
 
-    /// The arranged crossing, when this row is the one on deck.
-    private var crossing: QueuedTransition? {
+    /// The arranged transition, when this row is the one on deck.
+    private var transition: QueuedTransition? {
         guard let queued = playerStore.queued,
               queued.episode.id == appearance.episode.id,
               queued.track.order == appearance.track.order
@@ -486,11 +487,11 @@ private struct DiveEpisodeRow: View {
 
                     // Once something is arranged, the row says so in words —
                     // the badge alone was too small to carry the news.
-                    if let crossing {
+                    if let transition {
                         HStack(spacing: 5) {
-                            Image(systemName: crossing.audio.symbol)
+                            Image(systemName: transition.audio.symbol)
                                 .font(.system(size: 9, weight: .bold))
-                            Text(statusLine(for: crossing))
+                            Text(statusLine(for: transition))
                                 .font(.app(size: 11, weight: .bold))
                                 .tracking(0.7)
                                 .lineLimit(1)
@@ -542,11 +543,11 @@ private struct DiveEpisodeRow: View {
         // A row that's on deck sits on a lit background — and under the sweep,
         // that light fills across it as the record plays out.
         .background(alignment: .leading) {
-            if let crossing {
+            if let transition {
                 GeometryReader { geo in
                     Rectangle()
                         .fill(Color.white.opacity(0.16))
-                        .frame(width: geo.size.width * crossing.progress(at: playerStore.currentTime))
+                        .frame(width: geo.size.width * transition.progress(at: playerStore.currentTime))
                         // Scoped to the fill: the clock ticks twice a second,
                         // and animating the whole row on that beat would drag
                         // everything else along with it.
@@ -557,12 +558,12 @@ private struct DiveEpisodeRow: View {
         // The choices unfold over the row rather than shoving its text aside.
         .overlay(alignment: .trailing) {
             if isOpen {
-                CrossingChoices(
-                    armed: crossing?.audio,
-                    canCross: canCross,
+                TransitionChoices(
+                    armed: transition?.audio,
+                    canQueue: canQueue,
                     onPick: { style in
                         onSetOpen(false)
-                        onCross(style)
+                        onQueue(style)
                     },
                     onCallOff: {
                         onSetOpen(false)
@@ -574,18 +575,18 @@ private struct DiveEpisodeRow: View {
                 .transition(.scale(scale: 0.2, anchor: .trailing).combined(with: .opacity))
             }
         }
-        .animation(.easeInOut(duration: 0.3), value: crossing?.id)
+        .animation(.easeInOut(duration: 0.3), value: transition?.id)
     }
 
     /// Idle, this is the landing time and the way in. Armed, it's the
     /// countdown. Open, it's neither — the choices have taken its place.
     private var trailingControl: some View {
         HStack(spacing: 8) {
-            if let crossing {
-                CrossingBadge(
-                    crossing: crossing,
+            if let transition {
+                TransitionBadge(
+                    transition: transition,
                     remaining: playerStore.queuedRemaining ?? 0,
-                    isHandingOver: playerStore.isCrossing,
+                    isTransitioning: playerStore.isTransitioning,
                     accent: accent
                 )
             } else if let timestamp = appearance.track.formattedTimestamp {
@@ -610,32 +611,32 @@ private struct DiveEpisodeRow: View {
             }
             .buttonStyle(.plain)
             .disabled(unavailable)
-            .accessibilityLabel("Crossing options")
+            .accessibilityLabel("Transition options")
         }
         // The button doesn't sit next to its own expansion — it becomes it.
         .opacity(isOpen ? 0 : 1)
     }
 
-    private func statusLine(for crossing: QueuedTransition) -> String {
-        playerStore.isCrossing
-            ? "CROSSING NOW"
-            : "ON DECK · \(crossing.audio.title.uppercased())"
+    private func statusLine(for transition: QueuedTransition) -> String {
+        playerStore.isTransitioning
+            ? "IN TRANSITION"
+            : "ON DECK · \(transition.audio.title.uppercased())"
     }
 }
 
 /// The control's open state: the three ways across, laid out in the row itself
 /// rather than in a menu over it, so picking one is part of the same gesture
 /// that opened it.
-private struct CrossingChoices: View {
+private struct TransitionChoices: View {
     /// The style already arranged, if this row is on deck.
     let armed: TransitionAudio?
-    let canCross: Bool
+    let canQueue: Bool
     let onPick: (TransitionAudio) -> Void
     let onCallOff: () -> Void
 
     var body: some View {
         HStack(spacing: 6) {
-            if canCross {
+            if canQueue {
                 ForEach(TransitionAudio.allCases) { style in
                     let isArmed = armed == style
                     chip(
@@ -648,7 +649,7 @@ private struct CrossingChoices: View {
                     )
                 }
             } else {
-                Text("Nothing playing to cross from")
+                Text("Nothing playing to transition from")
                     .font(.app(size: 11, weight: .medium))
                     .foregroundColor(.white.opacity(0.75))
                     .padding(.horizontal, 8)
@@ -687,10 +688,10 @@ private struct CrossingChoices: View {
 /// The armed state: a white pill wearing the screen's accent, which is how the
 /// rest of the app marks the one thing that's live. It counts the record down
 /// and pulses once the two sets are actually trading places.
-private struct CrossingBadge: View {
-    let crossing: QueuedTransition
+private struct TransitionBadge: View {
+    let transition: QueuedTransition
     let remaining: Double
-    let isHandingOver: Bool
+    let isTransitioning: Bool
     let accent: Color
 
     @State private var pulsing = false
@@ -707,33 +708,33 @@ private struct CrossingBadge: View {
         .background(Capsule().fill(Color.white))
         .scaleEffect(pulsing ? 1.07 : 1)
         .animation(.easeInOut(duration: 0.55).repeatForever(autoreverses: true), value: pulsing)
-        .onChange(of: isHandingOver) { handing in
+        .onChange(of: isTransitioning) { handing in
             // Calm while it waits, alive once it's happening.
             pulsing = handing
         }
     }
 
     private var countdown: String {
-        guard !isHandingOver else { return "NOW" }
+        guard !isTransitioning else { return "NOW" }
         let seconds = Int(remaining.rounded())
         return String(format: "%d:%02d", seconds / 60, seconds % 60)
     }
 }
 
 
-// MARK: - Episode screen (the tracks you can leave by)
+// MARK: - Episode Tracks (the tracks you can leave by)
 
-private struct DiveEpisodeScreen: View {
+private struct EpisodeTracksScreen: View {
     let episode: Episode
     /// The track that carried the user here, if they arrived sideways.
     let landedOn: Int?
-    @Binding var path: [DiveStep]
-    let actions: DiveActions
+    @Binding var path: [JourneyStep]
+    let actions: JourneyActions
 
     @EnvironmentObject var episodesVM: EpisodesViewModel
     @EnvironmentObject var playerStore: PlayerStore
     @EnvironmentObject var radioStore: RadioStore
-    @EnvironmentObject var accents: DiveAccents
+    @EnvironmentObject var accents: JourneyAccents
 
     @State private var fetchedTracks: [EpisodeTrack] = []
     @State private var isLoadingTracks = false
@@ -772,7 +773,7 @@ private struct DiveEpisodeScreen: View {
                             textColor: .white,
                             graph: episodesVM.trackGraph,
                             onPlay: play,
-                            onDive: { track in
+                            onOpenConnections: { track in
                                 path.append(.track(TrackAppearance(episode: episode, track: track)))
                             }
                         )
@@ -787,7 +788,7 @@ private struct DiveEpisodeScreen: View {
             .onAppear { focusLandedTrack(proxy) }
             .onChange(of: tracks.count) { _ in focusLandedTrack(proxy) }
         }
-        .diveChrome(title: episode.name, accent: accent, close: actions.close)
+        .journeyChrome(title: episode.name, accent: accent, close: actions.close)
         .task(id: episode.id) {
             await accents.load(episode.id, playing: playerStore)
         }
@@ -912,10 +913,10 @@ private struct DiveEpisodeScreen: View {
 
 // MARK: - Chrome
 
-/// Every dive screen looks the same: the album accent of whatever is in view
+/// Every journey screen looks the same: the album accent of whatever is in view
 /// under the episode sheet's darkening gradient, an inline title that doubles
-/// as the back button's label one step later, and a way out of the whole dive.
-private struct DiveChrome: ViewModifier {
+/// as the back button's label one step later, and a way out of the whole journey.
+private struct JourneyChrome: ViewModifier {
     let title: String
     let accent: Color
     let close: () -> Void
@@ -952,11 +953,11 @@ private struct DiveChrome: ViewModifier {
 }
 
 private extension View {
-    func diveChrome(
+    func journeyChrome(
         title: String,
         accent: Color,
         close: @escaping () -> Void
     ) -> some View {
-        modifier(DiveChrome(title: title, accent: accent, close: close))
+        modifier(JourneyChrome(title: title, accent: accent, close: close))
     }
 }

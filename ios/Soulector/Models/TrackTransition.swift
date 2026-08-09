@@ -3,7 +3,7 @@ import SwiftUI
 
 // MARK: - Audio
 
-/// How the sound gets from one set to the other at the crossing.
+/// How the sound gets from one set to the other at the transition.
 enum TransitionAudio: String, CaseIterable, Identifiable, Codable {
     /// Both sets play the record's outro at once and trade places over it.
     /// They're the same recording at the same point in it, so the overlap
@@ -43,7 +43,7 @@ enum TransitionAudio: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    /// How long before the record ends the crossing starts working. The run
+    /// How long before the record ends the transition starts working. The run
     /// back starts earliest: it needs room for the record to be recognisably
     /// under way again before the copy that's been playing runs out.
     var lead: Double {
@@ -56,7 +56,7 @@ enum TransitionAudio: String, CaseIterable, Identifiable, Codable {
 
     /// Whether the incoming set comes up while the outgoing one is still
     /// playing. The two overlapping styles are the whole point of arranging a
-    /// crossing in advance; the fade could be done on the spot.
+    /// transition in advance; the fade could be done on the spot.
     var overlaps: Bool {
         switch self {
         case .blend, .runBack: return true
@@ -72,7 +72,7 @@ enum TransitionAudio: String, CaseIterable, Identifiable, Codable {
         self == .blend ? lead : 0
     }
 
-    /// Which end of the shared record the crossing lands on over there:
+    /// Which end of the shared record the transition lands on over there:
     /// the far side of it and onward into the set, or its very start.
     var landsAtRecordStart: Bool {
         self == .runBack
@@ -90,18 +90,18 @@ enum TransitionAudio: String, CaseIterable, Identifiable, Codable {
 
 // MARK: - The arrangement
 
-/// A crossing arranged in advance: when the record playing now runs out, take
+/// A transition arranged in advance: when the record playing now runs out, take
 /// the same record's exit in another set and carry on from there.
 ///
 /// Both ends are the *end* of the shared record — you hear it once, in the set
 /// you're already in, and come out the other side into what the other DJ
 /// played next.
 struct QueuedTransition: Identifiable, Equatable {
-    /// The set being crossed into.
+    /// The episode being transitioned into.
     let episode: Episode
-    /// The record the crossing rides, as it appears in that set.
+    /// The record the transition rides, as it appears in that set.
     let track: EpisodeTrack
-    /// Where in the *current* episode the crossing happens — the moment the
+    /// Where in the *current* episode the transition happens — the moment the
     /// record ends there.
     let fireAt: Double
     /// Where in the target episode playback picks up — the moment the same
@@ -114,7 +114,7 @@ struct QueuedTransition: Identifiable, Equatable {
 
     var id: String { "\(episode.id)#\(track.order)" }
 
-    /// 0 at the moment it was arranged, 1 at the crossing.
+    /// 0 at the moment it was arranged, 1 at the transition.
     func progress(at time: Double) -> Double {
         let span = fireAt - armedFrom
         guard span > 0 else { return 1 }

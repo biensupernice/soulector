@@ -23,7 +23,7 @@ struct MiniPlayerView: View {
                     MarqueeText(text: episode.name)
                         .foregroundColor(.white)
 
-                    // A crossing arranged in a dive outlives the dive, so the
+                    // A transition arranged in a journey outlives the journey, so the
                     // bar carries it — otherwise closing the sheet would look
                     // like it had been called off.
                     if let queued = playerStore.queued {
@@ -97,7 +97,7 @@ struct MiniPlayerView: View {
     }
 
     private func onDeckLine(for queued: QueuedTransition) -> String {
-        guard !playerStore.isCrossing else { return "Crossing into \(queued.episode.name)" }
+        guard !playerStore.isTransitioning else { return "Transitioning into \(queued.episode.name)" }
         let seconds = Int((playerStore.queuedRemaining ?? 0).rounded())
         return String(format: "On deck · %d:%02d", seconds / 60, seconds % 60)
     }

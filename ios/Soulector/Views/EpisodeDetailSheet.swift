@@ -11,7 +11,7 @@ private let sheetHPadding: CGFloat = 20
 /// action buttons, and the tracklist in a translucent dark panel.
 struct EpisodeDetailSheet: View {
     let episode: Episode
-    /// Called with the episode a sideways dive left playing, so the screen that
+    /// Called with the episode a sideways journey left playing, so the screen that
     /// owns this sheet can point it at where the user ended up. Without it the
     /// sheet would sit here describing the set they left.
     var onNavigate: ((Episode) -> Void)?
@@ -29,11 +29,11 @@ struct EpisodeDetailSheet: View {
     /// Which episode `detailTracks`/`episodeAccent` were loaded for.
     @State private var loadedEpisodeId: String?
     @State private var showActions = false
-    /// The track a dive was launched from; drives the dive sheet.
-    @State private var diveOrigin: TrackAppearance?
-    /// Where that dive ended up, applied once it's fully dismissed — swapping
+    /// The track a journey was launched from; drives the journey sheet.
+    @State private var journeyOrigin: TrackAppearance?
+    /// Where that journey ended up, applied once it's fully dismissed — swapping
     /// this sheet's episode out from under a presented child would be a fight.
-    @State private var diveLanded: Episode?
+    @State private var journeyLanded: Episode?
     private var tracks: [EpisodeTrack] { detailTracks }
     private var isLoadingTracks: Bool { isLoadingDetailTracks }
     private var isFavorite: Bool { favoritesStore.isFavorite(episode.id) }
@@ -55,20 +55,20 @@ struct EpisodeDetailSheet: View {
         // The ZStack is what lets the outgoing set stay on screen while the
         // incoming one arrives; keyed on the episode, the contents are replaced
         // in place and the sheet itself never goes anywhere — which is what
-        // stopped a landing crossing reading as a close and a reopen.
+        // stopped a landing transition reading as a close and a reopen.
         ZStack {
             content
                 .id(episode.id)
                 // The crossfade: the set being left dissolves into the one
                 // arriving. Slow enough to read as a handover rather than a
-                // glitch, still enough not to fight the dive's landing focus,
+                // glitch, still enough not to fight the journey's landing focus,
                 // which is scrolling the new tracklist at the same moment.
                 .transition(.opacity)
         }
         .animation(.easeInOut(duration: 0.55), value: episode.id)
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: playerStore.queued?.id)
-        // A crossing that lands while this sheet is up retargets it at the set
-        // that's now playing, whether or not the dive is still open over it.
+        // A transition that lands while this sheet is up retargets it at the set
+        // that's now playing, whether or not the journey is still open over it.
         .onReceive(playerStore.transitionsFired) { transition in
             guard transition.episode.id != episode.id else { return }
             onNavigate?(transition.episode)
@@ -101,17 +101,17 @@ struct EpisodeDetailSheet: View {
             // Attached to the layout rather than alongside the actions sheet
             // below: two `.sheet` modifiers on one view fight over the
             // presentation.
-            .sheet(item: $diveOrigin, onDismiss: {
-                if let landed = diveLanded, landed.id != episode.id { onNavigate?(landed) }
-                diveLanded = nil
+            .sheet(item: $journeyOrigin, onDismiss: {
+                if let landed = journeyLanded, landed.id != episode.id { onNavigate?(landed) }
+                journeyLanded = nil
             }) { origin in
-                // Hand the dive this episode's accent so its first screen —
+                // Hand the journey this episode's accent so its first screen —
                 // the track's other homes — opens already wearing the colour of
                 // the set it was launched from.
-                TrackDiveSheet(
+                TrackJourneySheet(
                     origin: origin,
                     seedAccent: episodeAccent,
-                    onLanded: { diveLanded = $0 }
+                    onLanded: { journeyLanded = $0 }
                 )
             }
         }
@@ -124,7 +124,7 @@ struct EpisodeDetailSheet: View {
         }
         .animation(.easeInOut(duration: 0.5), value: sheetAccent)
         .task(id: episode.id) {
-            // A dive can retarget this sheet at a different episode without the
+            // A journey can retarget this sheet at a different episode without the
             // view being torn down, so anything loaded for the last one has to
             // go before the guards below decide there's nothing left to fetch.
             if loadedEpisodeId != episode.id {
@@ -203,7 +203,7 @@ struct EpisodeDetailSheet: View {
     /// Landscape: the player docks into a fixed left column — art, title,
     /// transport — while what's on deck, the actions and the tracklist scroll on
     /// the right. Nothing you need mid-listen (scrubber, skips, play) ever
-    /// scrolls away, and a dive is still one tap from any row.
+    /// scrolls away, and a journey is still one tap from any row.
     private var dockedLayout: some View {
         GeometryReader { geo in
             // The art takes whatever height is left once the dock's text and
@@ -285,7 +285,7 @@ struct EpisodeDetailSheet: View {
         }
     }
 
-    /// What's on deck, when this is the set it's crossing from. Same news the
+    /// What's on deck, when this is the set it's transition from. Same news the
     /// mini player carries, with room here to say where it's going.
     @ViewBuilder
     private var onDeckPanel: some View {
@@ -294,7 +294,7 @@ struct EpisodeDetailSheet: View {
             OnDeckPanel(
                 queued: queued,
                 remaining: playerStore.queuedRemaining ?? 0,
-                isHandingOver: playerStore.isCrossing,
+                isTransitioning: playerStore.isTransitioning,
                 accent: accentBackground,
                 onCallOff: { playerStore.cancelQueued() }
             )
@@ -339,8 +339,8 @@ struct EpisodeDetailSheet: View {
                     Task { await playerStore.play(episode: episode, startingAt: Double(ts)) }
                 }
             },
-            onDive: { track in
-                diveOrigin = TrackAppearance(episode: episode, track: track)
+            onOpenConnections: { track in
+                journeyOrigin = TrackAppearance(episode: episode, track: track)
             }
         )
         .background(Color.black.opacity(0.2))
@@ -526,11 +526,11 @@ struct TracklistView: View {
     let textColor: Color
     /// Which other sets played each of these records — the sideways badge.
     let graph: TrackGraph
-    /// What a tap on the row means. Hoisted out of the row because the dive
+    /// What a tap on the row means. Hoisted out of the row because the journey
     /// renders this same tracklist and has more to do on a play than the sheet
     /// does (leave the radio, tell the sheet underneath where we went).
     let onPlay: (EpisodeTrack) -> Void
-    let onDive: (EpisodeTrack) -> Void
+    let onOpenConnections: (EpisodeTrack) -> Void
     @EnvironmentObject var playerStore: PlayerStore
 
     private var currentTrack: EpisodeTrack? {
@@ -560,7 +560,7 @@ struct TracklistView: View {
                     isCurrent: isCurrent,
                     connections: graph.connectionCount(of: track, excluding: episode.id),
                     onPlay: { onPlay(track) },
-                    onDive: { onDive(track) }
+                    onOpenConnections: { onOpenConnections(track) }
                 )
             }
             .padding(.bottom, 4)
@@ -591,14 +591,14 @@ private struct TrackRow: View {
     let accent: Color
     let textColor: Color
     let isCurrent: Bool
-    /// How many other sets played this record. 0 leaves the branch out but
+    /// How many other sets played this record. 0 leaves the connection out but
     /// keeps its column, so timestamps stay in line down the whole tracklist.
     let connections: Int
     let onPlay: () -> Void
-    let onDive: () -> Void
+    let onOpenConnections: () -> Void
 
     var body: some View {
-        // The seek area and the branch are siblings, not a button inside a
+        // The seek area and the connection are siblings, not a button inside a
         // button, so each gets its own taps (same shape as EpisodeRowView's
         // row-and-kebab).
         ZStack(alignment: .leading) {
@@ -657,7 +657,7 @@ private struct TrackRow: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityAddTraits(.isButton)
 
-                TrackBranchSlot(count: connections, tint: textColor, action: onDive)
+                TrackConnectionsSlot(count: connections, tint: textColor, action: onOpenConnections)
             }
             .padding(.trailing, 16)
         }
@@ -728,7 +728,7 @@ struct ProgressSlider: View {
 private struct OnDeckPanel: View {
     let queued: QueuedTransition
     let remaining: Double
-    let isHandingOver: Bool
+    let isTransitioning: Bool
     /// The sheet's accent, worn by the content on the white pill.
     let accent: Color
     let onCallOff: () -> Void
@@ -773,7 +773,7 @@ private struct OnDeckPanel: View {
                     .contentShape(Circle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Call off the crossing")
+            .accessibilityLabel("Call off the transition")
         }
         .padding(.leading, 10)
         .padding(.trailing, 4)
@@ -782,11 +782,11 @@ private struct OnDeckPanel: View {
     }
 
     private var headline: String {
-        isHandingOver ? "CROSSING NOW" : "ON DECK · \(queued.audio.title.uppercased())"
+        isTransitioning ? "IN TRANSITION" : "ON DECK · \(queued.audio.title.uppercased())"
     }
 
     private var countdown: String {
-        guard !isHandingOver else { return "NOW" }
+        guard !isTransitioning else { return "NOW" }
         let seconds = Int(remaining.rounded())
         return String(format: "%d:%02d", seconds / 60, seconds % 60)
     }
