@@ -130,6 +130,11 @@ struct EpisodeActionsSheet: View {
                     openURL(url)
                 }
             }
+
+            // Under trial, not a preference: which way journeys open. It sits
+            // here because the panel is reachable from every episode and
+            // because the journey's own chrome is one of the things varying.
+            JourneyNavigationPicker()
         }
         .padding(.top, 6)
         .padding(.bottom, 24)
@@ -251,12 +256,8 @@ private struct ActionRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color.white.opacity(0.12))
-                        .frame(width: 38, height: 38)
-
+            ActionRowLabel(title: title, subtitle: subtitle, titleColor: titleColor) {
+                Group {
                     switch icon {
                     case .symbol(let name):
                         Image(systemName: name)
@@ -267,26 +268,7 @@ private struct ActionRow: View {
                     }
                 }
                 .scaleEffect(iconScale)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.app(size: 15, weight: .semibold))
-                        .foregroundColor(titleColor)
-
-                    if let subtitle {
-                        Text(subtitle)
-                            .font(.app(size: 12))
-                            .foregroundColor(.white.opacity(0.6))
-                    }
-                }
-                .multilineTextAlignment(.leading)
-
-                Spacer(minLength: 0)
             }
-            .padding(.horizontal, 20)
-            .frame(height: 60)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
         }
         .buttonStyle(ActionRowStyle())
         .onChange(of: pulse) { _ in pop() }
@@ -297,6 +279,47 @@ private struct ActionRow: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             withAnimation(.spring(response: 0.32, dampingFraction: 0.6)) { iconScale = 1 }
         }
+    }
+}
+
+/// The look of a row in this panel — tinted icon tile, title, optional
+/// subtitle — without the button around it, so a menu or a picker can wear the
+/// same row as an action does.
+struct ActionRowLabel<Icon: View>: View {
+    let title: String
+    var subtitle: String? = nil
+    var titleColor: Color = .white
+    @ViewBuilder let icon: () -> Icon
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.white.opacity(0.12))
+                    .frame(width: 38, height: 38)
+
+                icon()
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.app(size: 15, weight: .semibold))
+                    .foregroundColor(titleColor)
+
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.app(size: 12))
+                        .foregroundColor(.white.opacity(0.6))
+                }
+            }
+            .multilineTextAlignment(.leading)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 20)
+        .frame(height: 60)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
     }
 }
 
