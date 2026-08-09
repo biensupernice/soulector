@@ -3,6 +3,10 @@
 The vocabulary for sideways navigation, so variants can be argued about in the
 abstract instead of by pointing at screens.
 
+**Status: these are names, not decisions.** The current modal navigation is one
+variant among the ones worth trying; nothing here is meant to constrain what
+replaces it. Where the doc describes today's behavior it says so.
+
 It extends the app's existing UI nouns rather than replacing them. **Episodes,
 Episode Tracks, Collectives, Track List** already name most of this; the rule is
 *never rename something the UI already names*, and derive new names by
@@ -22,23 +26,28 @@ compounding the old ones.
 A record is not an appearance. The whole feature exists because one record has
 many appearances.
 
-## The two screens, and the law
+## The two views onto the graph
 
-The graph is bipartite, so a journey alternates. Two screens, exact inversions
-of each other, never two of a kind in a row:
-
-- **Track Episodes** — one track, every episode that played it. Offers the exits.
-  (`TrackEpisodesScreen`)
-- **Episode Tracks** — one episode, its whole **Track List**, with you placed
-  inside it. Offers the next exit. (`EpisodeTracksScreen`)
+The graph has two kinds of node — tracks and episodes — and connections only
+ever run between kinds. So any route through it alternates: from a track you
+reach episodes, from an episode you reach tracks.
 
 > **Episode Tracks → Track Episodes → Episode Tracks → …**
 
-That alternation is the law every navigation variant must preserve. One
-consequence worth taking seriously: *Track Episodes may not need to be a screen
-at all.* It's a transient choice among 3–4 rows, so a tray or a popover could
-serve it. Episode Tracks genuinely needs a surface. If a variant collapses one
-of them, collapse Track Episodes.
+**That is a fact about the data, not a rule about the UI.** It says what has to
+be *reachable*, not what has to be on screen or in what order. Today's build
+renders each as its own pushed screen, which is one point in the space, not the
+shape of the space:
+
+- **Track Episodes** — one track, every episode that played it
+  (`TrackEpisodesScreen` today)
+- **Episode Tracks** — one episode, its whole **Track List**, with you placed
+  inside it (`EpisodeTracksScreen` today)
+
+A variant is free to fuse them into one surface, show both at once, render one
+as a tray or popover, or replace the pair with something that isn't a list at
+all. The names are for saying *which relation* a screen is showing, so two
+proposals can be compared without redrawing them.
 
 ## The two threads
 
@@ -46,6 +55,9 @@ A journey moves two things, and they come apart:
 
 - **Viewed Episode** — what's on screen
 - **Current Episode** — what's playing (`playerStore.currentEpisode`)
+
+How today's build answers it, move by move — the column values are current
+behavior, not requirements:
 
 | Move | Viewed | Current |
 |---|---|---|
@@ -77,7 +89,9 @@ Player visible gets that back for free.
 
 1. Where the **path** lives — modal over the episode sheet (today), the app's own
    navigation stack, a dedicated screen, or expanded inline
-2. Whether **Track Episodes** is a screen or a tray
+2. Whether **Track Episodes** is a screen at all — it's a transient choice among
+   3–4 rows, so a tray, a popover, or an inline expansion are all live options;
+   so is keeping it a screen
 3. What happens to the path when the **current episode** moves on its own
    (today: the viewed episode is yanked to the landing)
 4. How you get from N steps deep back to just listening (today: one tap, path

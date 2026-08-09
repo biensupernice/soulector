@@ -59,9 +59,11 @@ struct TrackConnectionsSlot: View {
 
 // MARK: - Journey
 
-/// One step of a journey. A journey alternates between the two, always: Track
-/// Episodes (a track, and the episodes that played it) then Episode Tracks (an
-/// episode, and its track list), never two of a kind in a row. An episode step
+/// One step of a journey. Connections only run between kinds — track to
+/// episode, episode to track — so the steps alternate: Track Episodes (a track,
+/// and the episodes that played it) then Episode Tracks (an episode, and its
+/// track list). That's the shape of the data; rendering each as its own pushed
+/// screen is this build's answer to it, not the only one. An episode step
 /// remembers which track carried you into it, so the screen can put that track
 /// in front of you.
 private enum JourneyStep: Hashable {
