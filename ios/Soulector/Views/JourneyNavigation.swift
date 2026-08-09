@@ -19,13 +19,25 @@ enum JourneyNavigation: String, CaseIterable, Identifiable, Codable {
     /// One modal. The episode sheet hosts the stack and the journey pushes
     /// within it, so a journey never adds a layer.
     case pushInSheet
-    /// Track Episodes stops being a screen: connections open under the track
-    /// row, and picking one swaps the episode sheet in place. The path is never
-    /// deeper than where you started.
+    /// Track Episodes answers from a short sheet you can dismiss without going
+    /// anywhere; picking one retargets the episode sheet in place. Looking is
+    /// free, moving is deliberate — Wikipedia's page previews, and the way
+    /// Serato answers "which crates hold this record" with a filtered panel
+    /// rather than a destination.
+    case peek
+    /// Track Episodes stops being a screen at all: connections unfold under the
+    /// track row, and picking one swaps the episode sheet in place. Roam's
+    /// linked mentions — the reverse index is content, not a place to go.
     case inlineList
     /// The journey leaves the modals entirely and pushes over the Episodes
-    /// list, so the Mini Player stays visible the whole way.
+    /// list, so the Mini Player stays visible the whole way. What every music
+    /// app does with lateral browsing, and what Maps does with a place card
+    /// over a map it never hides.
     case fullScreen
+    /// The path laid out sideways instead of stacked: each step is a full-width
+    /// page, swipe right to go back and **left to go forward again**, which no
+    /// navigation stack gives you. Miller columns folded onto a phone.
+    case pager
 
     static let storageKey = "soulector.journey.navigation"
 
@@ -42,8 +54,10 @@ enum JourneyNavigation: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .modalSheet:  return "Sheet over sheet"
         case .pushInSheet: return "Push in the sheet"
+        case .peek:        return "Peek"
         case .inlineList:  return "Open in the list"
         case .fullScreen:  return "Full screen"
+        case .pager:       return "Sideways pages"
         }
     }
 
@@ -52,8 +66,10 @@ enum JourneyNavigation: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .modalSheet:  return "The journey opens on top of the episode"
         case .pushInSheet: return "The episode sheet carries you along"
+        case .peek:        return "A look that costs nothing to close"
         case .inlineList:  return "Connections open where the track is"
         case .fullScreen:  return "The player bar stays with you"
+        case .pager:       return "Swipe on, swipe back, swipe on again"
         }
     }
 
@@ -61,8 +77,10 @@ enum JourneyNavigation: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .modalSheet:  return "square.on.square"
         case .pushInSheet: return "arrow.forward.square"
+        case .peek:        return "eye"
         case .inlineList:  return "list.bullet.indent"
         case .fullScreen:  return "rectangle.portrait"
+        case .pager:       return "rectangle.split.3x1"
         }
     }
 
@@ -73,9 +91,35 @@ enum JourneyNavigation: String, CaseIterable, Identifiable, Codable {
     /// modals are the same decision.
     var leavesTheSheet: Bool { self == .fullScreen }
 
-    /// Whether the journey is a stack of pushed screens at all. The inline
-    /// variant answers a connection in place, so it has no path to push onto.
-    var hasPushedPath: Bool { self != .inlineList }
+    /// Whether the journey keeps a route at all. The two in-place variants
+    /// answer a connection where you stand, so there's nothing to push onto —
+    /// which also means they owe an answer to "how do I get back", and the
+    /// stack variants get that for free.
+    var hasPushedPath: Bool { self != .inlineList && self != .peek }
+}
+
+// MARK: - Layers
+
+/// What a journey shows *about itself*, on top of whatever container is drawing
+/// it. These are orthogonal to `JourneyNavigation` on purpose — "where the
+/// journey lives" and "how it reports where you are" are separate questions,
+/// and pretending they were one is why half the ideas worth trying had nowhere
+/// to sit. Any layer can ride along with any container.
+struct JourneyLayers: OptionSet, Codable {
+    let rawValue: Int
+
+    /// The route as a rail of album-art chips: tap one to jump straight back to
+    /// that step. Today's path is write-only — no labels, no jumping, no
+    /// forward — which is the thing Finder's path bar and VS Code's
+    /// breadcrumbs both exist to fix.
+    static let routeRail = JourneyLayers(rawValue: 1 << 0)
+    /// A strip naming both threads — what you're viewing, what's playing — with
+    /// a Return control that appears only when they differ. Spotify's
+    /// go-to-current, for the one case this app actually has.
+    static let nowPlayingStrip = JourneyLayers(rawValue: 1 << 1)
+
+    static let storageKey = "soulector.journey.layers"
+    static let none: JourneyLayers = []
 }
 
 // MARK: - The journey in flight
