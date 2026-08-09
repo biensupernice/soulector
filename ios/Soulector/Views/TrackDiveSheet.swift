@@ -59,15 +59,6 @@ struct TrackBranchSlot: View {
 
 // MARK: - Dive
 
-/// Preferences that belong to the dive rather than to any one screen of it.
-/// Kept as bare keys so the chrome (which owns the menu) and the screens
-/// (which act on them) can read the same settings without threading state.
-enum DiveSettings {
-    static let focusKey = "soulector.dive.focusLanding"
-    static let markKey = "soulector.dive.mark"
-    static let handoverKey = "soulector.dive.handover"
-}
-
 /// One step of a dive. A dive alternates between the two: a track shows the
 /// sets that played it, a set shows the tracks you can leave by. An episode
 /// step remembers which track carried you into it, so the screen can put that
@@ -459,8 +450,6 @@ private struct DiveEpisodeRow: View {
     @EnvironmentObject var downloadsStore: DownloadsStore
     @EnvironmentObject var network: NetworkMonitor
 
-    @AppStorage(DiveSettings.markKey) private var mark = CrossingMark.swap
-
     private var isCurrent: Bool { playerStore.currentEpisode?.id == appearance.episode.id }
 
     /// Offline, a set we don't have on the device can't be moved into.
@@ -610,7 +599,9 @@ private struct DiveEpisodeRow: View {
             }
 
             Button(action: { onSetOpen(!isOpen) }) {
-                Image(systemName: mark.symbol)
+                // "Put this next" — the same thing the armed row says in words
+                // ("ON DECK") and the episode sheet shows in its panel.
+                Image(systemName: "text.append")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(width: 30, height: 30)
@@ -748,11 +739,6 @@ private struct DiveEpisodeScreen: View {
     @State private var isLoadingTracks = false
     @State private var didFocusLanding = false
 
-    /// Whether arriving in a set scrolls its tracklist to the track that
-    /// brought you. On by default; the dive's settings menu toggles it so the
-    /// two behaviours can be felt against each other.
-    @AppStorage(DiveSettings.focusKey) private var focusLanding = true
-
     private var isCurrent: Bool { playerStore.currentEpisode?.id == episode.id }
 
     private var accentColor: AccentColor? { accents.accent(for: episode.id) }
@@ -826,7 +812,7 @@ private struct DiveEpisodeScreen: View {
     /// the tracklist hadn't been laid out yet — still early enough to happen
     /// under the push animation, and before there's any user scroll to fight.
     private func focusLandedTrack(_ proxy: ScrollViewProxy) {
-        guard focusLanding, !didFocusLanding, let landedOn, !tracks.isEmpty else { return }
+        guard !didFocusLanding, let landedOn, !tracks.isEmpty else { return }
         didFocusLanding = true
         for delay in [0.0, 0.35] {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
@@ -934,10 +920,6 @@ private struct DiveChrome: ViewModifier {
     let accent: Color
     let close: () -> Void
 
-    @AppStorage(DiveSettings.focusKey) private var focusLanding = true
-    @AppStorage(DiveSettings.markKey) private var mark = CrossingMark.swap
-    @AppStorage(DiveSettings.handoverKey) private var handover = SheetHandover.crossfade
-
     func body(content: Content) -> some View {
         content
             .background {
@@ -958,9 +940,7 @@ private struct DiveChrome: ViewModifier {
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    settingsMenu
-
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: close) {
                         Text("Done")
                             .font(.app(size: 15, weight: .semibold))
@@ -968,40 +948,6 @@ private struct DiveChrome: ViewModifier {
                     }
                 }
             }
-    }
-
-    /// How the dive behaves, as opposed to what any one row does — that lives
-    /// on the rows themselves now.
-    private var settingsMenu: some View {
-        Menu {
-            Section {
-                Toggle(isOn: $focusLanding) {
-                    Label("Focus the track I arrive on", systemImage: "viewfinder")
-                }
-            }
-
-            Section("Crossing mark") {
-                Picker("Mark", selection: $mark) {
-                    ForEach(CrossingMark.allCases) { option in
-                        // The row previews the glyph it sets.
-                        Label(option.title, systemImage: option.symbol).tag(option)
-                    }
-                }
-            }
-
-            Section("When a crossing lands") {
-                Picker("Handover", selection: $handover) {
-                    ForEach(SheetHandover.allCases) { style in
-                        Text("\(style.title) · \(style.detail)").tag(style)
-                    }
-                }
-            }
-        } label: {
-            Image(systemName: "slider.horizontal.3")
-                .font(.system(size: 16))
-                .foregroundColor(.white)
-        }
-        .accessibilityLabel("Dive settings")
     }
 }
 

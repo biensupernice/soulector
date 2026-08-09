@@ -124,8 +124,13 @@ ios/Soulector/
   control, so choosing the style and arming it are one tap, and tapping the lit
   one calls it off. The wait is drawn by the row filling while the screen's
   accent drifts toward the incoming set (`AccentColor.blended(toward:amount:)`).
-  The toolbar menu holds landing focus, which glyph marks the control
-  (`CrossingMark`), and how the episode sheet changes hands (`SheetHandover`).
+  Three things the variant exploration settled, now behavior rather than
+  settings (the dive toolbar is just Done): arriving in a set **always** scrolls
+  its tracklist to the track that carried you there, the control is marked
+  `text.append` — "put this next", matching the row's own "ON DECK" wording —
+  and a landing crossing hands the episode sheet over with a **crossfade**
+  (`.opacity`, 0.55s ease), slow enough to read as a handover and still enough
+  not to fight the landing focus scrolling underneath it.
   That sheet is presented on *whether* there's an episode rather than which one
   — `.sheet(item:)` ties presentation identity to the id, so a landing crossing
   tore the sheet down and put a new one up — and it swaps its contents in place,

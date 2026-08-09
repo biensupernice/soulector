@@ -23,9 +23,6 @@ struct EpisodeDetailSheet: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
-    /// How this sheet changes hands when a crossing lands under it.
-    @AppStorage(DiveSettings.handoverKey) private var handover = SheetHandover.crossfade
-
     @State private var detailTracks: [EpisodeTrack] = []
     @State private var isLoadingDetailTracks = false
     @State private var episodeAccent: AccentColor?
@@ -62,9 +59,13 @@ struct EpisodeDetailSheet: View {
         ZStack {
             content
                 .id(episode.id)
-                .transition(handover.transition)
+                // The crossfade: the set being left dissolves into the one
+                // arriving. Slow enough to read as a handover rather than a
+                // glitch, still enough not to fight the dive's landing focus,
+                // which is scrolling the new tracklist at the same moment.
+                .transition(.opacity)
         }
-        .animation(handover.animation, value: episode.id)
+        .animation(.easeInOut(duration: 0.55), value: episode.id)
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: playerStore.queued?.id)
         // A crossing that lands while this sheet is up retargets it at the set
         // that's now playing, whether or not the dive is still open over it.
