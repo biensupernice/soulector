@@ -372,12 +372,6 @@ struct EpisodeDetailSheet: View {
             accent: accentBackground,
             textColor: fg,
             graph: episodesVM.trackGraph,
-            // [journey-variants] non-nil only for the inline variant
-            expandedOrder: journeyNavigation == .inlineList ? $journey.expandedOrder : .constant(nil),
-            onPickConnection: { landed in
-                journey.expandedOrder = nil
-                onNavigate?(landed)
-            },
             onPlay: { track in
                 guard let ts = track.timestamp else { return }
                 if playerStore.currentEpisode?.id == episode.id {
@@ -395,6 +389,12 @@ struct EpisodeDetailSheet: View {
                 } else {
                     journey.open(appearance, variant: journeyNavigation)
                 }
+            },
+            // [journey-variants] non-nil only for the inline variant
+            expandedOrder: journeyNavigation == .inlineList ? $journey.expandedOrder : .constant(nil),
+            onPickConnection: { landed in
+                journey.expandedOrder = nil
+                onNavigate?(landed)
             }
         )
         .background(Color.black.opacity(0.2))
