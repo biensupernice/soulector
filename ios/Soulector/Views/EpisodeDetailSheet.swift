@@ -20,6 +20,8 @@ struct EpisodeDetailSheet: View {
     @EnvironmentObject var favoritesStore: FavoritesStore
     @EnvironmentObject var downloadsStore: DownloadsStore
     @EnvironmentObject var episodesVM: EpisodesViewModel
+    @EnvironmentObject var journey: JourneyCoordinator
+    @Environment(\.journeyNavigation) private var journeyNavigation
     @Environment(\.dismiss) var dismiss
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
@@ -29,9 +31,7 @@ struct EpisodeDetailSheet: View {
     /// Which episode `detailTracks`/`episodeAccent` were loaded for.
     @State private var loadedEpisodeId: String?
     @State private var showActions = false
-    /// The track a journey was launched from; drives the journey sheet.
-    @State private var journeyOrigin: TrackAppearance?
-    /// Where that journey ended up, applied once it's fully dismissed — swapping
+    /// Where a journey ended up, applied once it's fully dismissed — swapping
     /// this sheet's episode out from under a presented child would be a fight.
     @State private var journeyLanded: Episode?
     private var tracks: [EpisodeTrack] { detailTracks }
@@ -101,7 +101,7 @@ struct EpisodeDetailSheet: View {
             // Attached to the layout rather than alongside the actions sheet
             // below: two `.sheet` modifiers on one view fight over the
             // presentation.
-            .sheet(item: $journeyOrigin, onDismiss: {
+            .sheet(item: $journey.origin, onDismiss: {
                 if let landed = journeyLanded, landed.id != episode.id { onNavigate?(landed) }
                 journeyLanded = nil
             }) { origin in
@@ -340,7 +340,7 @@ struct EpisodeDetailSheet: View {
                 }
             },
             onOpenConnections: { track in
-                journeyOrigin = TrackAppearance(episode: episode, track: track)
+                journey.open(TrackAppearance(episode: episode, track: track), variant: journeyNavigation)
             }
         )
         .background(Color.black.opacity(0.2))

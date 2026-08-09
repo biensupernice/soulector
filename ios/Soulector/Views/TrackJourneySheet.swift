@@ -66,13 +66,13 @@ struct TrackConnectionsSlot: View {
 /// screen is this build's answer to it, not the only one. An episode step
 /// remembers which track carried you into it, so the screen can put that track
 /// in front of you.
-private enum JourneyStep: Hashable {
+enum JourneyStep: Hashable {
     case track(TrackAppearance)
     case episode(Episode, landedOn: Int?)
 }
 
 /// The bits every screen in the journey needs but doesn't own.
-private struct JourneyActions {
+struct JourneyActions {
     /// Reports the episode the journey is now playing, so the screen underneath
     /// can catch up instead of still showing where the user started.
     let onLanded: (Episode) -> Void
@@ -85,7 +85,7 @@ private struct JourneyActions {
 /// for the length of the journey so stepping back through the path doesn't refetch
 /// (or re-flash) colours the user has already seen.
 @MainActor
-private final class JourneyAccents: ObservableObject {
+final class JourneyAccents: ObservableObject {
     @Published private var byEpisode: [String: AccentColor] = [:]
     private var inFlight: Set<String> = []
 
@@ -187,7 +187,7 @@ struct TrackJourneySheet: View {
 
 // MARK: - Track Episodes (the episodes that played this track)
 
-private struct TrackEpisodesScreen: View {
+struct TrackEpisodesScreen: View {
     let appearance: TrackAppearance
     @Binding var path: [JourneyStep]
     let actions: JourneyActions
@@ -435,7 +435,7 @@ private struct TrackEpisodesScreen: View {
 
 /// An episode that played the track. Tapping it goes there now; the control on
 /// its right holds the slower way — waiting for the record to end.
-private struct TrackEpisodeRow: View {
+struct TrackEpisodeRow: View {
     let appearance: TrackAppearance
     /// Whether there's a record playing that a transition could hang off.
     let canQueue: Bool
@@ -629,7 +629,7 @@ private struct TrackEpisodeRow: View {
 /// The control's open state: the three ways across, laid out in the row itself
 /// rather than in a menu over it, so picking one is part of the same gesture
 /// that opened it.
-private struct TransitionChoices: View {
+struct TransitionChoices: View {
     /// The style already arranged, if this row is on deck.
     let armed: TransitionAudio?
     let canQueue: Bool
@@ -690,7 +690,7 @@ private struct TransitionChoices: View {
 /// The armed state: a white pill wearing the screen's accent, which is how the
 /// rest of the app marks the one thing that's live. It counts the record down
 /// and pulses once the two sets are actually trading places.
-private struct TransitionBadge: View {
+struct TransitionBadge: View {
     let transition: QueuedTransition
     let remaining: Double
     let isTransitioning: Bool
@@ -726,7 +726,7 @@ private struct TransitionBadge: View {
 
 // MARK: - Episode Tracks (the tracks you can leave by)
 
-private struct EpisodeTracksScreen: View {
+struct EpisodeTracksScreen: View {
     let episode: Episode
     /// The track that carried the user here, if they arrived sideways.
     let landedOn: Int?
@@ -918,7 +918,7 @@ private struct EpisodeTracksScreen: View {
 /// Every journey screen looks the same: the album accent of whatever is in view
 /// under the episode sheet's darkening gradient, an inline title that doubles
 /// as the back button's label one step later, and a way out of the whole journey.
-private struct JourneyChrome: ViewModifier {
+struct JourneyChrome: ViewModifier {
     let title: String
     let accent: Color
     let close: () -> Void
@@ -954,7 +954,7 @@ private struct JourneyChrome: ViewModifier {
     }
 }
 
-private extension View {
+extension View {
     func journeyChrome(
         title: String,
         accent: Color,

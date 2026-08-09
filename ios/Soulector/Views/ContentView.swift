@@ -6,6 +6,7 @@ struct ContentView: View {
     @StateObject private var episodesVM = EpisodesViewModel()
     @StateObject private var radioStore = RadioStore()
     @StateObject private var networkMonitor = NetworkMonitor()
+    @StateObject private var journey = JourneyCoordinator()
 
     /// Which journey navigation is under trial. Read once here and put into the
     /// environment rather than re-read per screen, so switching reaches an
@@ -20,6 +21,7 @@ struct ContentView: View {
             .environmentObject(episodesVM)
             .environmentObject(radioStore)
             .environmentObject(networkMonitor)
+            .environmentObject(journey)
             // Deliberately not a @StateObject: the downloads store owns a
             // background URLSession that iOS also revives outside the view tree
             // (see SoulectorApp), so it owns itself. Passing it down without

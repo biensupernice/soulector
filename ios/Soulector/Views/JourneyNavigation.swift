@@ -65,6 +65,54 @@ enum JourneyNavigation: String, CaseIterable, Identifiable, Codable {
         case .fullScreen:  return "rectangle.portrait"
         }
     }
+
+    /// Whether starting a journey closes the episode sheet. Only the full-screen
+    /// variant leaves it, and it has to: a sheet is anchored to the bottom of the
+    /// screen at every detent, so nothing presented as one can leave the Mini
+    /// Player showing underneath. Keeping the player bar visible and leaving the
+    /// modals are the same decision.
+    var leavesTheSheet: Bool { self == .fullScreen }
+
+    /// Whether the journey is a stack of pushed screens at all. The inline
+    /// variant answers a connection in place, so it has no path to push onto.
+    var hasPushedPath: Bool { self != .inlineList }
+}
+
+// MARK: - The journey in flight
+
+/// One journey, however it's being rendered. The variants differ in where these
+/// land on screen, not in what they are, so the state lives here and each
+/// container reads the part it draws — otherwise the same journey would exist
+/// three times in three `@State`s and switching would silently strand it.
+@MainActor
+final class JourneyCoordinator: ObservableObject {
+    /// The pushed route, for the variants that have one.
+    @Published var path: [JourneyStep] = []
+    /// The track a modal journey was opened from; drives the sheet.
+    @Published var origin: TrackAppearance?
+    /// The track whose connections are unfolded in place, for the inline variant.
+    @Published var expandedOrder: Int?
+
+    var isActive: Bool { origin != nil || !path.isEmpty || expandedOrder != nil }
+
+    /// Opening is the one place that knows about variants; every call site just
+    /// hands over the track that was tapped.
+    func open(_ appearance: TrackAppearance, variant: JourneyNavigation) {
+        switch variant {
+        case .modalSheet:
+            origin = appearance
+        case .pushInSheet, .fullScreen:
+            path = [.track(appearance)]
+        case .inlineList:
+            expandedOrder = appearance.track.order
+        }
+    }
+
+    func end() {
+        path = []
+        origin = nil
+        expandedOrder = nil
+    }
 }
 
 // MARK: - Reading the choice
@@ -96,6 +144,7 @@ extension EnvironmentValues {
 /// disappear in half the variants.
 struct JourneyNavigationPicker: View {
     @AppStorage(JourneyNavigation.storageKey) private var variant = JourneyNavigation.current
+    @EnvironmentObject private var journey: JourneyCoordinator
 
     var body: some View {
         // Nothing to choose between until a second variant lands.
@@ -106,7 +155,7 @@ struct JourneyNavigationPicker: View {
 
     private var picker: some View {
         Menu {
-            Picker("Journey navigation", selection: $variant) {
+            Picker("Journey navigation", selection: switching) {
                 ForEach(JourneyNavigation.available) { option in
                     Label(option.title, systemImage: option.symbol).tag(option)
                 }
@@ -118,5 +167,21 @@ struct JourneyNavigationPicker: View {
                     .foregroundColor(.white)
             }
         }
+    }
+
+    /// Switching ends whatever journey is open rather than trying to re-host it.
+    /// Moving a live path from a sheet onto another stack means dismissing one
+    /// container and pushing on another in the same frame, which is the race
+    /// that drops the push — and a half-moved journey teaches you nothing about
+    /// either variant anyway.
+    private var switching: Binding<JourneyNavigation> {
+        Binding(
+            get: { variant },
+            set: { newValue in
+                guard newValue != variant else { return }
+                journey.end()
+                variant = newValue
+            }
+        )
     }
 }
