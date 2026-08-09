@@ -21,6 +21,7 @@ struct EpisodeDetailSheet: View {
     @EnvironmentObject var downloadsStore: DownloadsStore
     @EnvironmentObject var episodesVM: EpisodesViewModel
     @Environment(\.dismiss) var dismiss
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     /// How this sheet changes hands when a crossing lands under it.
     @AppStorage(DiveSettings.handoverKey) private var handover = SheetHandover.crossfade
@@ -46,6 +47,12 @@ struct EpisodeDetailSheet: View {
     private var accentBackground: Color { sheetAccent?.raw ?? Color(white: 0.09) }
     /// Text color over the accent background.
     private var fg: Color { .white }
+
+    /// A short screen (iPhone in landscape) can't stack art over controls over
+    /// tracklist without everything being squeezed off-screen, so that case gets
+    /// a docked layout instead: art and transport parked in a fixed left column,
+    /// the tracklist scrolling beside them.
+    private var isDocked: Bool { verticalSizeClass == .compact }
 
     var body: some View {
         // The ZStack is what lets the outgoing set stay on screen while the
@@ -83,112 +90,15 @@ struct EpisodeDetailSheet: View {
             )
             .ignoresSafeArea()
 
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Album art
-                    EpisodeArtwork(episode: episode, contentMode: .fit)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .padding(.horizontal, sheetHPadding)
-                        // Clears the fixed top bar, with the same breathing room
-                        // the drag handle used to leave.
-                        .padding(.top, 52)
-
-                    // Title + date (web: bold white title, white/80 date)
-                    VStack(spacing: 4) {
-                        Text(episode.name)
-                            .font(.app(size: 17, weight: .bold))
-                            .foregroundColor(fg)
-                            .multilineTextAlignment(.center)
-
-                        HStack(spacing: 6) {
-                            Text(episode.formattedDate)
-                                .font(.app(size: 14))
-                                .foregroundColor(fg.opacity(0.8))
-
-                            if downloadState != .notDownloaded {
-                                Text("·")
-                                    .font(.app(size: 14))
-                                    .foregroundColor(fg.opacity(0.5))
-
-                                DownloadBadge(state: downloadState, tint: fg.opacity(0.8), size: 12)
-                            }
-                        }
-                    }
-                    .padding(.horizontal, sheetHPadding)
-
-                    // What's on deck, when this is the set it's crossing from.
-                    // Same news the mini player carries, with room here to say
-                    // where it's going.
-                    if playerStore.currentEpisode?.id == episode.id,
-                       let queued = playerStore.queued {
-                        OnDeckPanel(
-                            queued: queued,
-                            remaining: playerStore.queuedRemaining ?? 0,
-                            isHandingOver: playerStore.isCrossing,
-                            accent: accentBackground,
-                            onCallOff: { playerStore.cancelQueued() }
-                        )
-                        .padding(.horizontal, sheetHPadding)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                    }
-
-                    // Player controls
-                    PlayerControlsSection(episode: episode, accent: accentBackground, textColor: fg)
-
-                    // Action buttons (web: 2-col grid of white-outlined buttons)
-                    HStack(spacing: 8) {
-                        if let url = URL(string: episode.permalinkUrl) {
-                            Link(destination: url) {
-                                actionButtonLabel(icon: "link", text: "Open in SoundCloud")
-                            }
-                        }
-
-                        Button(action: {
-                            UIImpactFeedbackGenerator(style: isFavorite ? .light : .medium).impactOccurred()
-                            favoritesStore.toggleFavorite(episode.id)
-                        }) {
-                            actionButtonLabel(
-                                icon: isFavorite ? "heart.fill" : "heart",
-                                text: isFavorite ? "Remove Favorite" : "Add Favorite"
-                            )
-                        }
-                    }
-                    .padding(.horizontal, sheetHPadding)
-
-                    // Tracklist in a translucent panel (web: bg-black/20)
-                    if isLoadingTracks {
-                        ProgressView()
-                            .tint(fg)
-                            .padding()
-                    } else if !tracks.isEmpty {
-                        TracklistView(
-                            tracks: tracks,
-                            episode: episode,
-                            accent: accentBackground,
-                            textColor: fg,
-                            graph: episodesVM.trackGraph,
-                            onPlay: { track in
-                                guard let ts = track.timestamp else { return }
-                                if playerStore.currentEpisode?.id == episode.id {
-                                    playerStore.seek(to: Double(ts))
-                                } else {
-                                    Task { await playerStore.play(episode: episode, startingAt: Double(ts)) }
-                                }
-                            },
-                            onDive: { track in
-                                diveOrigin = TrackAppearance(episode: episode, track: track)
-                            }
-                        )
-                        .background(Color.black.opacity(0.2))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .padding(.horizontal, sheetHPadding)
-                    }
-
-                    Spacer(minLength: 32)
+            Group {
+                if isDocked {
+                    dockedLayout
+                } else {
+                    stackedLayout
                 }
             }
-            // Attached to the scroll view rather than alongside the actions
-            // sheet below: two `.sheet` modifiers on one view fight over the
+            // Attached to the layout rather than alongside the actions sheet
+            // below: two `.sheet` modifiers on one view fight over the
             // presentation.
             .sheet(item: $diveOrigin, onDismiss: {
                 if let landed = diveLanded, landed.id != episode.id { onNavigate?(landed) }
@@ -251,6 +161,191 @@ struct EpisodeDetailSheet: View {
         }
     }
 
+    // MARK: - Layouts
+
+    /// Portrait: one column, everything scrolls together.
+    private var stackedLayout: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                EpisodeArtwork(episode: episode, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(.horizontal, sheetHPadding)
+                    // Clears the fixed top bar, with the same breathing room
+                    // the drag handle used to leave.
+                    .padding(.top, 52)
+
+                titleBlock(titleSize: 17, dateSize: 14)
+                    .padding(.horizontal, sheetHPadding)
+
+                onDeckPanel
+                    .padding(.horizontal, sheetHPadding)
+
+                PlayerControlsSection(episode: episode, accent: accentBackground, textColor: fg)
+
+                actionButtons
+                    .padding(.horizontal, sheetHPadding)
+
+                if isLoadingTracks {
+                    ProgressView()
+                        .tint(fg)
+                        .padding()
+                } else if !tracks.isEmpty {
+                    tracklistPanel
+                        .padding(.horizontal, sheetHPadding)
+                }
+
+                Spacer(minLength: 32)
+            }
+        }
+    }
+
+    /// Landscape: the player docks into a fixed left column — art, title,
+    /// transport — while what's on deck, the actions and the tracklist scroll on
+    /// the right. Nothing you need mid-listen (scrubber, skips, play) ever
+    /// scrolls away, and a dive is still one tap from any row.
+    private var dockedLayout: some View {
+        GeometryReader { geo in
+            // The art takes whatever height is left once the dock's text and
+            // transport are accounted for, and never more than a share of the
+            // width — so it stays square and the right column keeps its room.
+            let artSide = min(max(geo.size.height - 216, 96), geo.size.width * 0.36)
+            let dockWidth = max(artSide, 208)
+
+            HStack(alignment: .top, spacing: 20) {
+                VStack(spacing: 10) {
+                    EpisodeArtwork(episode: episode, contentMode: .fill)
+                        .frame(width: artSide, height: artSide)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
+
+                    titleBlock(titleSize: 14, dateSize: 12)
+                        .lineLimit(2)
+
+                    Spacer(minLength: 0)
+
+                    PlayerControlsSection(
+                        episode: episode,
+                        accent: accentBackground,
+                        textColor: fg,
+                        compact: true,
+                        horizontalPadding: 0
+                    )
+                }
+                .frame(width: dockWidth)
+
+                ScrollView {
+                    VStack(spacing: 14) {
+                        onDeckPanel
+
+                        actionButtons
+
+                        if isLoadingTracks {
+                            ProgressView()
+                                .tint(fg)
+                                .padding(.top, 24)
+                        } else if !tracks.isEmpty {
+                            tracklistPanel
+                        }
+                    }
+                    .padding(.bottom, 16)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .padding(.horizontal, sheetHPadding)
+            // Clears the (shorter) docked top bar.
+            .padding(.top, 38)
+            .padding(.bottom, 10)
+        }
+    }
+
+    // MARK: - Shared pieces
+
+    /// Title + date (web: bold white title, white/80 date).
+    private func titleBlock(titleSize: CGFloat, dateSize: CGFloat) -> some View {
+        VStack(spacing: 4) {
+            Text(episode.name)
+                .font(.app(size: titleSize, weight: .bold))
+                .foregroundColor(fg)
+                .multilineTextAlignment(.center)
+
+            HStack(spacing: 6) {
+                Text(episode.formattedDate)
+                    .font(.app(size: dateSize))
+                    .foregroundColor(fg.opacity(0.8))
+
+                if downloadState != .notDownloaded {
+                    Text("·")
+                        .font(.app(size: dateSize))
+                        .foregroundColor(fg.opacity(0.5))
+
+                    DownloadBadge(state: downloadState, tint: fg.opacity(0.8), size: 12)
+                }
+            }
+        }
+    }
+
+    /// What's on deck, when this is the set it's crossing from. Same news the
+    /// mini player carries, with room here to say where it's going.
+    @ViewBuilder
+    private var onDeckPanel: some View {
+        if playerStore.currentEpisode?.id == episode.id,
+           let queued = playerStore.queued {
+            OnDeckPanel(
+                queued: queued,
+                remaining: playerStore.queuedRemaining ?? 0,
+                isHandingOver: playerStore.isCrossing,
+                accent: accentBackground,
+                onCallOff: { playerStore.cancelQueued() }
+            )
+            .transition(.move(edge: .top).combined(with: .opacity))
+        }
+    }
+
+    /// Web: 2-col grid of white-outlined buttons.
+    private var actionButtons: some View {
+        HStack(spacing: 8) {
+            if let url = URL(string: episode.permalinkUrl) {
+                Link(destination: url) {
+                    actionButtonLabel(icon: "link", text: "Open in SoundCloud")
+                }
+            }
+
+            Button(action: {
+                UIImpactFeedbackGenerator(style: isFavorite ? .light : .medium).impactOccurred()
+                favoritesStore.toggleFavorite(episode.id)
+            }) {
+                actionButtonLabel(
+                    icon: isFavorite ? "heart.fill" : "heart",
+                    text: isFavorite ? "Remove Favorite" : "Add Favorite"
+                )
+            }
+        }
+    }
+
+    /// Tracklist in a translucent panel (web: bg-black/20).
+    private var tracklistPanel: some View {
+        TracklistView(
+            tracks: tracks,
+            episode: episode,
+            accent: accentBackground,
+            textColor: fg,
+            graph: episodesVM.trackGraph,
+            onPlay: { track in
+                guard let ts = track.timestamp else { return }
+                if playerStore.currentEpisode?.id == episode.id {
+                    playerStore.seek(to: Double(ts))
+                } else {
+                    Task { await playerStore.play(episode: episode, startingAt: Double(ts)) }
+                }
+            },
+            onDive: { track in
+                diveOrigin = TrackAppearance(episode: episode, track: track)
+            }
+        )
+        .background(Color.black.opacity(0.2))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
     private var downloadState: DownloadState {
         downloadsStore.state(for: episode.id)
     }
@@ -261,7 +356,7 @@ struct EpisodeDetailSheet: View {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(fg.opacity(0.8))
-                    .frame(width: 44, height: 44)
+                    .frame(width: 44, height: isDocked ? 34 : 44)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -269,18 +364,22 @@ struct EpisodeDetailSheet: View {
 
             Spacer(minLength: 0)
 
-            Capsule()
-                .fill(fg.opacity(0.3))
-                .frame(width: 40, height: 4)
+            // The handle is a drag affordance, and a landscape sheet is
+            // full-screen with nothing to drag — so it only shows when true.
+            if !isDocked {
+                Capsule()
+                    .fill(fg.opacity(0.3))
+                    .frame(width: 40, height: 4)
 
-            Spacer(minLength: 0)
+                Spacer(minLength: 0)
+            }
 
-            EpisodeKebabButton(tint: fg.opacity(0.8), size: CGSize(width: 44, height: 44)) {
+            EpisodeKebabButton(tint: fg.opacity(0.8), size: CGSize(width: 44, height: isDocked ? 34 : 44)) {
                 showActions = true
             }
         }
         .padding(.horizontal, 8)
-        .padding(.top, 6)
+        .padding(.top, isDocked ? 2 : 6)
     }
 
     private func actionButtonLabel(icon: String, text: String) -> some View {
@@ -307,14 +406,23 @@ private struct PlayerControlsSection: View {
     let accent: Color
     /// Text/glyph color over the accent background.
     let textColor: Color
+    /// Docked (landscape) mode trades glyph size for vertical room.
+    var compact: Bool = false
+    /// The sheet's own inset when the controls sit in a full-width column; the
+    /// dock supplies its own margins, so it passes 0.
+    var horizontalPadding: CGFloat = sheetHPadding
     @EnvironmentObject var playerStore: PlayerStore
 
     @State private var scrubTime: Double? = nil
 
     private var isCurrentEpisode: Bool { playerStore.currentEpisode?.id == episode.id }
 
+    private var playButtonSize: CGFloat { compact ? 58 : 72 }
+    private var playGlyphSize: CGFloat { compact ? 22 : 28 }
+    private var skipGlyphSize: CGFloat { compact ? 24 : 30 }
+
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: compact ? 8 : 14) {
             // Progress (only shown when this episode is playing)
             if isCurrentEpisode {
                 VStack(spacing: 4) {
@@ -327,16 +435,16 @@ private struct PlayerControlsSection: View {
                             playerStore.seek(to: pct * playerStore.duration)
                         }
                     )
-                    .padding(.horizontal, sheetHPadding)
+                    .padding(.horizontal, horizontalPadding)
 
                     HStack {
                         Text(formatTime(scrubTime ?? playerStore.currentTime))
                         Spacer()
                         Text(formatTime(playerStore.duration))
                     }
-                    .font(.app(size: 12))
+                    .font(.app(size: compact ? 11 : 12))
                     .foregroundColor(textColor)
-                    .padding(.horizontal, sheetHPadding)
+                    .padding(.horizontal, horizontalPadding)
                     // The slider's 44pt touch target leaves ~20pt of dead space
                     // below the visible bar; pull the times up to sit closer to it.
                     .padding(.top, -14)
@@ -345,14 +453,14 @@ private struct PlayerControlsSection: View {
 
             // Buttons (web: big white 30s skips around a white circle whose
             // play/pause glyph is accent-colored)
-            HStack(spacing: 24) {
+            HStack(spacing: compact ? 18 : 24) {
                 if isCurrentEpisode {
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         playerStore.rewind(30)
                     }) {
                         Image(systemName: "gobackward.30")
-                            .font(.system(size: 30))
+                            .font(.system(size: skipGlyphSize))
                             .foregroundColor(textColor)
                     }
                 }
@@ -369,14 +477,14 @@ private struct PlayerControlsSection: View {
                     ZStack {
                         Circle()
                             .fill(Color.white)
-                            .frame(width: 72, height: 72)
+                            .frame(width: playButtonSize, height: playButtonSize)
 
                         if isCurrentEpisode && playerStore.isLoading {
                             ProgressView().tint(accent).scaleEffect(1.2)
                         } else {
                             let icon = isCurrentEpisode && playerStore.isPlaying ? "pause.fill" : "play.fill"
                             Image(systemName: icon)
-                                .font(.system(size: 28))
+                                .font(.system(size: playGlyphSize))
                                 .foregroundColor(accent)
                                 .offset(x: (isCurrentEpisode && playerStore.isPlaying) ? 0 : 2)
                         }
@@ -389,7 +497,7 @@ private struct PlayerControlsSection: View {
                         playerStore.forward(30)
                     }) {
                         Image(systemName: "goforward.30")
-                            .font(.system(size: 30))
+                            .font(.system(size: skipGlyphSize))
                             .foregroundColor(textColor)
                     }
                 }
