@@ -143,9 +143,11 @@ final class JourneyCoordinator: ObservableObject {
     /// hands over the track that was tapped.
     func open(_ appearance: TrackAppearance, variant: JourneyNavigation) {
         switch variant {
-        case .modalSheet:
+        // Both of these open a sheet on the track; they differ in how far it
+        // comes up and what picking one does, not in what starts them.
+        case .modalSheet, .peek:
             origin = appearance
-        case .pushInSheet, .fullScreen:
+        case .pushInSheet, .fullScreen, .pager:
             path = [.track(appearance)]
         case .inlineList:
             expandedOrder = appearance.track.order
