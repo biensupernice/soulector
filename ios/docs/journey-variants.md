@@ -66,3 +66,36 @@ take. Every music app does the opposite — autoplay moves what's playing and
 never moves what you're looking at — and VS Code keeps tool-driven navigation in
 a separate history from user-driven for exactly this reason. Worth fixing on its
 own, whatever wins.
+
+## Removing all of this
+
+The exploration is meant to be deleted, so it's kept findable. Everything added
+for it is either in a dedicated file or carries a `[journey-variants]` marker:
+
+```bash
+grep -rn "journey-variants" ios/
+```
+
+**Delete outright:**
+
+- `ios/Soulector/Views/JourneyVariants.swift` — every variant-only view
+  (`PeekConnections`, `InlineConnections`, `JourneyPager`, `RouteRail`,
+  `NowPlayingStrip`, `JourneyDestinations`)
+- `ios/Soulector/Views/JourneyNavigation.swift` — the enum, the layers, the
+  environment values, the picker
+- both of their `project.pbxproj` entries (four lines each)
+- this file
+
+**Unpick, guided by the markers:**
+
+| File | What's there |
+|---|---|
+| `ContentView.swift` | the two `@AppStorage` reads and the two environment modifiers |
+| `EpisodeDetailSheet.swift` | `journeyStackIfNeeded`, the peek branch in the journey sheet, the inline parameters on `TracklistView`, the full-screen handoff in the connections tap |
+| `EpisodesView.swift` | `rootStackIfNeeded`, the `onDismiss` handoff, the coordinator/environment properties |
+| `TrackJourneySheet.swift` | the pager branch, the layer insets in `JourneyChrome`, its three optional parameters |
+| `EpisodeActionsSheet.swift` | one `JourneyNavigationPicker()` row |
+
+`JourneyCoordinator` is the one piece worth keeping whichever variant wins — a
+journey having a single home is right regardless — but it lives in
+`JourneyNavigation.swift` today and should move before that file goes.

@@ -13,6 +13,9 @@ struct EpisodesView: View {
     @EnvironmentObject var radioStore: RadioStore
     @EnvironmentObject var downloadsStore: DownloadsStore
     @EnvironmentObject var network: NetworkMonitor
+    // [journey-variants]
+    @EnvironmentObject var journey: JourneyCoordinator
+    @Environment(\.journeyNavigation) private var journeyNavigation
 
     @State private var selectedTab: EpisodeTab = .all
     @State private var showSearch = false
@@ -26,6 +29,28 @@ struct EpisodesView: View {
 
     private static let tabScrollSpace = "episodeTabs"
     private static let tabFadeWidth: CGFloat = 20
+
+    // [journey-variants] ------------------------------------------------------
+    @ViewBuilder
+    private func rootStackIfNeeded<Content: View>(@ViewBuilder _ inner: () -> Content) -> some View {
+        if journeyNavigation == .fullScreen {
+            NavigationStack(path: $journey.path) {
+                inner()
+                    .toolbar(.hidden, for: .navigationBar)
+                    .journeyDestinations(path: $journey.path, actions: journeyActions)
+            }
+        } else {
+            inner()
+        }
+    }
+
+    private var journeyActions: JourneyActions {
+        JourneyActions(
+            onLanded: { _ in },
+            close: { journey.end() }
+        )
+    }
+    // [journey-variants] ------------------------------------------------------
 
     private var displayedEpisodes: [Episode] {
         switch selectedTab {
@@ -49,6 +74,10 @@ struct EpisodesView: View {
         ZStack(alignment: .bottom) {
             Color.black.ignoresSafeArea()
 
+            // [journey-variants] fullScreen pushes the journey here — inside
+            // the stack, under the Mini Player and FABs, which are siblings of
+            // it in the ZStack and so survive every push.
+            rootStackIfNeeded {
             VStack(spacing: 0) {
                 // Navigation bar area
                 navBar
@@ -78,6 +107,7 @@ struct EpisodesView: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .topLeading)))
                 }
             }
+            }
             // Presented on *whether* there's an episode, not on which one.
             // `.sheet(item:)` ties the presentation's identity to the episode's
             // id, so a transition landing under the sheet tore it down and put a
@@ -86,7 +116,14 @@ struct EpisodesView: View {
             .sheet(isPresented: Binding(
                 get: { selectedEpisode != nil },
                 set: { presented in if !presented { selectedEpisode = nil } }
-            )) {
+            ), onDismiss: {
+                // [journey-variants] the handoff: push only once the sheet is
+                // actually gone, never in the same turn as the dismissal.
+                if let pending = journey.pending {
+                    journey.pending = nil
+                    journey.open(pending, variant: journeyNavigation)
+                }
+            }) {
                 if let episode = selectedEpisode {
                     EpisodeDetailSheet(episode: episode, onNavigate: { selectedEpisode = $0 })
                         .presentationDetents([.large])

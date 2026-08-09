@@ -46,7 +46,7 @@ enum JourneyNavigation: String, CaseIterable, Identifiable, Codable {
 
     /// The variants actually wired up. Each lands in its own change and joins
     /// this list then, so the switcher never offers a choice that does nothing.
-    static let available: [JourneyNavigation] = [.modalSheet]
+    static let available: [JourneyNavigation] = allCases
 
     var id: String { rawValue }
 
@@ -120,6 +120,23 @@ struct JourneyLayers: OptionSet, Codable {
 
     static let storageKey = "soulector.journey.layers"
     static let none: JourneyLayers = []
+    static let all: [JourneyLayers] = [.routeRail, .nowPlayingStrip]
+
+    var title: String {
+        switch self {
+        case .routeRail:       return "Route rail"
+        case .nowPlayingStrip: return "Playing strip"
+        default:               return "Layers"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .routeRail:       return "rectangle.grid.1x2"
+        case .nowPlayingStrip: return "speaker.wave.2"
+        default:               return "square.stack"
+        }
+    }
 }
 
 // MARK: - The journey in flight
@@ -136,6 +153,10 @@ final class JourneyCoordinator: ObservableObject {
     @Published var origin: TrackAppearance?
     /// The track whose connections are unfolded in place, for the inline variant.
     @Published var expandedOrder: Int?
+    /// A journey that can't start until the episode sheet is out of the way.
+    /// Dismissing and pushing in the same turn drops the push, so the full-screen
+    /// variant parks the tapped track here and the root picks it up on dismissal.
+    @Published var pending: TrackAppearance?
 
     var isActive: Bool { origin != nil || !path.isEmpty || expandedOrder != nil }
 
@@ -145,9 +166,9 @@ final class JourneyCoordinator: ObservableObject {
         switch variant {
         // Both of these open a sheet on the track; they differ in how far it
         // comes up and what picking one does, not in what starts them.
-        case .modalSheet, .peek:
+        case .modalSheet, .peek, .pager:
             origin = appearance
-        case .pushInSheet, .fullScreen, .pager:
+        case .pushInSheet, .fullScreen:
             path = [.track(appearance)]
         case .inlineList:
             expandedOrder = appearance.track.order
@@ -158,6 +179,7 @@ final class JourneyCoordinator: ObservableObject {
         path = []
         origin = nil
         expandedOrder = nil
+        pending = nil
     }
 }
 
@@ -169,6 +191,21 @@ extension View {
     /// once instead of some of them.
     func journeyNavigation(_ variant: JourneyNavigation) -> some View {
         environment(\.journeyNavigation, variant)
+    }
+
+    func journeyLayers(_ layers: JourneyLayers) -> some View {
+        environment(\.journeyLayers, layers)
+    }
+}
+
+private struct JourneyLayersKey: EnvironmentKey {
+    static let defaultValue = JourneyLayers.none
+}
+
+extension EnvironmentValues {
+    var journeyLayers: JourneyLayers {
+        get { self[JourneyLayersKey.self] }
+        set { self[JourneyLayersKey.self] = newValue }
     }
 }
 
@@ -190,6 +227,7 @@ extension EnvironmentValues {
 /// disappear in half the variants.
 struct JourneyNavigationPicker: View {
     @AppStorage(JourneyNavigation.storageKey) private var variant = JourneyNavigation.current
+    @AppStorage(JourneyLayers.storageKey) private var layers = JourneyLayers.none
     @EnvironmentObject private var journey: JourneyCoordinator
 
     var body: some View {
@@ -206,11 +244,25 @@ struct JourneyNavigationPicker: View {
                     Label(option.title, systemImage: option.symbol).tag(option)
                 }
             }
+
+            Section("Layers") { layerToggles }
         } label: {
             ActionRowLabel(title: "Journeys: \(variant.title)", subtitle: variant.detail) {
                 Image(systemName: variant.symbol)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.white)
+            }
+        }
+    }
+
+    /// The layers are additive, so they're toggles rather than a picker — any
+    /// of them can ride along with any container.
+    private var layerToggles: some View {
+        ForEach(JourneyLayers.all, id: \.rawValue) { layer in
+            Button {
+                if layers.contains(layer) { layers.subtract(layer) } else { layers.insert(layer) }
+            } label: {
+                Label(layer.title, systemImage: layers.contains(layer) ? "checkmark" : layer.symbol)
             }
         }
     }

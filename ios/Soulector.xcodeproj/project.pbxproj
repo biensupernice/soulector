@@ -40,6 +40,7 @@
 		AA000038 /* TrackJourneySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000038 /* TrackJourneySheet.swift */; };
 		AA000039 /* TrackTransition.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000039 /* TrackTransition.swift */; };
 		AA000041 /* JourneyNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000041 /* JourneyNavigation.swift */; };
+		AA000042 /* JourneyVariants.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000042 /* JourneyVariants.swift */; };
 		AA000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000014 /* Assets.xcassets */; };
 		AA000015 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000015 /* Preview Assets.xcassets */; };
 		BA000001 /* NowPlaying.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001 /* NowPlaying.swift */; };
@@ -98,6 +99,7 @@
 		AB000038 /* TrackJourneySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackJourneySheet.swift; sourceTree = "<group>"; };
 		AB000039 /* TrackTransition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackTransition.swift; sourceTree = "<group>"; };
 		AB000041 /* JourneyNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JourneyNavigation.swift; sourceTree = "<group>"; };
+		AB000042 /* JourneyVariants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JourneyVariants.swift; sourceTree = "<group>"; };
 		AB000014 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AB000015 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		AB000016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -230,6 +232,7 @@
 				AB000035 /* EpisodeArtwork.swift */,
 				AB000038 /* TrackJourneySheet.swift */,
 				AB000041 /* JourneyNavigation.swift */,
+				AB000042 /* JourneyVariants.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -422,6 +425,7 @@
 				AA000038 /* TrackJourneySheet.swift in Sources */,
 				AA000039 /* TrackTransition.swift in Sources */,
 				AA000041 /* JourneyNavigation.swift in Sources */,
+				AA000042 /* JourneyVariants.swift in Sources */,
 				BA000001 /* NowPlaying.swift in Sources */,
 				BA000002 /* SoulectorLink.swift in Sources */,
 			);

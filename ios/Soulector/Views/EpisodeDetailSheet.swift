@@ -56,6 +56,10 @@ struct EpisodeDetailSheet: View {
         // incoming one arrives; keyed on the episode, the contents are replaced
         // in place and the sheet itself never goes anywhere — which is what
         // stopped a landing transition reading as a close and a reopen.
+        // [journey-variants] pushInSheet hosts the journey here. The stack must
+        // sit outside the .id() below: that boundary rebuilds the content on
+        // every handover, and a stack inside it would lose the whole path.
+        journeyStackIfNeeded {
         ZStack {
             content
                 .id(episode.id)
@@ -73,7 +77,33 @@ struct EpisodeDetailSheet: View {
             guard transition.episode.id != episode.id else { return }
             onNavigate?(transition.episode)
         }
+        }
     }
+
+    // [journey-variants] ------------------------------------------------------
+    @ViewBuilder
+    private func journeyStackIfNeeded<Content: View>(@ViewBuilder _ inner: () -> Content) -> some View {
+        if journeyNavigation == .pushInSheet {
+            NavigationStack(path: $journey.path) {
+                inner()
+                    .toolbar(.hidden, for: .navigationBar)
+                    .journeyDestinations(path: $journey.path, actions: journeyActions)
+            }
+            // A drag down would otherwise throw away the whole journey from
+            // three pushes deep; with a path, Done is the way out.
+            .interactiveDismissDisabled(!journey.path.isEmpty)
+        } else {
+            inner()
+        }
+    }
+
+    private var journeyActions: JourneyActions {
+        JourneyActions(
+            onLanded: { onNavigate?($0) },
+            close: { journey.end() }
+        )
+    }
+    // [journey-variants] ------------------------------------------------------
 
     private var content: some View {
         ZStack {
@@ -105,14 +135,25 @@ struct EpisodeDetailSheet: View {
                 if let landed = journeyLanded, landed.id != episode.id { onNavigate?(landed) }
                 journeyLanded = nil
             }) { origin in
-                // Hand the journey this episode's accent so its first screen —
-                // the track's other homes — opens already wearing the colour of
-                // the set it was launched from.
-                TrackJourneySheet(
-                    origin: origin,
-                    seedAccent: episodeAccent,
-                    onLanded: { journeyLanded = $0 }
-                )
+                // [journey-variants] peek answers from a short sheet instead
+                if journeyNavigation == .peek {
+                    PeekConnections(
+                        appearance: origin,
+                        accent: accentBackground,
+                        onPick: { journeyLanded = $0 }
+                    )
+                    .presentationDetents([.height(300), .large])
+                    .presentationDragIndicator(.visible)
+                } else {
+                    // Hand the journey this episode's accent so its first screen —
+                    // the track's other homes — opens already wearing the colour of
+                    // the set it was launched from.
+                    TrackJourneySheet(
+                        origin: origin,
+                        seedAccent: episodeAccent,
+                        onLanded: { journeyLanded = $0 }
+                    )
+                }
             }
         }
         // Fixed top bar: dismiss and "more" balanced on either side of the drag
@@ -331,6 +372,12 @@ struct EpisodeDetailSheet: View {
             accent: accentBackground,
             textColor: fg,
             graph: episodesVM.trackGraph,
+            // [journey-variants] non-nil only for the inline variant
+            expandedOrder: journeyNavigation == .inlineList ? $journey.expandedOrder : .constant(nil),
+            onPickConnection: { landed in
+                journey.expandedOrder = nil
+                onNavigate?(landed)
+            },
             onPlay: { track in
                 guard let ts = track.timestamp else { return }
                 if playerStore.currentEpisode?.id == episode.id {
@@ -340,7 +387,14 @@ struct EpisodeDetailSheet: View {
                 }
             },
             onOpenConnections: { track in
-                journey.open(TrackAppearance(episode: episode, track: track), variant: journeyNavigation)
+                let appearance = TrackAppearance(episode: episode, track: track)
+                // [journey-variants] fullScreen has to wait for this sheet to go
+                if journeyNavigation.leavesTheSheet {
+                    journey.pending = appearance
+                    dismiss()
+                } else {
+                    journey.open(appearance, variant: journeyNavigation)
+                }
             }
         )
         .background(Color.black.opacity(0.2))
@@ -531,6 +585,9 @@ struct TracklistView: View {
     /// does (leave the radio, tell the sheet underneath where we went).
     let onPlay: (EpisodeTrack) -> Void
     let onOpenConnections: (EpisodeTrack) -> Void
+    // [journey-variants] inline expansion; defaults keep other call sites as-is
+    var expandedOrder: Binding<Int?> = .constant(nil)
+    var onPickConnection: (Episode) -> Void = { _ in }
     @EnvironmentObject var playerStore: PlayerStore
 
     private var currentTrack: EpisodeTrack? {
@@ -553,15 +610,28 @@ struct TracklistView: View {
 
             ForEach(tracks) { track in
                 let isCurrent = currentTrack?.id == track.id
-                TrackRow(
-                    track: track,
-                    accent: accent,
-                    textColor: textColor,
-                    isCurrent: isCurrent,
-                    connections: graph.connectionCount(of: track, excluding: episode.id),
-                    onPlay: { onPlay(track) },
-                    onOpenConnections: { onOpenConnections(track) }
-                )
+                VStack(spacing: 0) {
+                    TrackRow(
+                        track: track,
+                        accent: accent,
+                        textColor: textColor,
+                        isCurrent: isCurrent,
+                        connections: graph.connectionCount(of: track, excluding: episode.id),
+                        onPlay: { onPlay(track) },
+                        onOpenConnections: { onOpenConnections(track) }
+                    )
+
+                    // [journey-variants] inline: the connections hang off the row
+                    if expandedOrder.wrappedValue == track.order {
+                        InlineConnections(
+                            appearance: TrackAppearance(episode: episode, track: track),
+                            textColor: textColor,
+                            onPick: onPickConnection
+                        )
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                }
+                .animation(.spring(response: 0.34, dampingFraction: 0.8), value: expandedOrder.wrappedValue)
             }
             .padding(.bottom, 4)
         }

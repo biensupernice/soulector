@@ -137,6 +137,8 @@ struct TrackJourneySheet: View {
 
     @State private var path: [JourneyStep] = []
     @StateObject private var accents: JourneyAccents
+    // [journey-variants] which container is drawing this journey
+    @Environment(\.journeyNavigation) private var variant
     @EnvironmentObject private var playerStore: PlayerStore
     @Environment(\.dismiss) private var dismiss
 
@@ -152,21 +154,20 @@ struct TrackJourneySheet: View {
     }
 
     var body: some View {
-        NavigationStack(path: $path) {
-            TrackEpisodesScreen(appearance: origin, path: $path, actions: actions)
-                .navigationDestination(for: JourneyStep.self) { step in
-                    switch step {
-                    case .track(let appearance):
-                        TrackEpisodesScreen(appearance: appearance, path: $path, actions: actions)
-                    case .episode(let episode, let landedOn):
-                        EpisodeTracksScreen(
-                            episode: episode,
-                            landedOn: landedOn,
-                            path: $path,
-                            actions: actions
-                        )
-                    }
+        Group {
+            // [journey-variants] the pager lays the same steps out sideways
+            if variant == .pager {
+                JourneyPager(path: $path, actions: actions)
+                    // Page 0 is the step the journey started on; a stack keeps
+                    // that as its root instead, which is why the seeding is
+                    // conditional rather than done in init.
+                    .onAppear { if path.isEmpty { path = [.track(origin)] } }
+            } else {
+                NavigationStack(path: $path) {
+                    TrackEpisodesScreen(appearance: origin, path: $path, actions: actions)
+                        .journeyDestinations(path: $path, actions: actions)
                 }
+            }
         }
         .environmentObject(accents)
         // The journey crosses the whole library, so its chrome stays monochrome
@@ -790,7 +791,15 @@ struct EpisodeTracksScreen: View {
             .onAppear { focusLandedTrack(proxy) }
             .onChange(of: tracks.count) { _ in focusLandedTrack(proxy) }
         }
-        .journeyChrome(title: episode.name, accent: accent, close: actions.close)
+        .journeyChrome(
+            title: episode.name,
+            accent: accent,
+            // [journey-variants]
+            path: $path,
+            viewed: episode,
+            onReturn: { landed in path.append(.episode(landed, landedOn: nil)) },
+            close: actions.close
+        )
         .task(id: episode.id) {
             await accents.load(episode.id, playing: playerStore)
         }
@@ -921,7 +930,14 @@ struct EpisodeTracksScreen: View {
 struct JourneyChrome: ViewModifier {
     let title: String
     let accent: Color
+    // [journey-variants] the rail needs the route to draw it
+    var path: Binding<[JourneyStep]>? = nil
+    var viewed: Episode? = nil
+    var onReturn: ((Episode) -> Void)? = nil
     let close: () -> Void
+
+    // [journey-variants]
+    @Environment(\.journeyLayers) private var layers
 
     func body(content: Content) -> some View {
         content
@@ -940,6 +956,17 @@ struct JourneyChrome: ViewModifier {
                 .ignoresSafeArea()
             }
             .animation(.easeInOut(duration: 0.5), value: accent)
+            // [journey-variants] layers ride above whatever the screen draws
+            .safeAreaInset(edge: .top, spacing: 0) {
+                VStack(spacing: 0) {
+                    if layers.contains(.nowPlayingStrip), let viewed, let onReturn {
+                        NowPlayingStrip(viewed: viewed, onReturn: onReturn)
+                    }
+                    if layers.contains(.routeRail), let path {
+                        RouteRail(path: path)
+                    }
+                }
+            }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -958,8 +985,19 @@ extension View {
     func journeyChrome(
         title: String,
         accent: Color,
+        // [journey-variants] optional so non-journey callers stay unchanged
+        path: Binding<[JourneyStep]>? = nil,
+        viewed: Episode? = nil,
+        onReturn: ((Episode) -> Void)? = nil,
         close: @escaping () -> Void
     ) -> some View {
-        modifier(JourneyChrome(title: title, accent: accent, close: close))
+        modifier(JourneyChrome(
+            title: title,
+            accent: accent,
+            path: path,
+            viewed: viewed,
+            onReturn: onReturn,
+            close: close
+        ))
     }
 }
