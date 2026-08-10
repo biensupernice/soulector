@@ -154,6 +154,7 @@ struct PeekConnections: View {
                 ScrollView {
                     VStack(spacing: 0) {
                         ForEach(others) { other in
+                            HStack(spacing: 10) {
                             Button {
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 radioStore.tuneOut()
@@ -187,17 +188,19 @@ struct PeekConnections: View {
                                             .padding(.horizontal, 8)
                                             .padding(.vertical, 4)
                                             .background(Capsule().fill(Color.black.opacity(0.25)))
+                                            .layoutPriority(1)
                                     }
-
-                                    // Sibling of the row's tap, not nested in
-                                    // it — a button inside a button eats both.
-                                    InPlaceTransitionControl(destination: other, tint: .white)
                                 }
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 8)
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
+
+                            // Sibling of the row's tap, not nested in it — a
+                            // button inside a button eats both.
+                            InPlaceTransitionControl(destination: other, tint: .white)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 8)
                         }
                     }
                     .padding(.bottom, 12)
@@ -231,50 +234,52 @@ struct InlineConnections: View {
     var body: some View {
         VStack(spacing: 0) {
             ForEach(others) { other in
-                Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    radioStore.tuneOut()
-                    let at = Double(other.track.timestamp ?? 0)
-                    Task { await playerStore.play(episode: other.episode, startingAt: at) }
-                    onPick(other.episode)
-                } label: {
-                    HStack(spacing: 10) {
-                        // The elbow says these hang off the row above rather
-                        // than being more of the tracklist.
-                        Rectangle()
-                            .fill(textColor.opacity(0.35))
-                            .frame(width: 1, height: 28)
+                // Genuine siblings in one row: the tap area and the control
+                // sit side by side, so the control has its own space instead
+                // of being laid over the timestamp.
+                HStack(spacing: 8) {
+                    Button {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        radioStore.tuneOut()
+                        let at = Double(other.track.timestamp ?? 0)
+                        Task { await playerStore.play(episode: other.episode, startingAt: at) }
+                        onPick(other.episode)
+                    } label: {
+                        HStack(spacing: 10) {
+                            // The elbow says these hang off the row above rather
+                            // than being more of the tracklist.
+                            Rectangle()
+                                .fill(textColor.opacity(0.35))
+                                .frame(width: 1, height: 28)
 
-                        EpisodeArtwork(episode: other.episode)
-                            .frame(width: 28, height: 28)
-                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                            EpisodeArtwork(episode: other.episode)
+                                .frame(width: 28, height: 28)
+                                .clipShape(RoundedRectangle(cornerRadius: 4))
 
-                        Text(other.episode.name)
-                            .font(.app(size: 12, weight: .medium))
-                            .foregroundColor(textColor)
-                            .lineLimit(1)
+                            Text(other.episode.name)
+                                .font(.app(size: 12, weight: .medium))
+                                .foregroundColor(textColor)
+                                .lineLimit(1)
 
-                        Spacer(minLength: 6)
+                            Spacer(minLength: 6)
 
-                        if let ts = other.track.formattedTimestamp {
-                            Text(ts)
-                                .font(.app(size: 11))
-                                .monospacedDigit()
-                                .foregroundColor(textColor.opacity(0.8))
+                            if let ts = other.track.formattedTimestamp {
+                                Text(ts)
+                                    .font(.app(size: 11))
+                                    .monospacedDigit()
+                                    .foregroundColor(textColor.opacity(0.8))
+                                    .layoutPriority(1)
+                            }
                         }
+                        .contentShape(Rectangle())
                     }
-                    .padding(.leading, 36)
-                    .padding(.trailing, 8)
-                    .padding(.vertical, 4)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                // Sibling of the row's tap rather than inside it, so each keeps
-                // its own gesture — the same rule the journey rows follow.
-                .overlay(alignment: .trailing) {
+                    .buttonStyle(.plain)
+
                     InPlaceTransitionControl(destination: other, tint: textColor)
-                        .padding(.trailing, 12)
                 }
+                .padding(.leading, 36)
+                .padding(.trailing, 14)
+                .padding(.vertical, 4)
             }
         }
         .padding(.bottom, 6)

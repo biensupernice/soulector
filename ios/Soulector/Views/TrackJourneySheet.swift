@@ -883,20 +883,41 @@ struct JourneyChrome: ViewModifier {
 
     // [journey-variants]
     @Environment(\.journeyLayers) private var layers
+    @Environment(\.journeyNavigation) private var variant
 
     func body(content: Content) -> some View {
         content
             .background {
-                ZStack {
-                    accent
-                    LinearGradient(
-                        colors: [
-                            Color.black.opacity(0.25),
-                            Color.black.opacity(0.55),
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
+                // [journey-variants] full screen reads as a page in the app, not
+                // a sheet wearing an album — so the accent washes down from the
+                // top over the app's own black rather than flooding the screen.
+                // The drift between accents still animates either way, which is
+                // what tells you the ground has changed under a transition.
+                Group {
+                    if variant == .fullScreen {
+                        ZStack {
+                            Color.black
+                            LinearGradient(
+                                colors: [accent.opacity(0.85), accent.opacity(0.12), .clear],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            .frame(maxHeight: 320, alignment: .top)
+                            .frame(maxHeight: .infinity, alignment: .top)
+                        }
+                    } else {
+                        ZStack {
+                            accent
+                            LinearGradient(
+                                colors: [
+                                    Color.black.opacity(0.25),
+                                    Color.black.opacity(0.55),
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        }
+                    }
                 }
                 .ignoresSafeArea()
             }

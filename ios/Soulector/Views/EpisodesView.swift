@@ -169,6 +169,12 @@ struct EpisodesView: View {
             .padding(.trailing, 16)
             .padding(.bottom, playerStore.hasEpisode ? 76 : 16)
             .ignoresSafeArea(.keyboard, edges: .bottom)
+            // [journey-variants] the cluster belongs to the list underneath.
+            // Full screen leaves it uncovered, where Play Random reads as an
+            // offer this screen is making — so it steps out while a journey is up.
+            .opacity(journey.path.isEmpty ? 1 : 0)
+            .allowsHitTesting(journey.path.isEmpty)
+            .animation(.easeInOut(duration: 0.2), value: journey.path.isEmpty)
 
             // Mini player pinned to the bottom of the *screen*, not to the top
             // of the keyboard. Search raises the keyboard, and riding it up
