@@ -16,6 +16,10 @@ struct EpisodesView: View {
     // [journey-variants]
     @EnvironmentObject var journey: JourneyCoordinator
     @Environment(\.journeyNavigation) private var journeyNavigation
+    /// Same reason as the sheet's: a pushed journey screen needs its accents
+    /// supplied by whoever hosts it. Living here also means the cache survives
+    /// between journeys instead of being rebuilt each time.
+    @StateObject private var journeyAccents = JourneyAccents()
 
     @State private var selectedTab: EpisodeTab = .all
     @State private var showSearch = false
@@ -39,6 +43,7 @@ struct EpisodesView: View {
                     .toolbar(.hidden, for: .navigationBar)
                     .journeyDestinations(path: $journey.path, actions: journeyActions)
             }
+            .environmentObject(journeyAccents)
         } else {
             inner()
         }

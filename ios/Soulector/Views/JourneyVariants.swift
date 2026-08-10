@@ -23,8 +23,10 @@ struct JourneyDestinations: ViewModifier {
             switch step {
             case .track(let appearance):
                 TrackEpisodesScreen(appearance: appearance, path: $path, actions: actions)
+                    .onAppear { Diagnostics.breadcrumb("push · Track Episodes · \(appearance.track.name)") }
             case .episode(let episode, let landedOn):
                 EpisodeTracksScreen(episode: episode, landedOn: landedOn, path: $path, actions: actions)
+                    .onAppear { Diagnostics.breadcrumb("push · Episode Tracks · \(episode.name)") }
             }
         }
     }
@@ -33,6 +35,70 @@ struct JourneyDestinations: ViewModifier {
 extension View {
     func journeyDestinations(path: Binding<[JourneyStep]>, actions: JourneyActions) -> some View {
         modifier(JourneyDestinations(path: path, actions: actions))
+    }
+}
+
+
+// MARK: - Going across, from an in-place variant
+
+/// Peek and inline lost the slower way across when they stopped using the
+/// journey's own rows: you could go there now, but not arrange the handover on
+/// the record you're both playing. This is that control, small enough to sit in
+/// a compact row — the same `TransitionAudio` choices, the same
+/// `PlayerStore.queue`, just a tighter frame.
+struct InPlaceTransitionControl: View {
+    let destination: TrackAppearance
+    let tint: Color
+
+    @EnvironmentObject private var playerStore: PlayerStore
+    @EnvironmentObject private var episodesVM: EpisodesViewModel
+
+    /// A transition hangs off the record playing now, so there has to be one.
+    private var canQueue: Bool { QueuedTransition.transitionPoint(player: playerStore) != nil }
+
+    private var armed: QueuedTransition? {
+        guard let queued = playerStore.queued,
+              queued.episode.id == destination.episode.id,
+              queued.track.order == destination.track.order
+        else { return nil }
+        return queued
+    }
+
+    var body: some View {
+        Menu {
+            if let armed {
+                Button(role: .destructive) {
+                    playerStore.cancelQueued()
+                } label: {
+                    Label("Call off \(armed.audio.title)", systemImage: "xmark")
+                }
+            } else if canQueue {
+                ForEach(TransitionAudio.allCases) { style in
+                    Button {
+                        guard let transition = QueuedTransition.plan(
+                            to: destination,
+                            audio: style,
+                            player: playerStore,
+                            graph: episodesVM.trackGraph
+                        ) else { return }
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        playerStore.queue(transition)
+                    } label: {
+                        Label("\(style.title) · \(style.detail)", systemImage: style.symbol)
+                    }
+                }
+            } else {
+                Text("Nothing playing to transition from")
+            }
+        } label: {
+            Image(systemName: armed == nil ? "text.append" : armed!.audio.symbol)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(armed == nil ? tint : .black)
+                .frame(width: 26, height: 26)
+                .background(Circle().fill(armed == nil ? Color.black.opacity(0.3) : Color.white))
+                .contentShape(Circle())
+        }
+        .accessibilityLabel("Transition options")
     }
 }
 
@@ -122,6 +188,10 @@ struct PeekConnections: View {
                                             .padding(.vertical, 4)
                                             .background(Capsule().fill(Color.black.opacity(0.25)))
                                     }
+
+                                    // Sibling of the row's tap, not nested in
+                                    // it — a button inside a button eats both.
+                                    InPlaceTransitionControl(destination: other, tint: .white)
                                 }
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 8)
@@ -194,11 +264,17 @@ struct InlineConnections: View {
                         }
                     }
                     .padding(.leading, 36)
-                    .padding(.trailing, 16)
+                    .padding(.trailing, 8)
                     .padding(.vertical, 4)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                // Sibling of the row's tap rather than inside it, so each keeps
+                // its own gesture — the same rule the journey rows follow.
+                .overlay(alignment: .trailing) {
+                    InPlaceTransitionControl(destination: other, tint: textColor)
+                        .padding(.trailing, 12)
+                }
             }
         }
         .padding(.bottom, 6)

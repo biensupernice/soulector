@@ -121,3 +121,76 @@ struct QueuedTransition: Identifiable, Equatable {
         return min(1, max(0, (time - armedFrom) / span))
     }
 }
+
+// MARK: - Planning one
+
+extension QueuedTransition {
+    /// Where the record playing now runs out — the moment a transition would
+    /// happen. Nil when there's nothing to hand over from: no episode playing,
+    /// no cue sheet to find the edge of the record in, or an outro already upon
+    /// us. That nil is also what greys the transition out wherever it's offered.
+    @MainActor
+    static func transitionPoint(player: PlayerStore) -> Double? {
+        guard player.hasEpisode else { return nil }
+        let playing = player.currentTracks
+        guard !playing.isEmpty else { return nil }
+
+        let now = player.currentTime
+        guard let index = playing.lastIndex(where: { track in
+            guard let timestamp = track.timestamp else { return false }
+            return Double(timestamp) <= now
+        }) else { return nil }
+
+        let endsHere: Double
+        if index + 1 < playing.count, let next = playing[index + 1].timestamp {
+            endsHere = Double(next)
+        } else if player.duration > 0 {
+            endsHere = player.duration
+        } else {
+            return nil
+        }
+        // Too close to arrange — by the time the tap registers it's already gone.
+        guard endsHere - now > 2 else { return nil }
+        return endsHere
+    }
+
+    /// Works out the crossing to a given appearance. Lives here rather than on
+    /// one screen because more than one surface offers this now, and two copies
+    /// of the landing arithmetic would drift.
+    @MainActor
+    static func plan(
+        to other: TrackAppearance,
+        audio: TransitionAudio,
+        player: PlayerStore,
+        graph: TrackGraph
+    ) -> QueuedTransition? {
+        guard let endsHere = transitionPoint(player: player) else { return nil }
+        let now = player.currentTime
+
+        // Where we come in over there. Usually the far side of the shared
+        // record — you've just heard it, so you carry on into what that DJ
+        // played next. The run back instead lands on the record's own first
+        // beat, so it comes around again under the copy that's ending here.
+        let target = graph.tracks(forEpisode: other.episode.id)
+        let landsAt: Double
+        if audio.landsAtRecordStart {
+            landsAt = other.track.timestamp.map(Double.init) ?? 0
+        } else if let match = target.firstIndex(where: { $0.order == other.track.order }),
+                  match + 1 < target.count, let next = target[match + 1].timestamp {
+            landsAt = Double(next)
+        } else if let timestamp = other.track.timestamp {
+            landsAt = Double(timestamp)
+        } else {
+            landsAt = 0
+        }
+
+        return QueuedTransition(
+            episode: other.episode,
+            track: other.track,
+            fireAt: endsHere,
+            startAt: landsAt,
+            armedFrom: now,
+            audio: audio
+        )
+    }
+}

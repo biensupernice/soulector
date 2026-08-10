@@ -34,6 +34,10 @@ struct EpisodeDetailSheet: View {
     /// Where a journey ended up, applied once it's fully dismissed — swapping
     /// this sheet's episode out from under a presented child would be a fight.
     @State private var journeyLanded: Episode?
+    // [journey-variants] the journey screens read their accents from the
+    // environment, and pushing them here means this host has to supply them —
+    // TrackJourneySheet did it for the modal variants and nobody did it here.
+    @StateObject private var journeyAccents = JourneyAccents()
     private var tracks: [EpisodeTrack] { detailTracks }
     private var isLoadingTracks: Bool { isLoadingDetailTracks }
     private var isFavorite: Bool { favoritesStore.isFavorite(episode.id) }
@@ -89,6 +93,7 @@ struct EpisodeDetailSheet: View {
                     .toolbar(.hidden, for: .navigationBar)
                     .journeyDestinations(path: $journey.path, actions: journeyActions)
             }
+            .environmentObject(journeyAccents)
             // A drag down would otherwise throw away the whole journey from
             // three pushes deep; with a path, Done is the way out.
             .interactiveDismissDisabled(!journey.path.isEmpty)

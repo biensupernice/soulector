@@ -7,6 +7,7 @@ struct ContentView: View {
     @StateObject private var radioStore = RadioStore()
     @StateObject private var networkMonitor = NetworkMonitor()
     @StateObject private var journey = JourneyCoordinator()
+    @State private var showDiagnostics = false
 
     /// Which journey navigation is under trial. Read once here and put into the
     /// environment rather than re-read per screen, so switching reaches an
@@ -34,5 +35,13 @@ struct ContentView: View {
             // falls back to Space Grotesk at the body size.
             .environment(\.font, .app(size: 17))
             .preferredColorScheme(.dark)
+            // Shake anywhere to read what the app was doing — including what it
+            // was doing when it died last time.
+            .sensesShake()
+            .onReceive(NotificationCenter.default.publisher(for: .deviceDidShake)) { _ in
+                showDiagnostics = true
+            }
+            .sheet(isPresented: $showDiagnostics) { DiagnosticsSheet() }
+            .onAppear { Diagnostics.install() }
     }
 }

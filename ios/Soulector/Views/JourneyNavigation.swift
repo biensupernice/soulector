@@ -163,6 +163,7 @@ final class JourneyCoordinator: ObservableObject {
     /// Opening is the one place that knows about variants; every call site just
     /// hands over the track that was tapped.
     func open(_ appearance: TrackAppearance, variant: JourneyNavigation) {
+        Diagnostics.breadcrumb("journey open · \(variant.rawValue) · \(appearance.episode.name) / \(appearance.track.name)")
         switch variant {
         // Both of these open a sheet on the track; they differ in how far it
         // comes up and what picking one does, not in what starts them.
@@ -176,6 +177,7 @@ final class JourneyCoordinator: ObservableObject {
     }
 
     func end() {
+        Diagnostics.breadcrumb("journey end · depth \(path.count)")
         path = []
         origin = nil
         expandedOrder = nil
@@ -277,6 +279,7 @@ struct JourneyNavigationPicker: View {
             get: { variant },
             set: { newValue in
                 guard newValue != variant else { return }
+                Diagnostics.breadcrumb("variant switch · \(variant.rawValue) -> \(newValue.rawValue)")
                 journey.end()
                 variant = newValue
             }
