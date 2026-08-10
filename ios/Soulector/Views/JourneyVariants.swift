@@ -286,65 +286,6 @@ struct InlineConnections: View {
     }
 }
 
-// MARK: - Pager
-
-/// The path laid sideways instead of stacked. Swiping right goes back the way
-/// a stack does; swiping *left* goes forward again, which no navigation stack
-/// offers — the step you backed out of is still there until you go somewhere
-/// else.
-struct JourneyPager: View {
-    @Binding var path: [JourneyStep]
-    let actions: JourneyActions
-
-    /// Which step is on screen. Kept separate from `path` precisely so backing
-    /// up doesn't discard the tail — that's the whole point of the variant.
-    @State private var page = 0
-
-    var body: some View {
-        TabView(selection: $page) {
-            ForEach(Array(path.enumerated()), id: \.offset) { index, step in
-                Group {
-                    switch step {
-                    case .track(let appearance):
-                        TrackEpisodesScreen(appearance: appearance, path: $path, actions: actions)
-                    case .episode(let episode, let landedOn):
-                        EpisodeTracksScreen(episode: episode, landedOn: landedOn, path: $path, actions: actions)
-                    }
-                }
-                .tag(index)
-            }
-        }
-        .tabViewStyle(.page(indexDisplayMode: .never))
-        // A new step arrives at the end; ride to it rather than staying put.
-        .onChange(of: path.count) { count in
-            withAnimation { page = max(0, count - 1) }
-        }
-        // There's no navigation bar out here to hang Done from — the pages
-        // aren't in a stack — so the way out is drawn by the pager itself.
-        .overlay(alignment: .topTrailing) {
-            Button(action: actions.close) {
-                Text("Done")
-                    .font(.app(size: 15, weight: .semibold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-            }
-            .buttonStyle(.plain)
-        }
-        .overlay(alignment: .topLeading) {
-            // How far along you are, and how much you could swipe back to.
-            if path.count > 1 {
-                Text("\(page + 1) / \(path.count)")
-                    .font(.app(size: 12, weight: .semibold))
-                    .monospacedDigit()
-                    .foregroundColor(.white.opacity(0.6))
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 13)
-            }
-        }
-    }
-}
-
 // MARK: - Layers
 
 /// The route as album art you can tap: the path made visible and jumpable,
@@ -430,6 +371,165 @@ struct NowPlayingStrip: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 6)
             .background(Color.black.opacity(0.25))
+        }
+    }
+}
+
+// MARK: - What Track Episodes shows
+
+/// The episode you came from, standing in the list with the others. A record
+/// with one connection then reads as a fact about two episodes rather than a
+/// stub — and it's the truer statement: this record's homes include this one.
+struct HereRow: View {
+    let appearance: TrackAppearance
+
+    var body: some View {
+        HStack(spacing: 12) {
+            EpisodeArtwork(episode: appearance.episode)
+                .frame(width: 48, height: 48)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.white.opacity(0.5), lineWidth: 1.5))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(appearance.episode.name)
+                    .font(.app(size: 14, weight: .semibold))
+                    .foregroundColor(.white)
+                    .lineLimit(2)
+
+                Text("YOU ARE HERE")
+                    .font(.app(size: 11, weight: .bold))
+                    .tracking(0.7)
+                    .foregroundColor(.white.opacity(0.6))
+            }
+
+            Spacer(minLength: 8)
+
+            if let ts = appearance.track.formattedTimestamp {
+                Text(ts)
+                    .font(.app(size: 11, weight: .medium))
+                    .monospacedDigit()
+                    .foregroundColor(.white.opacity(0.8))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Color.black.opacity(0.2)))
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+        .opacity(0.75)
+    }
+}
+
+/// What the record comes out of and goes into over there. A list of episode
+/// names says where you could go; this says what it would sound like when you
+/// arrive, which is the thing worth choosing on.
+struct LandingContext: View {
+    let destination: TrackAppearance
+
+    @EnvironmentObject private var episodesVM: EpisodesViewModel
+
+    /// The record before and after it in that episode's cue sheet.
+    private var neighbours: (before: EpisodeTrack?, after: EpisodeTrack?) {
+        let tracks = episodesVM.trackGraph.tracks(forEpisode: destination.episode.id)
+        guard let index = tracks.firstIndex(where: { $0.order == destination.track.order }) else {
+            return (nil, nil)
+        }
+        return (
+            index > 0 ? tracks[index - 1] : nil,
+            index + 1 < tracks.count ? tracks[index + 1] : nil
+        )
+    }
+
+    var body: some View {
+        let sides = neighbours
+        if sides.before != nil || sides.after != nil {
+            VStack(alignment: .leading, spacing: 3) {
+                if let before = sides.before {
+                    line(mark: "arrow.up", track: before)
+                }
+                if let after = sides.after {
+                    line(mark: "arrow.down", track: after)
+                }
+            }
+            .padding(.leading, 76)
+            .padding(.trailing, 20)
+            .padding(.bottom, 8)
+        }
+    }
+
+    private func line(mark: String, track: EpisodeTrack) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: mark)
+                .font(.system(size: 8, weight: .bold))
+                .foregroundColor(.white.opacity(0.4))
+            Text("\(track.name) · \(track.artist)")
+                .font(.app(size: 11))
+                .foregroundColor(.white.opacity(0.55))
+                .lineLimit(1)
+        }
+    }
+}
+
+/// A destination as artwork rather than a row. Two across, so one to four
+/// connections fill a screen the way a list of one never will.
+struct ShelfCard: View {
+    let appearance: TrackAppearance
+    let isOnDeck: Bool
+    let onTap: () -> Void
+    let onQueue: (TransitionAudio) -> Void
+    let canQueue: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ZStack(alignment: .topTrailing) {
+                Button(action: onTap) {
+                    EpisodeArtwork(episode: appearance.episode)
+                        .aspectRatio(1, contentMode: .fill)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .overlay {
+                            if isOnDeck {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .strokeBorder(.white, lineWidth: 2)
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
+
+                // The slower way across, kept out of the artwork's own tap.
+                Menu {
+                    if canQueue {
+                        ForEach(TransitionAudio.allCases) { style in
+                            Button { onQueue(style) } label: {
+                                Label("\(style.title) · \(style.detail)", systemImage: style.symbol)
+                            }
+                        }
+                    } else {
+                        Text("Nothing playing to transition from")
+                    }
+                } label: {
+                    Image(systemName: "text.append")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 28, height: 28)
+                        .background(Circle().fill(Color.black.opacity(0.45)))
+                }
+                .padding(6)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(appearance.episode.name)
+                    .font(.app(size: 12, weight: .semibold))
+                    .foregroundColor(.white)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+
+                if let ts = appearance.track.formattedTimestamp {
+                    Text("plays at \(ts)")
+                        .font(.app(size: 11))
+                        .monospacedDigit()
+                        .foregroundColor(.white.opacity(0.6))
+                }
+            }
         }
     }
 }

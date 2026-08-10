@@ -22,6 +22,8 @@ struct EpisodeDetailSheet: View {
     @EnvironmentObject var episodesVM: EpisodesViewModel
     @EnvironmentObject var journey: JourneyCoordinator
     @Environment(\.journeyNavigation) private var journeyNavigation
+    // [journey-variants]
+    @Environment(\.trackEpisodesExtras) private var trackEpisodesExtras
     @Environment(\.dismiss) var dismiss
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
@@ -34,10 +36,6 @@ struct EpisodeDetailSheet: View {
     /// Where a journey ended up, applied once it's fully dismissed — swapping
     /// this sheet's episode out from under a presented child would be a fight.
     @State private var journeyLanded: Episode?
-    // [journey-variants] the journey screens read their accents from the
-    // environment, and pushing them here means this host has to supply them —
-    // TrackJourneySheet did it for the modal variants and nobody did it here.
-    @StateObject private var journeyAccents = JourneyAccents()
     private var tracks: [EpisodeTrack] { detailTracks }
     private var isLoadingTracks: Bool { isLoadingDetailTracks }
     private var isFavorite: Bool { favoritesStore.isFavorite(episode.id) }
@@ -60,10 +58,6 @@ struct EpisodeDetailSheet: View {
         // incoming one arrives; keyed on the episode, the contents are replaced
         // in place and the sheet itself never goes anywhere — which is what
         // stopped a landing transition reading as a close and a reopen.
-        // [journey-variants] pushInSheet hosts the journey here. The stack must
-        // sit outside the .id() below: that boundary rebuilds the content on
-        // every handover, and a stack inside it would lose the whole path.
-        journeyStackIfNeeded {
         ZStack {
             content
                 .id(episode.id)
@@ -84,34 +78,7 @@ struct EpisodeDetailSheet: View {
             guard !journeyNavigation.hasPushedPath else { return }
             onNavigate?(transition.episode)
         }
-        }
     }
-
-    // [journey-variants] ------------------------------------------------------
-    @ViewBuilder
-    private func journeyStackIfNeeded<Content: View>(@ViewBuilder _ inner: () -> Content) -> some View {
-        if journeyNavigation == .pushInSheet {
-            NavigationStack(path: $journey.path) {
-                inner()
-                    .toolbar(.hidden, for: .navigationBar)
-                    .journeyDestinations(path: $journey.path, actions: journeyActions)
-            }
-            .environmentObject(journeyAccents)
-            // A drag down would otherwise throw away the whole journey from
-            // three pushes deep; with a path, Done is the way out.
-            .interactiveDismissDisabled(!journey.path.isEmpty)
-        } else {
-            inner()
-        }
-    }
-
-    private var journeyActions: JourneyActions {
-        JourneyActions(
-            onLanded: { onNavigate?($0) },
-            close: { journey.end() }
-        )
-    }
-    // [journey-variants] ------------------------------------------------------
 
     private var content: some View {
         ZStack {
@@ -146,25 +113,14 @@ struct EpisodeDetailSheet: View {
                 // the container it was drawn in has to put it away.
                 journey.path = []
             }) { origin in
-                // [journey-variants] peek answers from a short sheet instead
-                if journeyNavigation == .peek {
-                    PeekConnections(
-                        appearance: origin,
-                        accent: accentBackground,
-                        onPick: { journeyLanded = $0 }
-                    )
-                    .presentationDetents([.height(300), .large])
-                    .presentationDragIndicator(.visible)
-                } else {
-                    // Hand the journey this episode's accent so its first screen —
-                    // the track's other homes — opens already wearing the colour of
-                    // the set it was launched from.
-                    TrackJourneySheet(
-                        origin: origin,
-                        seedAccent: episodeAccent,
-                        onLanded: { journeyLanded = $0 }
-                    )
-                }
+                // [journey-variants] the one sheet-hosted variant left
+                PeekConnections(
+                    appearance: origin,
+                    accent: accentBackground,
+                    onPick: { journeyLanded = $0 }
+                )
+                .presentationDetents([.height(300), .large])
+                .presentationDragIndicator(.visible)
             }
         }
         // Fixed top bar: dismiss and "more" balanced on either side of the drag
@@ -407,8 +363,15 @@ struct EpisodeDetailSheet: View {
             },
             onOpenConnections: { track in
                 let appearance = TrackAppearance(episode: episode, track: track)
-                // [journey-variants] fullScreen has to wait for this sheet to go
-                if journeyNavigation.leavesTheSheet {
+                let connections = episodesVM.trackGraph.connectionCount(of: track, excluding: episode.id)
+                // [journey-variants] too little to say for a whole screen
+                let sparse = trackEpisodesExtras.contains(.adaptiveTray)
+                    && connections <= TrackEpisodesExtras.trayThreshold
+
+                if sparse {
+                    journey.open(appearance, variant: .peek)
+                } else if journeyNavigation.leavesTheSheet {
+                    // fullScreen has to wait for this sheet to go
                     journey.pending = appearance
                     dismiss()
                 } else {

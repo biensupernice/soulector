@@ -117,73 +117,6 @@ final class JourneyAccents: ObservableObject {
     }
 }
 
-/// Moving *sideways*: from a track in the set you're listening to, out to the
-/// other sets that played the same record, into one of them, and on again from
-/// its tracklist. The navigation stack is the journey — every step is a push, so
-/// back retraces the path you took through the library.
-///
-/// Everything here reads from `EpisodesViewModel.trackGraph`, which is built
-/// from the on-device search index: no request stands between a tap and the
-/// next set. Each screen is painted in the album accent of the episode in
-/// view — a track screen in the accent of the set it came from — so a journey
-/// feels like walking between episode sheets rather than leaving them.
-struct TrackJourneySheet: View {
-    /// The track the journey starts from, and the episode it was playing in.
-    let origin: TrackAppearance
-    /// The origin episode's accent, already fetched by the sheet presenting
-    /// this one, so the first screen is painted without a flash of grey.
-    var seedAccent: AccentColor?
-    var onLanded: (Episode) -> Void = { _ in }
-
-    @StateObject private var accents: JourneyAccents
-    // [journey-variants] the route lives on the coordinator now, so a landing
-    // can reach it whether or not this sheet is the thing drawing it
-    @EnvironmentObject private var journey: JourneyCoordinator
-    // [journey-variants] which container is drawing this journey
-    @Environment(\.journeyNavigation) private var variant
-    @EnvironmentObject private var playerStore: PlayerStore
-    @Environment(\.dismiss) private var dismiss
-
-    init(
-        origin: TrackAppearance,
-        seedAccent: AccentColor? = nil,
-        onLanded: @escaping (Episode) -> Void = { _ in }
-    ) {
-        self.origin = origin
-        self.seedAccent = seedAccent
-        self.onLanded = onLanded
-        _accents = StateObject(wrappedValue: JourneyAccents(seed: [origin.episode.id: seedAccent]))
-    }
-
-    var body: some View {
-        Group {
-            // [journey-variants] the pager lays the same steps out sideways
-            if variant == .pager {
-                JourneyPager(path: $journey.path, actions: actions)
-                    // Page 0 is the step the journey started on; a stack keeps
-                    // that as its root instead, which is why the seeding is
-                    // conditional rather than done in init.
-                    .onAppear { if journey.path.isEmpty { journey.path = [.track(origin)] } }
-            } else {
-                NavigationStack(path: $journey.path) {
-                    TrackEpisodesScreen(appearance: origin, path: $journey.path, actions: actions)
-                        .journeyDestinations(path: $journey.path, actions: actions)
-                }
-            }
-        }
-        .environmentObject(accents)
-        // The journey crosses the whole library, so its chrome stays monochrome
-        // rather than picking up any one album's accent.
-        .tint(.white)
-        // Landing is handled once, at the root, so every variant follows the
-        // audio in and not just the two this sheet draws.
-    }
-
-    private var actions: JourneyActions {
-        JourneyActions(onLanded: onLanded, close: { dismiss() })
-    }
-}
-
 // MARK: - Track Episodes (the episodes that played this track)
 
 struct TrackEpisodesScreen: View {
@@ -199,6 +132,10 @@ struct TrackEpisodesScreen: View {
     /// Which row has its transition choices out. One at a time, and owned here
     /// rather than by the row, so a tap anywhere on the screen can close it.
     @State private var openRow: String?
+
+    // [journey-variants] what this screen shows and how
+    @Environment(\.trackEpisodesStyle) private var style
+    @Environment(\.trackEpisodesExtras) private var extras
 
     private var others: [TrackAppearance] {
         episodesVM.trackGraph.otherAppearances(
@@ -225,6 +162,51 @@ struct TrackEpisodesScreen: View {
     var body: some View {
         let elsewhere = others
 
+        // [journey-variants] the shelf swaps rows for artwork cards
+        if style == .shelf {
+            shelfBody(elsewhere)
+        } else {
+            listBody(elsewhere)
+        }
+    }
+
+    // [journey-variants]
+    private func shelfBody(_ elsewhere: [TrackAppearance]) -> some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                header(count: elsewhere.count)
+
+                if elsewhere.isEmpty {
+                    emptyState
+                } else {
+                    LazyVGrid(
+                        columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
+                        spacing: 12
+                    ) {
+                        ForEach(elsewhere) { other in
+                            ShelfCard(
+                                appearance: other,
+                                isOnDeck: playerStore.queued?.episode.id == other.episode.id,
+                                onTap: { open(other) },
+                                onQueue: { audio in queueTransition(other, with: audio) },
+                                canQueue: transitionPoint != nil
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
+
+                Color.clear.frame(height: 24)
+            }
+        }
+        .journeyChrome(title: appearance.track.name, accent: accent, close: actions.close)
+        .task(id: appearance.episode.id) {
+            await accents.load(appearance.episode.id, playing: playerStore)
+        }
+    }
+
+    private func listBody(_ elsewhere: [TrackAppearance]) -> some View {
+
         // The geometry is here so the content can be made at least a screen
         // tall: an open row's choices close on a tap anywhere outside them, and
         // "anywhere" has to include the empty space under a short list.
@@ -233,23 +215,36 @@ struct TrackEpisodesScreen: View {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     header(count: elsewhere.count)
 
-                    if elsewhere.isEmpty {
+                    if elsewhere.isEmpty && !extras.contains(.youAreHere) {
                         emptyState
                     } else {
+                        // [journey-variants] the episode you came from, marked
+                        if extras.contains(.youAreHere) {
+                            HereRow(appearance: appearance)
+                        }
+
                         ForEach(elsewhere) { other in
-                            TrackEpisodeRow(
-                                appearance: other,
-                                canQueue: transitionPoint != nil,
-                                accent: accent,
-                                isOpen: openRow == other.id,
-                                onSetOpen: { isOpen in setOpenRow(isOpen ? other.id : nil) },
-                                onTap: { open(other) },
-                                onQueue: { style in queueTransition(other, with: style) },
-                                onCallOff: {
-                                    UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-                                    playerStore.cancelQueued()
+                            VStack(spacing: 0) {
+                                TrackEpisodeRow(
+                                    appearance: other,
+                                    canQueue: transitionPoint != nil,
+                                    accent: accent,
+                                    isOpen: openRow == other.id,
+                                    onSetOpen: { isOpen in setOpenRow(isOpen ? other.id : nil) },
+                                    onTap: { open(other) },
+                                    onQueue: { style in queueTransition(other, with: style) },
+                                    onCallOff: {
+                                        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+                                        playerStore.cancelQueued()
+                                    }
+                                )
+
+                                // [journey-variants] what it comes out of and
+                                // into over there — the thing you'd choose on
+                                if extras.contains(.landingContext) {
+                                    LandingContext(destination: other)
                                 }
-                            )
+                            }
                         }
                     }
 
@@ -398,6 +393,8 @@ struct TrackEpisodeRow: View {
     @EnvironmentObject var playerStore: PlayerStore
     @EnvironmentObject var downloadsStore: DownloadsStore
     @EnvironmentObject var network: NetworkMonitor
+    // [journey-variants]
+    @Environment(\.armedRowStyle) private var armedRowStyle
 
     private var isCurrent: Bool { playerStore.currentEpisode?.id == appearance.episode.id }
 
@@ -490,16 +487,42 @@ struct TrackEpisodeRow: View {
         .opacity(unavailable ? 0.4 : 1)
         // A row that's on deck sits on a lit background — and under the sweep,
         // that light fills across it as the record plays out.
+        // [journey-variants] three ways for an armed row to mark itself
         .background(alignment: .leading) {
             if let transition {
+                let filled = transition.progress(at: playerStore.currentTime)
                 GeometryReader { geo in
-                    Rectangle()
-                        .fill(Color.white.opacity(0.16))
-                        .frame(width: geo.size.width * transition.progress(at: playerStore.currentTime))
-                        // Scoped to the fill: the clock ticks twice a second,
-                        // and animating the whole row on that beat would drag
-                        // everything else along with it.
-                        .animation(.linear(duration: 0.5), value: playerStore.currentTime)
+                    ZStack(alignment: .leading) {
+                        switch armedRowStyle {
+                        case .sweep:
+                            Rectangle()
+                                .fill(Color.white.opacity(0.16))
+                                .frame(width: geo.size.width * filled)
+                        case .card:
+                            // The same fill, inset and rounded, so it reads as
+                            // a card filling rather than a selection that ran
+                            // off both sides of the screen.
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.white.opacity(0.08))
+                                .padding(.horizontal, 12)
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.white.opacity(0.16))
+                                .frame(width: max(0, (geo.size.width - 24) * filled))
+                                .padding(.leading, 12)
+                        case .bar:
+                            // How the tracklist already marks what's playing,
+                            // borrowed so the two agree.
+                            Rectangle()
+                                .fill(Color.white.opacity(0.08))
+                            Rectangle()
+                                .fill(Color.white)
+                                .frame(width: 3)
+                        }
+                    }
+                    // Scoped to the fill: the clock ticks twice a second,
+                    // and animating the whole row on that beat would drag
+                    // everything else along with it.
+                    .animation(.linear(duration: 0.5), value: playerStore.currentTime)
                 }
             }
         }

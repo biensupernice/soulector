@@ -12,13 +12,6 @@ import SwiftUI
 /// (`TrackConnectionsButton`) and everything about transitions are shared, so a
 /// variant is a presentation decision rather than a fork of the feature.
 enum JourneyNavigation: String, CaseIterable, Identifiable, Codable {
-    /// Today: a journey sheet presented over the episode sheet, with its own
-    /// navigation stack inside. Two modal layers, and the Mini Player is
-    /// covered throughout.
-    case modalSheet
-    /// One modal. The episode sheet hosts the stack and the journey pushes
-    /// within it, so a journey never adds a layer.
-    case pushInSheet
     /// Track Episodes answers from a short sheet you can dismiss without going
     /// anywhere; picking one retargets the episode sheet in place. Looking is
     /// free, moving is deliberate — Wikipedia's page previews, and the way
@@ -34,15 +27,12 @@ enum JourneyNavigation: String, CaseIterable, Identifiable, Codable {
     /// app does with lateral browsing, and what Maps does with a place card
     /// over a map it never hides.
     case fullScreen
-    /// The path laid out sideways instead of stacked: each step is a full-width
-    /// page, swipe right to go back and **left to go forward again**, which no
-    /// navigation stack gives you. Miller columns folded onto a phone.
-    case pager
 
     static let storageKey = "soulector.journey.navigation"
 
-    /// The one that ships until something beats it.
-    static let current: JourneyNavigation = .modalSheet
+    /// The one that ships until something beats it. Full screen, since it's the
+    /// only container that can keep the Mini Player.
+    static let current: JourneyNavigation = .fullScreen
 
     /// The variants actually wired up. Each lands in its own change and joins
     /// this list then, so the switcher never offers a choice that does nothing.
@@ -52,35 +42,26 @@ enum JourneyNavigation: String, CaseIterable, Identifiable, Codable {
 
     var title: String {
         switch self {
-        case .modalSheet:  return "Sheet over sheet"
-        case .pushInSheet: return "Push in the sheet"
-        case .peek:        return "Peek"
-        case .inlineList:  return "Open in the list"
-        case .fullScreen:  return "Full screen"
-        case .pager:       return "Sideways pages"
+        case .peek:       return "Peek"
+        case .inlineList: return "Open in the list"
+        case .fullScreen: return "Full screen"
         }
     }
 
     /// What you'd notice, not how it's built.
     var detail: String {
         switch self {
-        case .modalSheet:  return "The journey opens on top of the episode"
-        case .pushInSheet: return "The episode sheet carries you along"
-        case .peek:        return "A look that costs nothing to close"
-        case .inlineList:  return "Connections open where the track is"
-        case .fullScreen:  return "The player bar stays with you"
-        case .pager:       return "Swipe on, swipe back, swipe on again"
+        case .peek:       return "A look that costs nothing to close"
+        case .inlineList: return "Connections open where the track is"
+        case .fullScreen: return "The player bar stays with you"
         }
     }
 
     var symbol: String {
         switch self {
-        case .modalSheet:  return "square.on.square"
-        case .pushInSheet: return "arrow.forward.square"
-        case .peek:        return "eye"
-        case .inlineList:  return "list.bullet.indent"
-        case .fullScreen:  return "rectangle.portrait"
-        case .pager:       return "rectangle.split.3x1"
+        case .peek:       return "eye"
+        case .inlineList: return "list.bullet.indent"
+        case .fullScreen: return "rectangle.portrait"
         }
     }
 
@@ -139,6 +120,106 @@ struct JourneyLayers: OptionSet, Codable {
     }
 }
 
+// MARK: - What Track Episodes shows
+
+/// How the list of other episodes is laid out. A record with one connection
+/// renders one row and a screenful of nothing, which is the complaint these
+/// answer — differently.
+enum TrackEpisodesStyle: String, CaseIterable, Identifiable, Codable {
+    /// Today: rows, one per episode.
+    case list
+    /// Artwork cards, two across. One to four destinations fill a screen the
+    /// way a list of one never will.
+    case shelf
+
+    static let storageKey = "soulector.trackEpisodes.style"
+    static let current: TrackEpisodesStyle = .list
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .list:  return "Rows"
+        case .shelf: return "Artwork shelf"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .list:  return "list.bullet"
+        case .shelf: return "square.grid.2x2"
+        }
+    }
+}
+
+/// Additions to Track Episodes, each independent of the others and of the
+/// layout, so they can be felt one at a time or together.
+struct TrackEpisodesExtras: OptionSet, Codable {
+    let rawValue: Int
+
+    /// Include the episode you came from, marked as where you're standing. A
+    /// one-connection record then reads as a fact about two episodes rather
+    /// than a stub — and it's truer: this record's homes include this one.
+    static let youAreHere = TrackEpisodesExtras(rawValue: 1 << 0)
+    /// Under each destination, what plays either side of the record over there.
+    /// Fills the screen with the thing you'd actually choose on.
+    static let landingContext = TrackEpisodesExtras(rawValue: 1 << 1)
+    /// When there's little to say — one or two connections — answer from a tray
+    /// instead of a whole screen. Makes "is Track Episodes a place?" a question
+    /// about content rather than a single answer for every record.
+    static let adaptiveTray = TrackEpisodesExtras(rawValue: 1 << 2)
+
+    static let storageKey = "soulector.trackEpisodes.extras"
+    static let none: TrackEpisodesExtras = []
+    static let all: [TrackEpisodesExtras] = [.youAreHere, .landingContext, .adaptiveTray]
+
+    /// Above this many connections the screen has enough to say on its own.
+    static let trayThreshold = 2
+
+    var title: String {
+        switch self {
+        case .youAreHere:     return "You are here"
+        case .landingContext: return "Landing context"
+        case .adaptiveTray:   return "Tray when sparse"
+        default:              return "Extras"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .youAreHere:     return "mappin"
+        case .landingContext: return "text.alignleft"
+        case .adaptiveTray:   return "rectangle.bottomhalf.filled"
+        default:              return "square.stack"
+        }
+    }
+}
+
+/// How an armed row marks itself.
+enum ArmedRowStyle: String, CaseIterable, Identifiable, Codable {
+    /// Today: the row fills edge to edge as the record plays out.
+    case sweep
+    /// The same fill, inset and rounded, so it reads as a card rather than a
+    /// selection that ran off the sides.
+    case card
+    /// A left bar plus a quiet fill — how the tracklist already marks the
+    /// playing track, borrowed so the two agree.
+    case bar
+
+    static let storageKey = "soulector.trackEpisodes.armedRow"
+    static let current: ArmedRowStyle = .sweep
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .sweep: return "Full sweep"
+        case .card:  return "Inset card"
+        case .bar:   return "Accent bar"
+        }
+    }
+}
+
 // MARK: - The journey in flight
 
 /// One journey, however it's being rendered. The variants differ in where these
@@ -165,11 +246,9 @@ final class JourneyCoordinator: ObservableObject {
     func open(_ appearance: TrackAppearance, variant: JourneyNavigation) {
         Diagnostics.breadcrumb("journey open · \(variant.rawValue) · \(appearance.episode.name) / \(appearance.track.name)")
         switch variant {
-        // Both of these open a sheet on the track; they differ in how far it
-        // comes up and what picking one does, not in what starts them.
-        case .modalSheet, .peek, .pager:
+        case .peek:
             origin = appearance
-        case .pushInSheet, .fullScreen:
+        case .fullScreen:
             path = [.track(appearance)]
         case .inlineList:
             expandedOrder = appearance.track.order
@@ -228,6 +307,43 @@ extension View {
     func journeyLayers(_ layers: JourneyLayers) -> some View {
         environment(\.journeyLayers, layers)
     }
+
+    func trackEpisodesOptions(
+        style: TrackEpisodesStyle,
+        extras: TrackEpisodesExtras,
+        armedRow: ArmedRowStyle
+    ) -> some View {
+        environment(\.trackEpisodesStyle, style)
+            .environment(\.trackEpisodesExtras, extras)
+            .environment(\.armedRowStyle, armedRow)
+    }
+}
+
+private struct TrackEpisodesStyleKey: EnvironmentKey {
+    static let defaultValue = TrackEpisodesStyle.current
+}
+
+private struct TrackEpisodesExtrasKey: EnvironmentKey {
+    static let defaultValue = TrackEpisodesExtras.none
+}
+
+private struct ArmedRowStyleKey: EnvironmentKey {
+    static let defaultValue = ArmedRowStyle.current
+}
+
+extension EnvironmentValues {
+    var trackEpisodesStyle: TrackEpisodesStyle {
+        get { self[TrackEpisodesStyleKey.self] }
+        set { self[TrackEpisodesStyleKey.self] = newValue }
+    }
+    var trackEpisodesExtras: TrackEpisodesExtras {
+        get { self[TrackEpisodesExtrasKey.self] }
+        set { self[TrackEpisodesExtrasKey.self] = newValue }
+    }
+    var armedRowStyle: ArmedRowStyle {
+        get { self[ArmedRowStyleKey.self] }
+        set { self[ArmedRowStyleKey.self] = newValue }
+    }
 }
 
 private struct JourneyLayersKey: EnvironmentKey {
@@ -260,6 +376,9 @@ extension EnvironmentValues {
 struct JourneyNavigationPicker: View {
     @AppStorage(JourneyNavigation.storageKey) private var variant = JourneyNavigation.current
     @AppStorage(JourneyLayers.storageKey) private var layers = JourneyLayers.none
+    @AppStorage(TrackEpisodesStyle.storageKey) private var episodesStyle = TrackEpisodesStyle.current
+    @AppStorage(TrackEpisodesExtras.storageKey) private var extras = TrackEpisodesExtras.none
+    @AppStorage(ArmedRowStyle.storageKey) private var armedRow = ArmedRowStyle.current
     @EnvironmentObject private var journey: JourneyCoordinator
 
     var body: some View {
@@ -278,6 +397,30 @@ struct JourneyNavigationPicker: View {
             }
 
             Section("Layers") { layerToggles }
+
+            Section("Track Episodes") {
+                Picker("Layout", selection: $episodesStyle) {
+                    ForEach(TrackEpisodesStyle.allCases) { option in
+                        Label(option.title, systemImage: option.symbol).tag(option)
+                    }
+                }
+
+                ForEach(TrackEpisodesExtras.all, id: \.rawValue) { extra in
+                    Button {
+                        if extras.contains(extra) { extras.subtract(extra) } else { extras.insert(extra) }
+                    } label: {
+                        Label(extra.title, systemImage: extras.contains(extra) ? "checkmark" : extra.symbol)
+                    }
+                }
+            }
+
+            Section("Armed row") {
+                Picker("Armed row", selection: $armedRow) {
+                    ForEach(ArmedRowStyle.allCases) { option in
+                        Text(option.title).tag(option)
+                    }
+                }
+            }
         } label: {
             ActionRowLabel(title: "Journeys: \(variant.title)", subtitle: variant.detail) {
                 Image(systemName: variant.symbol)
