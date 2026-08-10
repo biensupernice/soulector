@@ -196,6 +196,12 @@ struct EpisodesView: View {
         .sheet(item: $actionsEpisode) { episode in
             EpisodeActionsSheet(episode: episode)
         }
+        // [journey-variants] one place handles a landing, so every variant ends
+        // up looking at the episode the transition arrived in. Previously only
+        // the modal journey sheet did this, and only while it was open.
+        .onReceive(playerStore.transitionsFired) { transition in
+            journey.landed(transition, variant: journeyNavigation)
+        }
         .animation(.spring(duration: 0.3), value: playerStore.hasEpisode)
         // Removing the last download takes its tab away with it.
         .onChange(of: downloadsStore.isEmpty) { isEmpty in

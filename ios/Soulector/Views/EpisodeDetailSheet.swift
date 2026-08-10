@@ -79,6 +79,9 @@ struct EpisodeDetailSheet: View {
         // that's now playing, whether or not the journey is still open over it.
         .onReceive(playerStore.transitionsFired) { transition in
             guard transition.episode.id != episode.id else { return }
+            // [journey-variants] the pushed variants navigate to the landing
+            // instead; retargeting as well would move two things at once.
+            guard !journeyNavigation.hasPushedPath else { return }
             onNavigate?(transition.episode)
         }
         }
@@ -139,6 +142,9 @@ struct EpisodeDetailSheet: View {
             .sheet(item: $journey.origin, onDismiss: {
                 if let landed = journeyLanded, landed.id != episode.id { onNavigate?(landed) }
                 journeyLanded = nil
+                // [journey-variants] the route is shared state now, so closing
+                // the container it was drawn in has to put it away.
+                journey.path = []
             }) { origin in
                 // [journey-variants] peek answers from a short sheet instead
                 if journeyNavigation == .peek {
@@ -342,6 +348,20 @@ struct EpisodeDetailSheet: View {
                 remaining: playerStore.queuedRemaining ?? 0,
                 isTransitioning: playerStore.isTransitioning,
                 accent: accentBackground,
+                // Tapping what's on deck goes to where it was arranged: the
+                // record playing now, and everywhere else it turns up — which
+                // is the list this one is sitting armed in.
+                onShowSource: {
+                    guard let source = journey.sourceAppearance(playing: playerStore) else { return }
+                    // Same handoff the connections tap makes: full screen can't
+                    // push until this sheet is out of the way.
+                    if journeyNavigation.leavesTheSheet {
+                        journey.pending = source
+                        dismiss()
+                    } else {
+                        journey.open(source, variant: journeyNavigation)
+                    }
+                },
                 onCallOff: { playerStore.cancelQueued() }
             )
             .transition(.move(edge: .top).combined(with: .opacity))
@@ -806,6 +826,9 @@ private struct OnDeckPanel: View {
     let isTransitioning: Bool
     /// The sheet's accent, worn by the content on the white pill.
     let accent: Color
+    /// Tapping the panel — everything but the call-off cross — goes to where
+    /// this was arranged from.
+    let onShowSource: () -> Void
     let onCallOff: () -> Void
 
     var body: some View {
@@ -849,11 +872,20 @@ private struct OnDeckPanel: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Call off the transition")
+            // Above the panel's own tap, so the cross keeps working as a way
+            // out rather than becoming another way in.
+            .zIndex(1)
         }
         .padding(.leading, 10)
         .padding(.trailing, 4)
         .padding(.vertical, 8)
         .background(RoundedRectangle(cornerRadius: 10).fill(Color.black.opacity(0.25)))
+        .contentShape(RoundedRectangle(cornerRadius: 10))
+        .onTapGesture {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onShowSource()
+        }
+        .accessibilityHint("Shows where this transition was arranged from")
     }
 
     private var headline: String {

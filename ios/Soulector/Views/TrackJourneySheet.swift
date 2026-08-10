@@ -135,8 +135,10 @@ struct TrackJourneySheet: View {
     var seedAccent: AccentColor?
     var onLanded: (Episode) -> Void = { _ in }
 
-    @State private var path: [JourneyStep] = []
     @StateObject private var accents: JourneyAccents
+    // [journey-variants] the route lives on the coordinator now, so a landing
+    // can reach it whether or not this sheet is the thing drawing it
+    @EnvironmentObject private var journey: JourneyCoordinator
     // [journey-variants] which container is drawing this journey
     @Environment(\.journeyNavigation) private var variant
     @EnvironmentObject private var playerStore: PlayerStore
@@ -157,15 +159,15 @@ struct TrackJourneySheet: View {
         Group {
             // [journey-variants] the pager lays the same steps out sideways
             if variant == .pager {
-                JourneyPager(path: $path, actions: actions)
+                JourneyPager(path: $journey.path, actions: actions)
                     // Page 0 is the step the journey started on; a stack keeps
                     // that as its root instead, which is why the seeding is
                     // conditional rather than done in init.
-                    .onAppear { if path.isEmpty { path = [.track(origin)] } }
+                    .onAppear { if journey.path.isEmpty { journey.path = [.track(origin)] } }
             } else {
-                NavigationStack(path: $path) {
-                    TrackEpisodesScreen(appearance: origin, path: $path, actions: actions)
-                        .journeyDestinations(path: $path, actions: actions)
+                NavigationStack(path: $journey.path) {
+                    TrackEpisodesScreen(appearance: origin, path: $journey.path, actions: actions)
+                        .journeyDestinations(path: $journey.path, actions: actions)
                 }
             }
         }
@@ -173,12 +175,8 @@ struct TrackJourneySheet: View {
         // The journey crosses the whole library, so its chrome stays monochrome
         // rather than picking up any one album's accent.
         .tint(.white)
-        // An arranged transition lands on its own schedule. When it does, the
-        // journey follows the audio in — the whole point was to go there.
-        .onReceive(playerStore.transitionsFired) { transition in
-            onLanded(transition.episode)
-            path.append(.episode(transition.episode, landedOn: transition.track.order))
-        }
+        // Landing is handled once, at the root, so every variant follows the
+        // audio in and not just the two this sheet draws.
     }
 
     private var actions: JourneyActions {

@@ -176,6 +176,36 @@ final class JourneyCoordinator: ObservableObject {
         }
     }
 
+    /// A transition landed. The point of arranging one was to end up over
+    /// there, so leave the user looking at that episode's tracks, at the record
+    /// that carried them — starting a journey if there wasn't one.
+    ///
+    /// The in-place variants have no path to push onto; for them the episode
+    /// sheet retargeting *is* arriving, so they say no here and let it happen.
+    @discardableResult
+    func landed(_ transition: QueuedTransition, variant: JourneyNavigation) -> Bool {
+        guard variant.hasPushedPath else { return false }
+        Diagnostics.breadcrumb("landed · \(transition.episode.name) · push Episode Tracks")
+        path.append(.episode(transition.episode, landedOn: transition.track.order))
+        return true
+    }
+
+    /// Where a queued transition was arranged from: the record playing now, and
+    /// everywhere else it turns up — which is the screen that shows the pending
+    /// one sitting armed in the list. Returned rather than opened, because the
+    /// full-screen variant has to close the sheet before it can go anywhere.
+    func sourceAppearance(playing: PlayerStore) -> TrackAppearance? {
+        guard let episode = playing.currentEpisode else { return nil }
+        let now = playing.currentTime
+        let record = playing.currentTracks.last { track in
+            guard let timestamp = track.timestamp else { return false }
+            return Double(timestamp) <= now
+        }
+        guard let record else { return nil }
+        Diagnostics.breadcrumb("on deck tapped · source \(record.name)")
+        return TrackAppearance(episode: episode, track: record)
+    }
+
     func end() {
         Diagnostics.breadcrumb("journey end · depth \(path.count)")
         path = []
