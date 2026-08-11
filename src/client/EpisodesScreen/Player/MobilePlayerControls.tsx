@@ -3,8 +3,8 @@ import { formatTime } from "../../helpers";
 import {
   IconPause,
   IconPlay,
-  IconBackThirty,
-  IconSkipThirty,
+  IconBackSeconds,
+  IconSkipSeconds,
 } from "../../components/Icons";
 import cx from "classnames";
 import { Slider } from "@/client/components/Slider";
@@ -27,6 +27,7 @@ export function MobilePlayerControls({
   onForward,
   onRewind,
   loading,
+  skipInterval,
 }: PlayerControlsProps) {
   const [seeking, setSeeking] = useState(false);
   const [seekPosition, setSeekPosition] = useState(progress);
@@ -96,8 +97,8 @@ export function MobilePlayerControls({
       <div className="flex items-center justify-center space-x-6">
         <motion.button
           whileTap={{ scale: 0.9 }}
-          title="Rewind 30 seconds"
-          onClick={() => onRewind(30)}
+          title={`Rewind ${skipInterval} seconds`}
+          onClick={() => onRewind(skipInterval)}
           className={cx(
             "rounded-full bg-transparent p-2 text-white",
             "transition-all duration-200 ease-in-out",
@@ -105,7 +106,7 @@ export function MobilePlayerControls({
             "focus:bg-white/80 focus:outline-none"
           )}
         >
-          <IconBackThirty className="h-12 w-12 fill-current" />
+          <IconBackSeconds seconds={skipInterval} className="h-12 w-12 fill-current" />
         </motion.button>
         <motion.button
           whileTap={{ scale: 0.9 }}
@@ -151,8 +152,8 @@ export function MobilePlayerControls({
 
         <motion.button
           whileTap={{ scale: 0.9 }}
-          title="Forward 30 seconds"
-          onClick={() => onForward(30)}
+          title={`Forward ${skipInterval} seconds`}
+          onClick={() => onForward(skipInterval)}
           className={cx(
             "rounded-full bg-transparent p-2 text-white",
             "transition-all duration-200 ease-in-out",
@@ -160,7 +161,7 @@ export function MobilePlayerControls({
             "focus:bg-white/80 focus:outline-none"
           )}
         >
-          <IconSkipThirty className="h-12 w-12 fill-current" />
+          <IconSkipSeconds seconds={skipInterval} className="h-12 w-12 fill-current" />
         </motion.button>
       </div>
     </div>
