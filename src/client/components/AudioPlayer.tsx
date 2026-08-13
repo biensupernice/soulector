@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import type Hls from "hls.js";
 
 export interface AudioPlayerProps {
   mp3StreamUrl: string | null;
@@ -10,6 +11,20 @@ export interface AudioPlayerProps {
   onPlay: () => void;
   onEnded?: () => void;
   cuePosition?: number;
+}
+
+function isHlsUrl(url: string) {
+  return /\.m3u8($|\?)/i.test(url);
+}
+
+/**
+ * Safari (and every iOS browser) plays HLS off a plain `src`, and does it
+ * better than we can — hardware decoding, correct behaviour in the background.
+ * Everywhere else the element rejects an .m3u8 outright and we have to feed it
+ * segments through Media Source Extensions instead.
+ */
+function canPlayHlsNatively(audio: HTMLAudioElement) {
+  return audio.canPlayType("application/vnd.apple.mpegurl") !== "";
 }
 
 export function AudioPlayer({
@@ -40,14 +55,60 @@ export function AudioPlayer({
     }
 
     audio.preload = "auto";
-    audio.src = mp3StreamUrl;
-    audio.load();
+
     // play() waits for enough data on its own, so playback starts the moment
     // the browser can, instead of waiting for the canplaythrough estimate.
-    audio.play().catch((err) => console.error(`audio play failed: ${err}`));
+    const startPlaying = () =>
+      audio.play().catch((err) => console.error(`audio play failed: ${err}`));
+
+    // Not every source is HLS: Mixcloud archives, the local source and the
+    // test stream are all still plain progressive MP3, and handing those to
+    // hls.js would only break them.
+    if (!isHlsUrl(mp3StreamUrl) || canPlayHlsNatively(audio)) {
+      audio.src = mp3StreamUrl;
+      audio.load();
+      startPlaying();
+
+      return () => {
+        audio.pause();
+      };
+    }
+
+    // hls.js is a few hundred kilobytes and is dead weight on Safari and on
+    // every progressive episode, so it is only fetched once a browser that
+    // needs it actually plays an HLS stream.
+    let hls: Hls | null = null;
+    let cancelled = false;
+
+    import("hls.js").then(({ default: HlsCtor }) => {
+      // The episode changed (or the player unmounted) while the chunk was in
+      // flight; anything we attach now attaches to a dead element.
+      if (cancelled || !HlsCtor.isSupported()) {
+        if (!cancelled && !HlsCtor.isSupported()) {
+          console.error("HLS playback is not supported in this browser");
+        }
+        return;
+      }
+
+      hls = new HlsCtor();
+      hls.loadSource(mp3StreamUrl);
+      hls.attachMedia(audio);
+      hls.on(HlsCtor.Events.MANIFEST_PARSED, startPlaying);
+      hls.on(HlsCtor.Events.ERROR, (_event, data) => {
+        if (data.fatal) {
+          console.error(`hls fatal error: ${data.type} / ${data.details}`);
+        }
+      });
+    });
 
     return () => {
+      cancelled = true;
       audio.pause();
+      // Without this the old instance keeps pulling segments in the
+      // background and holds its source buffers, so switching episodes leaks
+      // a download and a few tens of megabytes each time.
+      hls?.destroy();
+      hls = null;
     };
   }, [mp3StreamUrl]);
 
