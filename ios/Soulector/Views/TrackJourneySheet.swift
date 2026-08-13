@@ -172,11 +172,107 @@ struct TrackEpisodesScreen: View {
     var body: some View {
         let elsewhere = others
 
-        // [journey-variants] the shelf swaps rows for artwork cards
-        if style == .shelf {
-            shelfBody(elsewhere)
-        } else {
-            listBody(elsewhere)
+        // [journey-variants] the layouts that don't need a row's open/close
+        // state get the simple scroller; only the row list carries choices that
+        // have to be dismissable from anywhere.
+        switch style {
+        case .shelf:      shelfBody(elsewhere)
+        case .chronology: simpleBody(elsewhere) { ChronologyList(elsewhere: $0, origin: appearance, onTap: open) }
+        case .positions:  simpleBody(elsewhere) { PositionsList(elsewhere: $0, onTap: open) }
+        case .hero:       heroBody(elsewhere)
+        case .bands:      simpleBody(elsewhere) { destinations in
+            BandsList(elsewhere: destinations, accents: accents, onTap: open)
+        }
+        case .list:       listBody(elsewhere)
+        }
+    }
+
+    /// [journey-variants] The header/empty/scroll frame the newer layouts share,
+    /// so each one only has to say what a destination looks like.
+    private func simpleBody<Content: View>(
+        _ elsewhere: [TrackAppearance],
+        @ViewBuilder content: @escaping ([TrackAppearance]) -> Content
+    ) -> some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                header(count: elsewhere.count)
+
+                if elsewhere.isEmpty {
+                    emptyState
+                } else {
+                    content(elsewhere)
+                }
+
+                Color.clear.frame(height: 24)
+            }
+        }
+        .journeyChrome(title: appearance.track.name, accent: accent, close: actions.close)
+        .task(id: appearance.episode.id) {
+            await accents.load(appearance.episode.id, playing: playerStore)
+        }
+        // The painted layout is the only one that needs every destination's
+        // colour, so nothing else pays for these.
+        .task(id: appearance.id) {
+            guard style.needsDestinationAccents else { return }
+            for other in elsewhere {
+                await accents.load(other.episode.id, playing: playerStore)
+            }
+        }
+    }
+
+    // [journey-variants] the record at size, the sets as a rail beneath it
+    private func heroBody(_ elsewhere: [TrackAppearance]) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                EpisodeArtwork(episode: appearance.episode)
+                    .aspectRatio(1, contentMode: .fit)
+                    .frame(maxWidth: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .padding(.horizontal, 20)
+                    .padding(.top, 4)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(appearance.track.name)
+                        .font(.app(size: 26, weight: .bold))
+                        .foregroundColor(.white)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(appearance.track.artist)
+                        .font(.app(size: 16))
+                        .foregroundColor(.white.opacity(0.7))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 18)
+
+                if elsewhere.isEmpty {
+                    emptyState
+                } else {
+                    Text("PLAYED IN \(elsewhere.count + 1) SETS")
+                        .font(.app(size: 11, weight: .semibold))
+                        .tracking(1)
+                        .foregroundColor(.white.opacity(0.5))
+                        .padding(.horizontal, 20)
+                        .padding(.top, 22)
+                        .padding(.bottom, 10)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(alignment: .top, spacing: 12) {
+                            HeroChip(appearance: appearance, isHere: true, onTap: {})
+                            ForEach(elsewhere) { other in
+                                HeroChip(appearance: other, isHere: false) { open(other) }
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+                }
+
+                Color.clear.frame(height: 24)
+            }
+        }
+        .journeyChrome(title: appearance.track.name, accent: accent, close: actions.close)
+        .task(id: appearance.episode.id) {
+            await accents.load(appearance.episode.id, playing: playerStore)
         }
     }
 

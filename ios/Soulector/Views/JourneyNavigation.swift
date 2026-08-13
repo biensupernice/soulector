@@ -131,23 +131,67 @@ enum TrackEpisodesStyle: String, CaseIterable, Identifiable, Codable {
     /// Artwork cards, two across. One to four destinations fill a screen the
     /// way a list of one never will.
     case shelf
+    /// Down a dated spine, oldest first. The screen stops being a menu and
+    /// becomes the record's life in the archive — first spun here, gone for two
+    /// years, back twice in a season. Recurrence is the one thing a list of
+    /// destinations structurally cannot show.
+    case chronology
+    /// Each set drawn as its own length, with the record marked where it falls
+    /// in it and named in words — opener, deep in it, closer. How a record gets
+    /// *used* is a fact about the record, and it's sitting in the data unread.
+    case positions
+    /// The record takes the screen — full-bleed art, its name at size — and the
+    /// sets go underneath as a rail of small marks. Answers "what is this
+    /// record" before "where else can I go", which is the order you asked in.
+    case hero
+    /// One full-width band per set, painted in that set's own album accent.
+    /// The journey already fetches those colours for its chrome; this is the
+    /// one layout that lets you *see* them, so four destinations read as four
+    /// different places rather than four rows of the same grey.
+    case bands
 
     static let storageKey = "soulector.trackEpisodes.style"
     static let current: TrackEpisodesStyle = .list
 
     var id: String { rawValue }
 
+    /// Whether the layout wants every destination's accent, not just this
+    /// screen's own. Only the painted one does, and fetching four colours for a
+    /// layout that shows none of them would be a request per journey step for
+    /// nothing.
+    var needsDestinationAccents: Bool { self == .bands }
+
     var title: String {
         switch self {
-        case .list:  return "Rows"
-        case .shelf: return "Artwork shelf"
+        case .list:       return "Rows"
+        case .shelf:      return "Artwork shelf"
+        case .chronology: return "Down the years"
+        case .positions:  return "Where it lands"
+        case .hero:       return "Record first"
+        case .bands:      return "Painted bands"
+        }
+    }
+
+    /// What you'd notice, not how it's built.
+    var detail: String {
+        switch self {
+        case .list:       return "One row each"
+        case .shelf:      return "Artwork, two across"
+        case .chronology: return "The record's life, dated"
+        case .positions:  return "Opener, peak, or closer"
+        case .hero:       return "The record at size"
+        case .bands:      return "Each set in its own colour"
         }
     }
 
     var symbol: String {
         switch self {
-        case .list:  return "list.bullet"
-        case .shelf: return "square.grid.2x2"
+        case .list:       return "list.bullet"
+        case .shelf:      return "square.grid.2x2"
+        case .chronology: return "calendar"
+        case .positions:  return "waveform"
+        case .hero:       return "photo.fill"
+        case .bands:      return "paintpalette.fill"
         }
     }
 }

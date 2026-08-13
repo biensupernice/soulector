@@ -32,6 +32,30 @@ Two structural facts constrain this table, both worth stating once:
 - **Peek and Open-in-the-list have no route**, so they owe an answer to "how do
   I get back" that the stack variants get for free.
 
+## What Track Episodes shows
+
+Rows and the artwork shelf are the same idea twice — a list of destinations,
+restyled. These four each show something the list has but never renders, so
+they're comparable on what they *tell you*, not only on how they look.
+
+| Layout | What you'd notice | Reads from |
+|---|---|---|
+| **Rows** (today) | one row each | baseline |
+| **Artwork shelf** | artwork, two across | — |
+| **Down the years** | the record's life in the archive, on a dated spine; a year is called out only when it changes, so a season's cluster reads as one | `episode.releasedAt` |
+| **Where it lands** | each set at its own length with the record marked in it, named in words — opens the set, deep in it, near the close | `track.timestamp` ÷ `episode.duration` |
+| **Record first** | the record full-bleed and at size, the sets demoted to a rail under it | — |
+| **Painted bands** | one band per set in that set's own album accent, so four destinations read as four places | `JourneyAccents` |
+
+Two notes on the last one: the journey already fetches those accents to tint its
+chrome a screen at a time, so this is the only layout that lets you see them
+together — and the only one that pays for the extra fetches, gated behind
+`TrackEpisodesStyle.needsDestinationAccents`.
+
+**Where it lands** is the one with a real gap: a cue sheet without a timestamp
+gets no bar rather than a guessed one, so a set with sparse timings looks
+emptier here than it does in rows.
+
 ## Layers
 
 | Layer | What it adds | Precedent |

@@ -533,3 +533,335 @@ struct ShelfCard: View {
         }
     }
 }
+
+// MARK: - Track Episodes layouts [journey-variants]
+
+/// Down a dated spine, oldest first. A list of destinations answers "where can
+/// I go"; this answers "when did this record keep turning up", which is the
+/// question the archive is actually interesting about. Years are called out
+/// only when they change, so a record played three times in one season reads as
+/// a cluster rather than three equal rows.
+struct ChronologyList: View {
+    let elsewhere: [TrackAppearance]
+    /// The set you came from, placed in the run rather than listed apart — the
+    /// record's homes include this one, and leaving it out makes a gap.
+    let origin: TrackAppearance
+    let onTap: (TrackAppearance) -> Void
+
+    /// Everything the record touched, oldest first. An episode with no date
+    /// sorts to the end rather than claiming a year it can't support.
+    private var run: [TrackAppearance] {
+        let undated = Date.distantFuture
+        return (elsewhere + [origin]).sorted {
+            ($0.episode.releasedAtDate ?? undated) < ($1.episode.releasedAtDate ?? undated)
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(run.enumerated()), id: \.element.id) { index, stop in
+                let year = stop.episode.releasedAtDate.map { Calendar.current.component(.year, from: $0) }
+                let previous = index > 0
+                    ? run[index - 1].episode.releasedAtDate.map { Calendar.current.component(.year, from: $0) }
+                    : nil
+
+                ChronologyStop(
+                    appearance: stop,
+                    year: year != previous ? year : nil,
+                    isHere: stop.id == origin.id,
+                    isFirst: index == 0,
+                    isLast: index == run.count - 1,
+                    onTap: { onTap(stop) }
+                )
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+}
+
+private struct ChronologyStop: View {
+    let appearance: TrackAppearance
+    let year: Int?
+    let isHere: Bool
+    let isFirst: Bool
+    let isLast: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            // The spine. Drawn per row rather than as one line behind the stack
+            // so it can stop at the first and last stops instead of running off
+            // into nothing.
+            VStack(spacing: 0) {
+                Rectangle()
+                    .fill(Color.white.opacity(isFirst ? 0 : 0.18))
+                    .frame(width: 1.5, height: 14)
+
+                Circle()
+                    .fill(isHere ? Color.white : Color.white.opacity(0.45))
+                    .frame(width: isHere ? 9 : 6, height: isHere ? 9 : 6)
+
+                Rectangle()
+                    .fill(Color.white.opacity(isLast ? 0 : 0.18))
+                    .frame(width: 1.5)
+                    .frame(maxHeight: .infinity)
+            }
+            .frame(width: 10)
+
+            VStack(alignment: .leading, spacing: 8) {
+                if let year {
+                    Text(String(year))
+                        .font(.app(size: 13, weight: .bold))
+                        .foregroundColor(.white.opacity(0.55))
+                        .tracking(0.5)
+                }
+
+                Button { if !isHere { onTap() } } label: {
+                    HStack(alignment: .center, spacing: 12) {
+                        EpisodeArtwork(episode: appearance.episode)
+                            .frame(width: 52, height: 52)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(appearance.episode.name)
+                                .font(.app(size: 14, weight: .semibold))
+                                .foregroundColor(.white)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.leading)
+
+                            HStack(spacing: 6) {
+                                Text(appearance.episode.formattedDate)
+                                if let ts = appearance.track.formattedTimestamp {
+                                    Text("·")
+                                    Text(ts).monospacedDigit()
+                                }
+                            }
+                            .font(.app(size: 12))
+                            .foregroundColor(.white.opacity(0.6))
+
+                            if isHere {
+                                Text("YOU ARE HERE")
+                                    .font(.app(size: 9, weight: .bold))
+                                    .tracking(1)
+                                    .foregroundColor(.white.opacity(0.75))
+                            }
+                        }
+
+                        Spacer(minLength: 0)
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(.bottom, 16)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Each set drawn as its own length with the record marked where it falls in
+/// it. A record that always opens a set is a different record from one that
+/// always closes one, and that fact is already in the data — a timestamp and a
+/// duration — just never shown.
+struct PositionsList: View {
+    let elsewhere: [TrackAppearance]
+    let onTap: (TrackAppearance) -> Void
+
+    var body: some View {
+        VStack(spacing: 14) {
+            ForEach(elsewhere) { other in
+                Button { onTap(other) } label: {
+                    PositionRow(appearance: other)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+}
+
+private struct PositionRow: View {
+    let appearance: TrackAppearance
+
+    /// Where the record sits in the set, 0 to 1. Nil when the cue sheet has no
+    /// timestamp for it, in which case the bar is left off rather than guessed.
+    private var fraction: Double? {
+        guard let ts = appearance.track.timestamp, appearance.episode.duration > 0 else { return nil }
+        return min(1, max(0, Double(ts) / Double(appearance.episode.duration)))
+    }
+
+    /// The same thing in words, because a mark two thirds along a bar is a
+    /// picture and "near the close" is the point of it.
+    private var phrase: String {
+        guard let fraction else { return "somewhere in the set" }
+        switch fraction {
+        case ..<0.12:  return "opens the set"
+        case ..<0.38:  return "early on"
+        case ..<0.68:  return "deep in it"
+        case ..<0.88:  return "late in the set"
+        default:       return "near the close"
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 12) {
+                EpisodeArtwork(episode: appearance.episode)
+                    .frame(width: 44, height: 44)
+                    .clipShape(RoundedRectangle(cornerRadius: 7))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(appearance.episode.name)
+                        .font(.app(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+
+                    Text(phrase)
+                        .font(.app(size: 12))
+                        .foregroundColor(.white.opacity(0.62))
+                }
+
+                Spacer(minLength: 0)
+
+                if let ts = appearance.track.formattedTimestamp {
+                    Text(ts)
+                        .font(.app(size: 12))
+                        .monospacedDigit()
+                        .foregroundColor(.white.opacity(0.75))
+                }
+            }
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.14))
+                        .frame(height: 4)
+
+                    if let fraction {
+                        Capsule()
+                            .fill(Color.white.opacity(0.32))
+                            .frame(width: geo.size.width * fraction, height: 4)
+
+                        // The mark itself, held inside the bar at both ends so
+                        // an opener doesn't render as a chip hanging off the
+                        // left edge.
+                        Capsule()
+                            .fill(Color.white)
+                            .frame(width: 3, height: 12)
+                            .offset(x: min(geo.size.width - 3, max(0, geo.size.width * fraction - 1.5)))
+                    }
+                }
+                .frame(height: 12)
+            }
+            .frame(height: 12)
+
+            Text(appearance.episode.formattedDuration)
+                .font(.app(size: 10))
+                .monospacedDigit()
+                .foregroundColor(.white.opacity(0.4))
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.06))
+        )
+    }
+}
+
+/// One band per set, painted in that set's own album accent. The journey
+/// already fetches these colours to tint its chrome one screen at a time; shown
+/// side by side they turn a list of names into a list of *places*, which is the
+/// thing artwork does on the shelf and type never does in rows.
+struct BandsList: View {
+    let elsewhere: [TrackAppearance]
+    @ObservedObject var accents: JourneyAccents
+    let onTap: (TrackAppearance) -> Void
+
+    var body: some View {
+        VStack(spacing: 10) {
+            ForEach(elsewhere) { other in
+                Button { onTap(other) } label: {
+                    BandRow(appearance: other, accent: accents.accent(for: other.episode.id))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+}
+
+private struct BandRow: View {
+    let appearance: TrackAppearance
+    let accent: AccentColor?
+
+    /// Until the colour arrives the band sits in the same neutral the rest of
+    /// the journey uses, so it fades in rather than flashing from grey to hue.
+    private var fill: Color { accent?.raw ?? Color(white: 0.16) }
+    private var ink: Color { (accent?.prefersDarkText ?? false) ? .black : .white }
+
+    var body: some View {
+        HStack(spacing: 14) {
+            EpisodeArtwork(episode: appearance.episode)
+                .frame(width: 64, height: 64)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(appearance.episode.name)
+                    .font(.app(size: 15, weight: .bold))
+                    .foregroundColor(ink)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+
+                HStack(spacing: 6) {
+                    Text(appearance.episode.formattedDate)
+                    if let ts = appearance.track.formattedTimestamp {
+                        Text("·")
+                        Text("drops at \(ts)").monospacedDigit()
+                    }
+                }
+                .font(.app(size: 12))
+                .foregroundColor(ink.opacity(0.75))
+            }
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(ink.opacity(0.5))
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 14).fill(fill))
+        .animation(.easeOut(duration: 0.35), value: accent?.raw)
+    }
+}
+
+/// A destination in the hero layout's rail: artwork, number, landing time.
+struct HeroChip: View {
+    let appearance: TrackAppearance
+    let isHere: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        Button { if !isHere { onTap() } } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                EpisodeArtwork(episode: appearance.episode)
+                    .frame(width: 96, height: 96)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay {
+                        if isHere {
+                            RoundedRectangle(cornerRadius: 10)
+                                .strokeBorder(.white, lineWidth: 2)
+                        }
+                    }
+
+                Text(isHere ? "you are here" : (appearance.track.formattedTimestamp ?? "—"))
+                    .font(.app(size: 11, weight: isHere ? .semibold : .regular))
+                    .monospacedDigit()
+                    .foregroundColor(.white.opacity(isHere ? 0.9 : 0.6))
+            }
+            .frame(width: 96)
+        }
+        .buttonStyle(.plain)
+    }
+}
