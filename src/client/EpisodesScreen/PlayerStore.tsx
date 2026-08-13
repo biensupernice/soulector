@@ -4,10 +4,7 @@ import { clamp } from "../helpers";
 type PlayerLoadingStatus = "loading" | "loaded" | "error";
 
 export type StreamUrls = {
-  http_mp3_128_url: string;
-  hls_mp3_128_url: string;
-  hls_opus_64_url: string;
-  preview_mp3_128_url: string;
+  stream_url: string;
 };
 
 export type PlayerStore = {
