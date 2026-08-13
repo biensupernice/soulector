@@ -13,38 +13,15 @@ private struct TRPCResult<T: Decodable>: Decodable {
 
 // MARK: - DTOs
 
-/// The playable stream for one episode. SoundCloud retired progressive MP3, so
-/// what comes back for a SoundCloud episode is now an HLS playlist — but the
-/// response key is still `http_mp3_128_url`, because every shipped install
-/// decodes that key and nothing else. The HLS-named keys are read first so a
-/// future server-side rename degrades into picking a different key rather than
-/// failing the whole decode.
+/// The playable stream for one episode: one URL, whatever the source. The
+/// format varies — an HLS playlist for SoundCloud since it retired progressive
+/// MP3, a plain file for MIXCLOUD archive mirrors — so nothing here names a
+/// format and `isPlaylist` reads it off the URL instead.
 struct StreamUrls: Decodable {
     let streamUrl: String
 
     private enum CodingKeys: String, CodingKey {
-        case hlsUrl = "hls_url"
-        case hlsAac160Url = "hls_aac_160_url"
-        case hlsMp3128Url = "hls_mp3_128_url"
-        case httpMp3128Url = "http_mp3_128_url"
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        let candidates: [String?] = [
-            try container.decodeIfPresent(String.self, forKey: .hlsUrl),
-            try container.decodeIfPresent(String.self, forKey: .hlsAac160Url),
-            try container.decodeIfPresent(String.self, forKey: .hlsMp3128Url),
-            try container.decodeIfPresent(String.self, forKey: .httpMp3128Url),
-        ]
-        guard let url = candidates.compactMap({ $0 }).first(where: { !$0.isEmpty }) else {
-            throw DecodingError.dataCorruptedError(
-                forKey: .httpMp3128Url,
-                in: container,
-                debugDescription: "No usable stream URL in the response"
-            )
-        }
-        streamUrl = url
+        case streamUrl = "stream_url"
     }
 
     /// HLS needs `AVAssetDownloadTask` to go offline; a plain file (the

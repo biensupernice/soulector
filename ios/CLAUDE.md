@@ -106,6 +106,6 @@ ios/Soulector/
 
 Backend is tRPC at `https://soulector.app/api/trpc`. Key procedures:
 - `episodes.all` — all episodes
-- `episode.getStreamUrl` — playable stream URL. The key is still `http_mp3_128_url` (renaming it would break shipped installs), but SoundCloud episodes now resolve to an **HLS `.m3u8`** playlist; only MIXCLOUD archive mirrors are still progressive files. The URLs are CloudFront-signed and expire in hours, so `StreamUrlCache` holds them for 30 minutes, not the app session
+- `episode.getStreamUrl` — playable stream URL, under the single key `stream_url`. SoundCloud episodes resolve to an **HLS `.m3u8`** playlist since its progressive deprecation; only MIXCLOUD archive mirrors are still progressive files. Nothing in the shape names a format — `StreamUrls.isPlaylist` reads it off the URL. The URLs are CloudFront-signed and expire in hours, so `StreamUrlCache` holds them for 30 minutes, not the app session. **This key must match `StreamUrlsResponse` in `src/server/router.ts`** — there is one user, so the two move together rather than the server carrying legacy names
 - `episode.getAccentColor` — RGB accent color from album art
 - `episode.getTracks` — track cue sheet
