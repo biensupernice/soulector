@@ -61,45 +61,78 @@ export function AudioPlayer({
     const startPlaying = () =>
       audio.play().catch((err) => console.error(`audio play failed: ${err}`));
 
+    let hls: Hls | null = null;
+    let cancelled = false;
+
+    // hls.js is a few hundred kilobytes and is dead weight on Safari and on
+    // every progressive episode, so it is only fetched once a browser that
+    // needs it actually plays an HLS stream.
+    const playViaHlsJs = () => {
+      import("hls.js").then(({ default: HlsCtor }) => {
+        // The episode changed (or the player unmounted) while the chunk was in
+        // flight; anything we attach now attaches to a dead element.
+        if (cancelled) {
+          return;
+        }
+        if (!HlsCtor.isSupported()) {
+          console.error("HLS playback is not supported in this browser");
+          return;
+        }
+
+        hls = new HlsCtor();
+        hls.loadSource(mp3StreamUrl);
+        hls.attachMedia(audio);
+        hls.on(HlsCtor.Events.MANIFEST_PARSED, startPlaying);
+        hls.on(HlsCtor.Events.ERROR, (_event, data) => {
+          if (data.fatal) {
+            console.error(`hls fatal error: ${data.type} / ${data.details}`);
+          }
+        });
+      });
+    };
+
+    const isHls = isHlsUrl(mp3StreamUrl);
+
     // Not every source is HLS: Mixcloud archives, the local source and the
     // test stream are all still plain progressive MP3, and handing those to
     // hls.js would only break them.
-    if (!isHlsUrl(mp3StreamUrl) || canPlayHlsNatively(audio)) {
+    if (!isHls || canPlayHlsNatively(audio)) {
+      // canPlayType is a guess, not a promise, and for HLS it is a guess
+      // browsers get wrong: Chrome answers "maybe" for
+      // application/vnd.apple.mpegurl whether or not it can actually decode
+      // one. Recent versions can; the many older installs still out there
+      // cannot, and they fail by going quiet — the same shape as the outage
+      // this whole change exists to fix. So take the browser at its word, and
+      // hand off to hls.js if the word turns out to be worthless.
+      let fellBackToHlsJs = false;
+      const onNativeError = () => {
+        if (!isHls || fellBackToHlsJs || cancelled) {
+          return;
+        }
+        fellBackToHlsJs = true;
+        console.warn(
+          "native HLS playback failed despite canPlayType; falling back to hls.js",
+        );
+        audio.removeAttribute("src");
+        audio.load();
+        playViaHlsJs();
+      };
+
+      audio.addEventListener("error", onNativeError);
       audio.src = mp3StreamUrl;
       audio.load();
       startPlaying();
 
       return () => {
+        cancelled = true;
+        audio.removeEventListener("error", onNativeError);
         audio.pause();
+        hls?.destroy();
+        hls = null;
       };
     }
 
-    // hls.js is a few hundred kilobytes and is dead weight on Safari and on
-    // every progressive episode, so it is only fetched once a browser that
-    // needs it actually plays an HLS stream.
-    let hls: Hls | null = null;
-    let cancelled = false;
-
-    import("hls.js").then(({ default: HlsCtor }) => {
-      // The episode changed (or the player unmounted) while the chunk was in
-      // flight; anything we attach now attaches to a dead element.
-      if (cancelled || !HlsCtor.isSupported()) {
-        if (!cancelled && !HlsCtor.isSupported()) {
-          console.error("HLS playback is not supported in this browser");
-        }
-        return;
-      }
-
-      hls = new HlsCtor();
-      hls.loadSource(mp3StreamUrl);
-      hls.attachMedia(audio);
-      hls.on(HlsCtor.Events.MANIFEST_PARSED, startPlaying);
-      hls.on(HlsCtor.Events.ERROR, (_event, data) => {
-        if (data.fatal) {
-          console.error(`hls fatal error: ${data.type} / ${data.details}`);
-        }
-      });
-    });
+    playViaHlsJs();
 
     return () => {
       cancelled = true;
