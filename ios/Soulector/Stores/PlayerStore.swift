@@ -188,8 +188,7 @@ final class PlayerStore: ObservableObject {
 
         do {
             guard let urls = try await APIClient.shared.fetchStreamUrl(episodeId: episode.id),
-                  !urls.httpMp3128Url.isEmpty,
-                  let url = URL(string: urls.httpMp3128Url) else {
+                  let url = URL(string: urls.streamUrl) else {
                 state = .error("No stream URL available")
                 return
             }
@@ -229,7 +228,11 @@ final class PlayerStore: ObservableObject {
     }
 
     private func startPlayback(url: URL) {
-        let item = AVPlayerItem(url: url)
+        // Through AVURLAsset rather than AVPlayerItem(url:) because a
+        // downloaded episode is now an AVFoundation-managed HLS bundle, and the
+        // asset is what knows how to serve its segments back with no network.
+        // Remote HLS and the older progressive files load the same way.
+        let item = AVPlayerItem(asset: AVURLAsset(url: url))
         playerItem = item
         let newPlayer = AVPlayer(playerItem: item)
         player = newPlayer
@@ -402,15 +405,18 @@ final class PlayerStore: ObservableObject {
         if let local = DownloadsStore.shared.audioURL(for: transition.episode.id) {
             url = local
         } else if let urls = try? await APIClient.shared.fetchStreamUrl(episodeId: transition.episode.id),
-                  !urls.httpMp3128Url.isEmpty {
-            url = URL(string: urls.httpMp3128Url)
+                  !urls.streamUrl.isEmpty {
+            url = URL(string: urls.streamUrl)
         } else {
             url = nil
         }
 
         guard let url, !Task.isCancelled, queued?.id == transition.id else { return }
 
-        let item = AVPlayerItem(url: url)
+        // Same asset-backed load as `startPlayback`: the deck resolves to an HLS
+        // playlist or a downloaded `.movpkg` bundle just as often as the set in
+        // front of it, and only `AVURLAsset` knows how to open either.
+        let item = AVPlayerItem(asset: AVURLAsset(url: url))
         let player = AVPlayer(playerItem: item)
         player.volume = 0
         deck = player

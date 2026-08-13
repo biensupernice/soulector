@@ -1,8 +1,5 @@
 import { Context } from "@/server/context";
-import {
-  GetStreamUrlsDTO,
-  createSoundCloudApiClient,
-} from "@/server/crosscutting/soundCloudApiClient";
+import { createSoundCloudApiClient } from "@/server/crosscutting/soundCloudApiClient";
 import { ObjectId, WithId } from "mongodb";
 import { string, z } from "zod";
 import path from "path";
@@ -11,7 +8,19 @@ import fs from "fs";
 import { asyncResult } from "@expo/results";
 import Vibrant from "node-vibrant";
 import { initTRPC, TRPCError } from "@trpc/server";
-import { syncAllCollectives } from "@/pages/api/internal/sync-episodes";
+import { runEpisodesSync } from "@/server/sync-episodes";
+import {
+  DEFAULT_BATCH_LIMIT,
+  DEFAULT_START_EPISODE,
+  extractShowNumber,
+  findSoulectionEpisodesMissingTracks,
+  syncSoulectionEpisodeTracks,
+} from "@/server/sync-episode-tracks";
+import {
+  getLastSyncRun,
+  getRecentSyncRuns,
+  recordSyncRun,
+} from "@/server/sync-runs";
 
 const ENABLE_LOCAL_SOURCE = process.env.ENABLE_LOCAL_SOURCE
   ? process.env.ENABLE_LOCAL_SOURCE.toLowerCase() === "true"
@@ -46,10 +55,7 @@ export type DBEpisode = {
   url: string;
   picture_large: string;
   collective_slug:
-    | "soulection"
-    | "sasha-marie-radio"
-    | "the-love-below-hour"
-    | "local";
+    "soulection" | "sasha-marie-radio" | "the-love-below-hour" | "local";
   tracks?: EpisodeTrack[];
   archive_url?: string;
 };
@@ -165,13 +171,30 @@ const authenticatedProcedure = t.procedure.use(async ({ ctx, next }) => {
   });
 });
 
+/**
+ * The wire shape of `episode.getStreamUrl`: one URL, whatever the source.
+ *
+ * This used to carry four keys named after SoundCloud transcodings
+ * (`http_mp3_128_url` and friends), every one of them holding the same string,
+ * and three of them naming transcodings SoundCloud has since stopped producing
+ * entirely. What a client wants here is the one URL to play, so that is what it
+ * gets. The format varies — an HLS playlist for SoundCloud, a plain MP3 for
+ * Mixcloud archives and the local source — so the name deliberately says
+ * nothing about it; players detect from the URL.
+ */
+type StreamUrlsResponse = {
+  stream_url: string;
+};
+
 export const episodeRouter = router({
   "internal.episodesSync": publicProcedure.query(async ({ ctx }) => {
-    let retrieved = await syncAllCollectives(ctx.db);
+    // Recorded under the "api" trigger so whatever schedule calls this shows
+    // up in the admin screen next to the runs started by hand.
+    const summary = await runEpisodesSync(ctx.db, "api");
 
     return {
       msg: "Successfully Fetched New Tracks",
-      retrievedTracks: retrieved,
+      retrievedTracks: summary.insertedNames,
     };
   }),
   "internal.backfillCollectives": authenticatedProcedure.query(({ ctx }) => {
@@ -316,6 +339,128 @@ export const episodeRouter = router({
         modified: result.modifiedCount,
       };
     }),
+  "admin.syncStatus": authenticatedProcedure
+    .input(z.object({ startEpisode: z.number().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const startEpisode = input?.startEpisode ?? DEFAULT_START_EPISODE;
+      const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
+
+      const hasTracks = {
+        $gt: [{ $size: { $ifNull: ["$tracks", []] } }, 0],
+      };
+
+      const collectiveRows = await trackCollection
+        .aggregate<{
+          _id: DBEpisode["collective_slug"];
+          episodeCount: number;
+          withTracksCount: number;
+          latestName: string;
+          latestCreatedTime: Date;
+          latestReleaseDate?: Date;
+        }>([
+          { $sort: { created_time: -1 } },
+          {
+            $group: {
+              _id: "$collective_slug",
+              episodeCount: { $sum: 1 },
+              withTracksCount: { $sum: { $cond: [hasTracks, 1, 0] } },
+              latestName: { $first: "$name" },
+              latestCreatedTime: { $first: "$created_time" },
+              latestReleaseDate: { $first: "$release_date" },
+            },
+          },
+          { $sort: { episodeCount: -1 } },
+        ])
+        .toArray();
+
+      // Tracklist coverage is only meaningful for the numbered Soulection
+      // shows, since that's the only collective with a tracklist source.
+      const soulectionEpisodes = await trackCollection
+        .aggregate<{ name: string; hasTracks: boolean }>([
+          { $match: { collective_slug: "soulection" } },
+          { $project: { name: 1, hasTracks } },
+        ])
+        .toArray();
+
+      const inRange = soulectionEpisodes.filter((e) => {
+        const showNumber = extractShowNumber(e.name);
+        return showNumber !== null && showNumber >= startEpisode;
+      });
+
+      const missing = await findSoulectionEpisodesMissingTracks(
+        ctx.db,
+        startEpisode,
+      );
+
+      const [lastEpisodesRun, lastEpisodeTracksRun] = await Promise.all([
+        getLastSyncRun(ctx.db, "episodes"),
+        getLastSyncRun(ctx.db, "episode-tracks"),
+      ]);
+
+      return {
+        collectives: collectiveRows.map((row) => ({
+          collectiveSlug: row._id,
+          episodeCount: row.episodeCount,
+          withTracksCount: row.withTracksCount,
+          latestEpisode: row.latestName
+            ? {
+                name: row.latestName,
+                releasedAt: (
+                  row.latestReleaseDate ?? row.latestCreatedTime
+                ).toISOString(),
+              }
+            : null,
+        })),
+        episodeTracks: {
+          startEpisode,
+          batchLimit: DEFAULT_BATCH_LIMIT,
+          inRangeCount: inRange.length,
+          withTracksCount: inRange.filter((e) => e.hasTracks).length,
+          missingCount: missing.length,
+          missingEpisodes: missing
+            .slice(0, 10)
+            .map(({ episode, showNumber }) => ({
+              id: episode._id.toString(),
+              name: episode.name,
+              showNumber,
+              releasedAt: (
+                episode.release_date ?? episode.created_time
+              ).toISOString(),
+            })),
+        },
+        lastRuns: {
+          episodes: lastEpisodesRun,
+          episodeTracks: lastEpisodeTracksRun,
+        },
+      };
+    }),
+  "admin.recentRuns": authenticatedProcedure
+    .input(
+      z.object({ limit: z.number().min(1).max(100).optional() }).optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      return getRecentSyncRuns(ctx.db, input?.limit ?? 20);
+    }),
+  "admin.runEpisodesSync": authenticatedProcedure.mutation(async ({ ctx }) => {
+    return runEpisodesSync(ctx.db, "admin");
+  }),
+  "admin.runEpisodeTracksSync": authenticatedProcedure
+    .input(
+      z
+        .object({
+          startEpisode: z.number().optional(),
+          limit: z.number().min(1).max(200).optional(),
+        })
+        .optional(),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return recordSyncRun(ctx.db, "episode-tracks", "admin", () =>
+        syncSoulectionEpisodeTracks(ctx.db, {
+          startEpisode: input?.startEpisode,
+          limit: input?.limit,
+        }),
+      );
+    }),
   "episodes.all": publicProcedure
     .input(
       z.optional(
@@ -433,11 +578,8 @@ export const episodeRouter = router({
 
       if (localEpisode) {
         return {
-          http_mp3_128_url: localEpisode.url,
-          hls_mp3_128_url: localEpisode.url,
-          hls_opus_64_url: localEpisode.url,
-          preview_mp3_128_url: localEpisode.url,
-        } satisfies GetStreamUrlsDTO;
+          stream_url: localEpisode.url,
+        } satisfies StreamUrlsResponse;
       }
 
       const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
@@ -452,11 +594,8 @@ export const episodeRouter = router({
       if (episode.source === "MIXCLOUD") {
         if (!episode.archive_url) return null;
         return {
-          http_mp3_128_url: episode.archive_url,
-          hls_mp3_128_url: episode.archive_url,
-          hls_opus_64_url: episode.archive_url,
-          preview_mp3_128_url: episode.archive_url,
-        } satisfies GetStreamUrlsDTO;
+          stream_url: episode.archive_url,
+        } satisfies StreamUrlsResponse;
       }
 
       const scTrackId = `${episode.key}`;
@@ -464,11 +603,8 @@ export const episodeRouter = router({
       const streamUrlsDetail = await scClient.getStreamUrlDetail(scTrackId);
 
       return {
-        http_mp3_128_url: streamUrlsDetail,
-        hls_mp3_128_url: streamUrlsDetail,
-        hls_opus_64_url: streamUrlsDetail,
-        preview_mp3_128_url: streamUrlsDetail,
-      } satisfies GetStreamUrlsDTO;
+        stream_url: streamUrlsDetail,
+      } satisfies StreamUrlsResponse;
     }),
   "episode.getAccentColor": publicProcedure
     .input(
@@ -584,10 +720,7 @@ export const episodeRouter = router({
       console.log({ episodeId });
 
       const fakeEpisodeUrls = {
-        http_mp3_128_url: `/_test/iL2cZd7Gy8Ol.128.mp3?rand=${timeStr}`,
-        hls_mp3_128_url: "/_test/iL2cZd7Gy8Ol.128.mp3",
-        hls_opus_64_url: "/_test/iL2cZd7Gy8Ol.128.mp3",
-        preview_mp3_128_url: "/_test/iL2cZd7Gy8Ol.128.mp3",
+        stream_url: `/_test/iL2cZd7Gy8Ol.128.mp3?rand=${timeStr}`,
       };
 
       return fakeEpisodeUrls;

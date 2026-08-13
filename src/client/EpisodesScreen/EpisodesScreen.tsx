@@ -47,6 +47,7 @@ import { EpisodeProjection } from "@/server/router";
 import { EpisodeListContext } from "@/pages";
 import { useSearchIndex } from "./useSearchIndex";
 import { useEpisodeSearch } from "./useEpisodeSearch";
+import { useWarmIndexes } from "./useWarmIndexes";
 import { SearchResults } from "./SearchResults";
 
 type Props = {
@@ -91,6 +92,7 @@ export function EpisodesScreen({ searchText }: Props) {
   const selectedCollective = useCollectiveSelectStore((s) => s.selected);
 
   useEpisodeAlbumArtColors();
+  useWarmIndexes();
 
   const favorites = useMemo(() => {
     if (episodes) {
@@ -130,7 +132,8 @@ export function EpisodesScreen({ searchText }: Props) {
     return [];
   }, [episodes, searchText, selectedCollective]);
 
-  const activeEpisodes = deferredSelectedSection === "all" ? filteredEpisodes : favorites;
+  const activeEpisodes =
+    deferredSelectedSection === "all" ? filteredEpisodes : favorites;
 
   // Client-side fuzzy search over episodes AND their tracks. When the user is
   // searching we show a dedicated results view (episodes with matching tracks
@@ -356,7 +359,7 @@ export function EpisodeAudioPlayer({
     <AudioPlayer
       playing={playing}
       onReady={onPlayerReady}
-      mp3StreamUrl={currentEpisodeStreamUrls.http_mp3_128_url}
+      mp3StreamUrl={currentEpisodeStreamUrls.stream_url}
       onPlayProgressChange={onPlayProgressChange}
       onPause={onPause}
       onPlay={onPlay}

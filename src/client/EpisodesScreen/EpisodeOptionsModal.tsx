@@ -1,5 +1,5 @@
-import { BottomSheet } from "react-spring-bottom-sheet";
-import create from "zustand";
+import { Drawer } from "vaul";
+import { create } from "zustand";
 import { formatDate, formatTimeSecs } from "@/client/helpers";
 import cx from "classnames";
 import {
@@ -10,7 +10,7 @@ import {
 } from "@/client/components/Icons";
 import {
   useFavorites,
-  useIsFavoriteFast,
+  useIsFavorite,
 } from "@/client/EpisodesScreen/FavoritesStore";
 import {
   usePlayerActions,
@@ -28,113 +28,123 @@ export function EpisodeOptionsModal() {
   const playerActions = usePlayerActions();
 
   const { addFavorite, removeFavorite } = useFavorites();
-  const isFavoriteFast = useIsFavoriteFast();
 
-  const isPlaying = currentEpisodeId === episode?.id ?? false;
-  const isFavorited = isFavoriteFast(episode?.id ?? "");
+  const isPlaying = currentEpisodeId === episode?.id;
+  const isFavorited = useIsFavorite(episode?.id ?? "");
 
   return (
-    <BottomSheet
+    <Drawer.Root
       open={open}
-      onDismiss={onClose}
-      className="rsbs-not-full-height"
-      snapPoints={({ minHeight }) => minHeight * 1.1}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
     >
-      <div className="mb-safe-bottom w-full">
-        {episode ? (
-          <div className="flex w-full flex-col space-y-2">
-            <div className="flex w-full items-center space-x-4 p-3">
-              <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg">
-                <img
-                  className="h-full w-full bg-gray-200"
-                  src={episode.artworkUrl}
-                  alt={episode.name}
-                />
-              </div>
-              <div className="ml-2 flex-col space-y-1">
-                <div className={cx("text-lg font-bold leading-tight")}>
-                  {episode.name}
+      <Drawer.Portal>
+        {/* Above the episode sheet's own z-40/z-50: this one can be opened
+            from inside it, and an overlay stacked underneath would leave
+            tapping outside hitting the sheet behind instead of dismissing. */}
+        <Drawer.Overlay className="fixed inset-0 z-[60] bg-black/50" />
+        {/* No height: this one sizes to its content, the way it always did. */}
+        <Drawer.Content className="fixed inset-x-0 bottom-0 z-[70] mx-auto w-full max-w-2xl rounded-t-2xl bg-white outline-none">
+          <Drawer.Title className="sr-only">Episode options</Drawer.Title>
+          <div className="mx-auto mt-3 h-1 w-9 rounded-full bg-gray-300" />
+          <div className="mb-safe-bottom w-full">
+            {episode ? (
+              <div className="flex w-full flex-col space-y-2">
+                <div className="flex w-full items-center space-x-4 p-3">
+                  <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg">
+                    <img
+                      className="h-full w-full bg-gray-200"
+                      src={episode.artworkUrl}
+                      alt={episode.name}
+                    />
+                  </div>
+                  <div className="ml-2 flex-col space-y-1">
+                    <div className={cx("text-lg font-bold leading-tight")}>
+                      {episode.name}
+                    </div>
+                    <div className="text-base text-gray-700">
+                      <span>{formatDate(episode.releasedAt)}</span>
+                      <span className="mx-1 inline-block">&bull;</span>
+                      <span className="inline-block">
+                        {formatTimeSecs(episode.duration)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-base text-gray-700">
-                  <span>{formatDate(episode.releasedAt)}</span>
-                  <span className="mx-1 inline-block">&bull;</span>
-                  <span className="inline-block">
-                    {formatTimeSecs(episode.duration)}
-                  </span>
-                </div>
-              </div>
-            </div>
 
-            <div className="w-full">
-              {!isPlaying ? (
-                <button
-                  className={cx(
-                    "flex w-full items-center space-x-4 px-4 py-4 font-medium",
-                    "active:bg-slate-200",
-                    "focus:outline-none"
-                  )}
-                  onClick={() => {
-                    playerActions.play(episode.id);
-                    onClose();
-                  }}
-                >
-                  <IconPlay className="h-5 w-5" />
-                  <span>Play Episode</span>
-                </button>
-              ) : null}
-              <button
-                className={cx(
-                  "flex w-full items-center space-x-4 px-4 py-4 font-medium",
-                  "active:bg-slate-200",
-                  "focus:outline-none"
-                )}
-                title="Add to favorites"
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (isFavorited) {
-                    removeFavorite(episode.id);
-                  } else {
-                    addFavorite(episode.id);
-                  }
-                  onClose();
-                }}
-              >
-                {isFavorited ? (
-                  <>
-                    <HeartFilled className="h-5 w-5 stroke-current text-gray-500" />
-                    <div>Remove from Favorites</div>
-                  </>
-                ) : (
-                  <>
-                    <HeartOutline className="h-5 w-5 stroke-current text-gray-500" />
-                    <div>Add to Favorites</div>
-                  </>
-                )}
-              </button>
-              {episode.source === "SOUNDCLOUD" ? (
-                <a
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  href={episode.permalinkUrl}
-                  className={cx(
-                    "just flex w-full items-center space-x-4 px-4 py-4 font-medium",
-                    "active:bg-slate-200",
-                    "focus:outline-none"
-                  )}
-                  title="Add to favorites"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                  }}
-                >
-                  <IconSoundcloud className="h-5 w-5 stroke-current" />
-                  <div>Open in SoundCloud</div>
-                </a>
-              ) : null}
-            </div>
+                <div className="w-full">
+                  {!isPlaying ? (
+                    <button
+                      className={cx(
+                        "flex w-full items-center space-x-4 px-4 py-4 font-medium",
+                        "active:bg-slate-200",
+                        "focus:outline-none",
+                      )}
+                      onClick={() => {
+                        playerActions.play(episode.id);
+                        onClose();
+                      }}
+                    >
+                      <IconPlay className="h-5 w-5" />
+                      <span>Play Episode</span>
+                    </button>
+                  ) : null}
+                  <button
+                    className={cx(
+                      "flex w-full items-center space-x-4 px-4 py-4 font-medium",
+                      "active:bg-slate-200",
+                      "focus:outline-none",
+                    )}
+                    title="Add to favorites"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (isFavorited) {
+                        removeFavorite(episode.id);
+                      } else {
+                        addFavorite(episode.id);
+                      }
+                      onClose();
+                    }}
+                  >
+                    {isFavorited ? (
+                      <>
+                        <HeartFilled className="h-5 w-5 stroke-current text-gray-500" />
+                        <div>Remove from Favorites</div>
+                      </>
+                    ) : (
+                      <>
+                        <HeartOutline className="h-5 w-5 stroke-current text-gray-500" />
+                        <div>Add to Favorites</div>
+                      </>
+                    )}
+                  </button>
+                  {episode.source === "SOUNDCLOUD" ? (
+                    <a
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      href={episode.permalinkUrl}
+                      className={cx(
+                        "just flex w-full items-center space-x-4 px-4 py-4 font-medium",
+                        "active:bg-slate-200",
+                        "focus:outline-none",
+                      )}
+                      title="Add to favorites"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                    >
+                      <IconSoundcloud className="h-5 w-5 stroke-current" />
+                      <div>Open in SoundCloud</div>
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
           </div>
-        ) : null}
-      </div>
-    </BottomSheet>
+        </Drawer.Content>
+      </Drawer.Portal>
+    </Drawer.Root>
   );
 }
 interface EpisodeOptionsStore {
@@ -143,12 +153,12 @@ interface EpisodeOptionsStore {
   onClose: () => void;
   setEpisode: (episode: EpisodeProjection) => void;
 }
-export const useEpisodeOptionsStore = create<EpisodeOptionsStore>(
+export const useEpisodeOptionsStore = create<EpisodeOptionsStore>()(
   (set, get) => ({
     open: false,
     episode: null,
     onClose: () => set({ open: false, episode: null }),
     setEpisode: (episode: EpisodeProjection) =>
       set({ open: true, episode: episode }),
-  })
+  }),
 );

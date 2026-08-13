@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import Fuse from "fuse.js";
+import Fuse, { type IFuseOptions } from "fuse.js";
 import {
   EpisodeSearchProjection,
   EpisodeTrackProjection,
@@ -25,7 +25,7 @@ type TrackEntry = {
   combined: string;
 };
 
-const EPISODE_FUSE_OPTIONS: Fuse.IFuseOptions<EpisodeSearchProjection> = {
+const EPISODE_FUSE_OPTIONS: IFuseOptions<EpisodeSearchProjection> = {
   keys: ["name"],
   threshold: 0.3,
   ignoreLocation: true,
@@ -34,7 +34,7 @@ const EPISODE_FUSE_OPTIONS: Fuse.IFuseOptions<EpisodeSearchProjection> = {
   useExtendedSearch: true,
 };
 
-const TRACK_FUSE_OPTIONS: Fuse.IFuseOptions<TrackEntry> = {
+const TRACK_FUSE_OPTIONS: IFuseOptions<TrackEntry> = {
   keys: [
     { name: "track.name", weight: 2 },
     { name: "track.artist", weight: 1 },
@@ -82,28 +82,11 @@ export function useEpisodeSearch(
     return index.filter((e) => e.collectiveSlug === collective);
   }, [index, collective]);
 
-  const { episodeFuse, trackFuse } = useMemo(() => {
-    const trackEntries: TrackEntry[] = [];
-    for (const episode of scopedIndex) {
-      for (const track of episode.tracks) {
-        trackEntries.push({
-          episode,
-          track,
-          combined: `${track.name} ${track.artist}`,
-        });
-      }
-    }
-
-    return {
-      episodeFuse: new Fuse(scopedIndex, EPISODE_FUSE_OPTIONS),
-      trackFuse: new Fuse(trackEntries, TRACK_FUSE_OPTIONS),
-    };
-  }, [scopedIndex]);
-
   return useMemo(() => {
     const pattern = toExtendedQuery(query);
     if (!pattern) return [];
 
+    const { episodeFuse, trackFuse } = getFuses(scopedIndex);
     const byEpisodeId = new Map<string, SearchResult>();
 
     for (const { item, score = 1 } of episodeFuse.search(pattern)) {
@@ -152,5 +135,46 @@ export function useEpisodeSearch(
     });
 
     return results.slice(0, MAX_RESULTS);
-  }, [query, episodeFuse, trackFuse]);
+  }, [query, scopedIndex]);
+}
+
+/**
+ * The two Fuse indexes, built the first time something is actually searched.
+ *
+ * Indexing 785 titles and ~20k cue-sheet rows tokenises every string, which is
+ * half a second of blocked main thread on a phone. It used to happen as soon as
+ * the snapshot landed — three times over, as the cached copy gave way to the
+ * fresh one — for a search nobody had typed. Kept at module scope so the work
+ * survives the screen unmounting, and so a warm-up can pay for it early.
+ */
+let indexedSnapshot: EpisodeSearchProjection[] | null = null;
+let fuses: { episodeFuse: Fuse<EpisodeSearchProjection>; trackFuse: Fuse<TrackEntry> } | null = null;
+
+function getFuses(scopedIndex: EpisodeSearchProjection[]) {
+  if (fuses && indexedSnapshot === scopedIndex) {
+    return fuses;
+  }
+
+  const trackEntries: TrackEntry[] = [];
+  for (const episode of scopedIndex) {
+    for (const track of episode.tracks) {
+      trackEntries.push({
+        episode,
+        track,
+        combined: `${track.name} ${track.artist}`,
+      });
+    }
+  }
+
+  fuses = {
+    episodeFuse: new Fuse(scopedIndex, EPISODE_FUSE_OPTIONS),
+    trackFuse: new Fuse(trackEntries, TRACK_FUSE_OPTIONS),
+  };
+  indexedSnapshot = scopedIndex;
+  return fuses;
+}
+
+/** Pay for the indexes while the browser is idle, not on the first keystroke. */
+export function warmSearchIndexes(scopedIndex: EpisodeSearchProjection[]) {
+  getFuses(scopedIndex);
 }

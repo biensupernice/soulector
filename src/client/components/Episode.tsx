@@ -16,7 +16,8 @@ import {
   EpisodeTracksList,
   useEpisodeTracks,
 } from "../EpisodesScreen/EpisodeModalSheet";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
+import { useMedia } from "../infra/useMedia";
 
 export type EpisodeProps = {
   episode: EpisodeProjection;
@@ -26,8 +27,26 @@ export type EpisodeProps = {
   onOptionsClick?: () => void;
 } & React.HTMLAttributes<HTMLDivElement>;
 
-export function Episode(props: EpisodeProps) {
-  const [showTracks, setShowTracks] = useState<boolean>(false);
+/**
+ * Selecting an episode changes state the whole list subscribes to, which used
+ * to re-render all ~785 rows and block the main thread for most of a second —
+ * long enough that the sheet appeared to hang before animating in.
+ *
+ * Only two rows ever actually change: the one being left and the one being
+ * picked. The handlers are excluded from the comparison because they're new
+ * closures on every parent render; what they close over is stores and query
+ * data that are stable for the life of a row.
+ */
+export const Episode = React.memo(
+  EpisodeRow,
+  (prev, next) =>
+    prev.episode === next.episode &&
+    prev.selected === next.selected &&
+    prev.favorite === next.favorite,
+);
+
+function EpisodeRow(props: EpisodeProps) {
+  const [showTracks, setShowTracks] = useState(false);
 
   const {
     episode: episode,
@@ -38,16 +57,11 @@ export function Episode(props: EpisodeProps) {
     onOptionsClick = () => {},
   } = props;
 
-  const { hasTracks, loaded: hasTracksLoaded } = useEpisodeTracks(
-    episode.id,
-    selected,
-  );
-
   return (
     <>
       <div
         data-episode-id={episode.id}
-        className="flex h-full w-full items-stretch"
+        className="episode-row flex h-full w-full items-stretch"
       >
         <div
           onClick={onClick}
@@ -97,26 +111,12 @@ export function Episode(props: EpisodeProps) {
           </div>
           <div className="hidden items-center justify-end space-x-8 md:flex">
             <div className="w-full flex space-x-3">
-              {hasTracks && selected && (
-                <button
-                  className={cx(
-                    "inline-block rounded-full p-2",
-                    "transition-all duration-200 ease-in-out opacity-0",
-                    "focus:outline-none hover:bg-gray-200 group-hover:opacity-100",
-                    showTracks && "!opacity-100",
-                  )}
-                  title={showTracks ? "Close tracks" : "View Tracks"}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowTracks((currentState) => !currentState);
-                  }}
-                >
-                  {showTracks ? (
-                    <BarsArrowUp className="h-5 w-5 fill-current" />
-                  ) : (
-                    <BarsArrowDown className="h-5 w-5 stroke-current" />
-                  )}
-                </button>
+              {selected && (
+                <TracksToggle
+                  episodeId={episode.id}
+                  open={showTracks}
+                  onToggle={() => setShowTracks((open) => !open)}
+                />
               )}
 
               <button
@@ -160,18 +160,84 @@ export function Episode(props: EpisodeProps) {
       </div>
       <AnimatePresence>
         {selected && showTracks && (
-          <motion.div
-            transition={{ type: "spring", mass: 0.15, duration: 0.02 }}
-            initial={{ height: 0 }}
-            animate={{ height: "auto" }}
-            exit={{ height: 0 }}
-            className="hidden md:flex max-h-[calc(100vh*0.6)] items-stretch origin-top bg-accent rounded-lg overflow-y-auto relative"
-          >
-            <EpisodeTracksList episodeId={episode.id} />
-          </motion.div>
+          <EpisodeTracksPanel episodeId={episode.id} />
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+/**
+ * The chevron that opens a set's cue sheet under its row.
+ *
+ * Only the playing row renders one, because asking whether a set has tracks is
+ * a query, and a query per row is 785 live subscriptions to the cache for an
+ * answer 784 of them never show.
+ */
+function TracksToggle({
+  episodeId,
+  open,
+  onToggle,
+}: {
+  episodeId: string;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const { hasTracks } = useEpisodeTracks(episodeId);
+
+  if (!hasTracks) {
+    return null;
+  }
+
+  return (
+    <button
+      className={cx(
+        "inline-block rounded-full p-2",
+        "transition-all duration-200 ease-in-out opacity-0",
+        "focus:outline-none hover:bg-gray-200 group-hover:opacity-100",
+        open && "!opacity-100",
+      )}
+      title={open ? "Close tracks" : "View Tracks"}
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+    >
+      {open ? (
+        <BarsArrowUp className="h-5 w-5 fill-current" />
+      ) : (
+        <BarsArrowDown className="h-5 w-5 stroke-current" />
+      )}
+    </button>
+  );
+}
+
+/**
+ * The set's cue sheet, laid out under the row it belongs to.
+ *
+ * Desktop only — on a phone the same list is already in the sheet. It used to
+ * be hidden with a class, which still built the whole ~600-node tracklist a
+ * second time on every tap, so it asks the viewport instead. The question is
+ * asked here rather than in the row because only the open row should be
+ * holding a media query listener; asking in the row would mean 785 of them.
+ */
+function EpisodeTracksPanel({ episodeId }: { episodeId: string }) {
+  const isWideScreen = useMedia("(min-width: 768px)");
+
+  if (!isWideScreen) {
+    return null;
+  }
+
+  return (
+    <motion.div
+      transition={{ type: "spring", mass: 0.15, duration: 0.02 }}
+      initial={{ height: 0 }}
+      animate={{ height: "auto" }}
+      exit={{ height: 0 }}
+      className="relative flex max-h-[calc(100vh*0.6)] items-stretch origin-top overflow-y-auto rounded-lg bg-accent"
+    >
+      <EpisodeTracksList episodeId={episodeId} />
+    </motion.div>
   );
 }
 
@@ -202,13 +268,13 @@ export function PlayingAnimation() {
 }
 
 function AlbumArtOverlay() {
-  const { isLoading } = usePlayEpisodeMutation();
+  const { isPending } = usePlayEpisodeMutation();
 
   return (
     <div className="absolute inset-0 flex items-center justify-center">
       <div className="absolute inset-0 bg-accent opacity-75" />
       <div className="relative rounded-full bg-white p-1 leading-none text-accent hover:shadow-sm">
-        {isLoading ? (
+        {isPending ? (
           <svg
             viewBox="0 0 20 20"
             xmlns="http://www.w3.org/2000/svg"

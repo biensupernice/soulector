@@ -1,13 +1,10 @@
-import create from "zustand";
+import { create } from "zustand";
 import { clamp } from "../helpers";
 
 type PlayerLoadingStatus = "loading" | "loaded" | "error";
 
 export type StreamUrls = {
-  http_mp3_128_url: string;
-  hls_mp3_128_url: string;
-  hls_opus_64_url: string;
-  preview_mp3_128_url: string;
+  stream_url: string;
 };
 
 export type PlayerStore = {
@@ -47,7 +44,7 @@ export type PlayerStore = {
   };
 };
 
-export const usePlayerStore = create<PlayerStore>((set, get) => ({
+export const usePlayerStore = create<PlayerStore>()((set, get) => ({
   playing: false,
   currentEpisodeId: undefined,
   volume: 100,

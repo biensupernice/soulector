@@ -48,3 +48,7 @@ DerivedData/
 *.ipa
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# Agent worktrees and local Claude Code state. Worktrees live here, so a
+# `git add -A` would otherwise try to commit whole checkouts of the repo.
+.claude/
