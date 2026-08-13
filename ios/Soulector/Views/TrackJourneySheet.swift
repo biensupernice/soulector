@@ -241,6 +241,27 @@ struct TrackEpisodesScreen: View {
         }
     }
 
+    // [journey-variants] artwork cards, two across
+    private func shelfBody(_ elsewhere: [TrackAppearance]) -> some View {
+        simpleBody(elsewhere) { destinations in
+            LazyVGrid(
+                columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
+                spacing: 12
+            ) {
+                ForEach(destinations) { other in
+                    ShelfCard(
+                        appearance: other,
+                        isOnDeck: playerStore.queued?.episode.id == other.episode.id,
+                        onTap: { open(other) },
+                        onQueue: { audio in queueTransition(other, with: audio) },
+                        canQueue: transitionPoint != nil
+                    )
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+
     private func listBody(_ elsewhere: [TrackAppearance]) -> some View {
 
         // The geometry is here so the content can be made at least a screen
