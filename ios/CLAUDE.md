@@ -50,6 +50,7 @@ ios/Soulector/
 │   ├── EpisodeActions.swift    # Kebab button, long-press menu contents, download status badge/ring
 │   ├── EpisodeActionsSheet.swift # The kebab's destination: accent-painted action panel
 │   ├── EpisodeArtwork.swift    # Album art; prefers the downloaded copy over the network
+│   ├── CollectiveLogo.swift    # Collective brand marks (nav bar trigger + picker rows)
 │   ├── EpisodeDetailSheet.swift # Single sheet for browse + playback; contains ProgressSlider, TracklistView
 │   ├── TrackJourneySheet.swift # Journeys: Track Episodes ⇄ Episode Tracks, alternating
 │   ├── MiniPlayerView.swift    # Persistent bottom bar
@@ -136,6 +137,7 @@ ios/Soulector/
   tore the sheet down and put a new one up — and it swaps its contents in place,
   carrying an `OnDeckPanel` with what's next while a transition is arranged. A manual `play` cancels whatever was on deck,
   and a transition suppresses auto-advance so the two can't race
+- **Collective logos:** `CollectiveLogo` draws each collective the way the web does — brand artwork, not its name in the app font. Soulection and Sasha Marie Radio have wordmarks (`SoulectionLogotype`, `SashaMarieRadioLogotype` in the asset catalog, vector SVGs ported from `src/client/EpisodesScreen/Navbar/Logos.tsx`); The Love Below Hour has only a symbol, so it pairs its mark with the name. All assets are template-rendered so they take `foregroundColor`. Used in both spots the picker appears — the nav bar trigger and the dropdown rows — so a new collective only needs a case here
 - **Radio mode:** `RadioStore` (wired in `EpisodesView.onAppear` via `configure`) owns tune-in/out, the slot-boundary timer, drift correction, and resume re-sync. `Models/RadioSchedule.swift` computes what's on air and must stay semantically identical to the web's `src/lib/radioSchedule.ts` (same hash, ordering, epoch) — change them together or iOS and web broadcasts diverge
 - **Home-screen widget:** `SoulectorWidget` shows the current mix on an
   album-accent-tinted card (Spotify-widget style — `Color.soulectorCard` clamps
