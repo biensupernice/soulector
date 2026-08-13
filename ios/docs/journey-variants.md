@@ -35,26 +35,34 @@ Two structural facts constrain this table, both worth stating once:
 ## What Track Episodes shows
 
 Rows and the artwork shelf are the same idea twice — a list of destinations,
-restyled. These four each show something the list has but never renders, so
-they're comparable on what they *tell you*, not only on how they look.
+restyled. A first round tried four ways of showing *more* (a dated spine, a
+position bar, the record at size, accent-painted bands); only the position one
+landed, and for a reason worth writing down: **what helped was the bigger card
+plus a sense of where you'd be once you got there.** Arriving somewhere is
+easier to choose than going somewhere. The other three are deleted.
+
+So the round below holds the card fixed and varies only the arrival context.
 
 | Layout | What you'd notice | Reads from |
 |---|---|---|
 | **Rows** (today) | one row each | baseline |
 | **Artwork shelf** | artwork, two across | — |
-| **Down the years** | the record's life in the archive, on a dated spine; a year is called out only when it changes, so a season's cluster reads as one | `episode.releasedAt` |
-| **Where it lands** | each set at its own length with the record marked in it, named in words — opens the set, deep in it, near the close | `track.timestamp` ÷ `episode.duration` |
-| **Record first** | the record full-bleed and at size, the sets demoted to a rail under it | — |
-| **Painted bands** | one band per set in that set's own album accent, so four destinations read as four places | `JourneyAccents` |
+| **Where it lands** | where the drop falls in the set, named, and the record you'd come out into | `timestamp` ÷ `duration`, next cue |
+| **What you land in** | that set's cue sheet around the drop — one before, the record, two after | the cue sheet |
+| **Shape of the set** | every track as a mark with the drop lit, so density and entry point read together | every `timestamp` |
 
-Two notes on the last one: the journey already fetches those accents to tint its
-chrome a screen at a time, so this is the only layout that lets you see them
-together — and the only one that pays for the extra fetches, gated behind
-`TrackEpisodesStyle.needsDestinationAccents`.
+The card chrome — artwork, name, date, drop time, the go-now head and the queue
+control — lives once in `DestinationCard`; a layout supplies only the middle
+panel. That's deliberate: the first round shipped four layouts with **no way to
+queue a transition at all**, because each one had to remember to add the
+control. Now none of them can forget it.
 
-**Where it lands** is the one with a real gap: a cue sheet without a timestamp
-gets no bar rather than a guessed one, so a set with sparse timings looks
-emptier here than it does in rows.
+`LandingPosition` owns the fraction and its wording, so the three can't drift on
+what "deep in it" means.
+
+Still true, and the one real gap: a cue sheet with no timestamp gets no bar and
+no mark rather than a guessed one, so sparsely-timed sets look emptier in all
+three than they do in rows.
 
 ## Layers
 
