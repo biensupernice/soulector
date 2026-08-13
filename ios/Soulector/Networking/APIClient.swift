@@ -13,11 +13,21 @@ private struct TRPCResult<T: Decodable>: Decodable {
 
 // MARK: - DTOs
 
+/// The playable stream for one episode: one URL, whatever the source. The
+/// format varies — an HLS playlist for SoundCloud since it retired progressive
+/// MP3, a plain file for MIXCLOUD archive mirrors — so nothing here names a
+/// format and `isPlaylist` reads it off the URL instead.
 struct StreamUrls: Decodable {
-    let httpMp3128Url: String
+    let streamUrl: String
 
     private enum CodingKeys: String, CodingKey {
-        case httpMp3128Url = "http_mp3_128_url"
+        case streamUrl = "stream_url"
+    }
+
+    /// HLS needs `AVAssetDownloadTask` to go offline; a plain file (the
+    /// MIXCLOUD archive mirror, local dev audio) still downloads as bytes.
+    var isPlaylist: Bool {
+        (URL(string: streamUrl)?.path ?? streamUrl).lowercased().contains(".m3u8")
     }
 }
 
@@ -116,11 +126,26 @@ final class APIClient {
     static let shared = APIClient()
     private init() {}
 
-    /// Stream URLs are effectively immutable per episode, so cache them for the app session.
+    /// Which stream an episode maps to doesn't change, but the URL itself does:
+    /// SoundCloud's HLS playlists are CloudFront-signed and stop working after
+    /// a few hours, so an app session left open all evening would hand back a
+    /// dead playlist. Re-resolving is a single cheap request, so the TTL sits
+    /// well under the shortest signature lifetime we've seen (~4h).
     private actor StreamUrlCache {
-        private var entries: [String: StreamUrls] = [:]
-        func get(_ id: String) -> StreamUrls? { entries[id] }
-        func set(_ id: String, _ urls: StreamUrls) { entries[id] = urls }
+        private static let ttl: TimeInterval = 30 * 60
+
+        private var entries: [String: (urls: StreamUrls, storedAt: Date)] = [:]
+
+        func get(_ id: String) -> StreamUrls? {
+            guard let entry = entries[id] else { return nil }
+            guard Date().timeIntervalSince(entry.storedAt) < Self.ttl else {
+                entries[id] = nil
+                return nil
+            }
+            return entry.urls
+        }
+
+        func set(_ id: String, _ urls: StreamUrls) { entries[id] = (urls, Date()) }
     }
     private let streamUrlCache = StreamUrlCache()
 

@@ -166,8 +166,7 @@ final class PlayerStore: ObservableObject {
 
         do {
             guard let urls = try await APIClient.shared.fetchStreamUrl(episodeId: episode.id),
-                  !urls.httpMp3128Url.isEmpty,
-                  let url = URL(string: urls.httpMp3128Url) else {
+                  let url = URL(string: urls.streamUrl) else {
                 state = .error("No stream URL available")
                 return
             }
@@ -207,7 +206,11 @@ final class PlayerStore: ObservableObject {
     }
 
     private func startPlayback(url: URL) {
-        let item = AVPlayerItem(url: url)
+        // Through AVURLAsset rather than AVPlayerItem(url:) because a
+        // downloaded episode is now an AVFoundation-managed HLS bundle, and the
+        // asset is what knows how to serve its segments back with no network.
+        // Remote HLS and the older progressive files load the same way.
+        let item = AVPlayerItem(asset: AVURLAsset(url: url))
         playerItem = item
         player = AVPlayer(playerItem: item)
 
