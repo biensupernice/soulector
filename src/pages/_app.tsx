@@ -7,6 +7,7 @@ import { GoogleAnalytics, sendGAEvent } from "@next/third-parties/google";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
 import { EpisodeRouter } from "@/server/router";
+import { getStoredAdminAuth } from "@/client/AdminScreen/adminAuth";
 
 const GA_MEASUREMENT_ID = "G-L570W5HKLD";
 
@@ -226,6 +227,12 @@ export default withTRPC<EpisodeRouter>({
         }),
         httpBatchLink({
           url: `${getBaseUrl()}/api/trpc`,
+          // Only ever set once someone has signed in on /admin; for everyone
+          // else this is an empty object and the request goes out as before.
+          headers() {
+            const adminAuth = getStoredAdminAuth();
+            return adminAuth ? { Authorization: `Basic ${adminAuth}` } : {};
+          },
         }),
       ],
       /**
