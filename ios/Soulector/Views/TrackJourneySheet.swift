@@ -69,6 +69,16 @@ struct TrackConnectionsSlot: View {
 enum JourneyStep: Hashable {
     case track(TrackAppearance)
     case episode(Episode, landedOn: Int?)
+
+    /// The set this step is about, whichever kind it is — a Track Episodes step
+    /// is still reached *from* an episode. Lets the route be searched for a set
+    /// without every caller re-matching both cases.
+    var episode: Episode {
+        switch self {
+        case .track(let appearance):   return appearance.episode
+        case .episode(let episode, _): return episode
+        }
+    }
 }
 
 /// The bits every screen in the journey needs but doesn't own.

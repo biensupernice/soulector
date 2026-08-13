@@ -58,14 +58,33 @@ Bigger ideas, recorded so they aren't lost:
 Both want real design time, and neither is worth building before the containers
 have told us what the actual problem is.
 
-## One defect, independent of all of it
+## A landing belongs on the route — settled
 
-`transitionsFired` appends to the path, so when a queued transition lands the
-route grows a step the user never walked and Back retraces a trip they didn't
-take. Every music app does the opposite — autoplay moves what's playing and
-never moves what you're looking at — and VS Code keeps tool-driven navigation in
-a separate history from user-driven for exactly this reason. Worth fixing on its
-own, whatever wins.
+`transitionsFired` appends to the path, so a landed transition grows the route
+by a step nobody tapped. This was written up here as a defect, on the argument
+that every music app moves what's playing without moving what you're looking at.
+
+Tried in Full screen, with transitions queued one at a time on **blend**: it's
+right as it stands. Arranging a transition *is* the navigation — you chose that
+set and the moment you'd arrive in it, and the wait is the only thing separating
+the choice from the arrival. The route recording it is honest. The music-app
+comparison turns out not to apply, because autoplay is a thing that happens to
+you and an arranged transition is a thing you did.
+
+Keep the append. No change.
+
+## The real one: a journey restarting from the sheet
+
+Reached in Full screen, deep in a route (624 → 490 → 510 → 473): raise the
+episode sheet from the Mini Player, tap a connection in it, and the whole route
+collapses to a single step. `JourneyCoordinator.open` assigned
+`path = [.track(appearance)]`, which is right only when no journey is running —
+and the Mini Player can raise that sheet *over* one.
+
+Fixed by continuing instead: the route is truncated to where that set appears in
+it and the new step pushed on, so the rail reads as the sets actually walked. A
+set that isn't on the route still starts a fresh journey, which is the old
+behaviour and the correct one for that case.
 
 ## Removing all of this
 

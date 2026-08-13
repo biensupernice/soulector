@@ -249,7 +249,21 @@ final class JourneyCoordinator: ObservableObject {
         case .peek:
             origin = appearance
         case .fullScreen:
-            path = [.track(appearance)]
+            // A journey already in flight continues rather than starting over.
+            // This is reached from the episode sheet, which the Mini Player can
+            // raise *over* a running journey — so the tapped track is usually a
+            // record in a set the route already passed through, and replacing
+            // the path threw the whole route away.
+            //
+            // Truncating to that set and pushing keeps the rail honest: you
+            // went back to it and moved sideways from there, which is what the
+            // taps actually were. A set that isn't on the route at all has
+            // nothing to continue, so it opens a new journey.
+            if let index = path.lastIndex(where: { $0.episode.id == appearance.episode.id }) {
+                path = Array(path.prefix(index + 1)) + [.track(appearance)]
+            } else {
+                path = [.track(appearance)]
+            }
         case .inlineList:
             expandedOrder = appearance.track.order
         }
