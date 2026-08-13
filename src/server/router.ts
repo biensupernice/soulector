@@ -1,8 +1,5 @@
 import { Context } from "@/server/context";
-import {
-  GetStreamUrlsDTO,
-  createSoundCloudApiClient,
-} from "@/server/crosscutting/soundCloudApiClient";
+import { createSoundCloudApiClient } from "@/server/crosscutting/soundCloudApiClient";
 import { ObjectId, WithId } from "mongodb";
 import { string, z } from "zod";
 import path from "path";
@@ -46,10 +43,7 @@ export type DBEpisode = {
   url: string;
   picture_large: string;
   collective_slug:
-    | "soulection"
-    | "sasha-marie-radio"
-    | "the-love-below-hour"
-    | "local";
+    "soulection" | "sasha-marie-radio" | "the-love-below-hour" | "local";
   tracks?: EpisodeTrack[];
   archive_url?: string;
 };
@@ -164,6 +158,24 @@ const authenticatedProcedure = t.procedure.use(async ({ ctx, next }) => {
     },
   });
 });
+
+/**
+ * The wire shape of `episode.getStreamUrl`. These key names are wrong now —
+ * for SoundCloud episodes every one of them holds an AAC HLS playlist URL, and
+ * `http_mp3_128_url` is a transcoding SoundCloud no longer produces at all.
+ *
+ * They stay anyway. The shipped iOS app decodes this response with
+ * `http_mp3_128_url` as a non-optional field, so every install already on a
+ * phone breaks with a decoding error the moment the key disappears. Renaming
+ * these is not a cleanup; it is a remote kill switch for old builds. Add a new
+ * key alongside them if you need an honest name.
+ */
+type StreamUrlsResponse = {
+  http_mp3_128_url: string;
+  hls_mp3_128_url: string;
+  hls_opus_64_url: string;
+  preview_mp3_128_url: string;
+};
 
 export const episodeRouter = router({
   "internal.episodesSync": publicProcedure.query(async ({ ctx }) => {
@@ -437,7 +449,7 @@ export const episodeRouter = router({
           hls_mp3_128_url: localEpisode.url,
           hls_opus_64_url: localEpisode.url,
           preview_mp3_128_url: localEpisode.url,
-        } satisfies GetStreamUrlsDTO;
+        } satisfies StreamUrlsResponse;
       }
 
       const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
@@ -456,7 +468,7 @@ export const episodeRouter = router({
           hls_mp3_128_url: episode.archive_url,
           hls_opus_64_url: episode.archive_url,
           preview_mp3_128_url: episode.archive_url,
-        } satisfies GetStreamUrlsDTO;
+        } satisfies StreamUrlsResponse;
       }
 
       const scTrackId = `${episode.key}`;
@@ -468,7 +480,7 @@ export const episodeRouter = router({
         hls_mp3_128_url: streamUrlsDetail,
         hls_opus_64_url: streamUrlsDetail,
         preview_mp3_128_url: streamUrlsDetail,
-      } satisfies GetStreamUrlsDTO;
+      } satisfies StreamUrlsResponse;
     }),
   "episode.getAccentColor": publicProcedure
     .input(
