@@ -1,8 +1,5 @@
 import { Context } from "@/server/context";
-import {
-  GetStreamUrlsDTO,
-  createSoundCloudApiClient,
-} from "@/server/crosscutting/soundCloudApiClient";
+import { createSoundCloudApiClient } from "@/server/crosscutting/soundCloudApiClient";
 import { ObjectId, WithId } from "mongodb";
 import { string, z } from "zod";
 import path from "path";
@@ -58,10 +55,7 @@ export type DBEpisode = {
   url: string;
   picture_large: string;
   collective_slug:
-    | "soulection"
-    | "sasha-marie-radio"
-    | "the-love-below-hour"
-    | "local";
+    "soulection" | "sasha-marie-radio" | "the-love-below-hour" | "local";
   tracks?: EpisodeTrack[];
   archive_url?: string;
 };
@@ -176,6 +170,21 @@ const authenticatedProcedure = t.procedure.use(async ({ ctx, next }) => {
     },
   });
 });
+
+/**
+ * The wire shape of `episode.getStreamUrl`: one URL, whatever the source.
+ *
+ * This used to carry four keys named after SoundCloud transcodings
+ * (`http_mp3_128_url` and friends), every one of them holding the same string,
+ * and three of them naming transcodings SoundCloud has since stopped producing
+ * entirely. What a client wants here is the one URL to play, so that is what it
+ * gets. The format varies — an HLS playlist for SoundCloud, a plain MP3 for
+ * Mixcloud archives and the local source — so the name deliberately says
+ * nothing about it; players detect from the URL.
+ */
+type StreamUrlsResponse = {
+  stream_url: string;
+};
 
 export const episodeRouter = router({
   "internal.episodesSync": publicProcedure.query(async ({ ctx }) => {
@@ -569,11 +578,8 @@ export const episodeRouter = router({
 
       if (localEpisode) {
         return {
-          http_mp3_128_url: localEpisode.url,
-          hls_mp3_128_url: localEpisode.url,
-          hls_opus_64_url: localEpisode.url,
-          preview_mp3_128_url: localEpisode.url,
-        } satisfies GetStreamUrlsDTO;
+          stream_url: localEpisode.url,
+        } satisfies StreamUrlsResponse;
       }
 
       const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
@@ -588,11 +594,8 @@ export const episodeRouter = router({
       if (episode.source === "MIXCLOUD") {
         if (!episode.archive_url) return null;
         return {
-          http_mp3_128_url: episode.archive_url,
-          hls_mp3_128_url: episode.archive_url,
-          hls_opus_64_url: episode.archive_url,
-          preview_mp3_128_url: episode.archive_url,
-        } satisfies GetStreamUrlsDTO;
+          stream_url: episode.archive_url,
+        } satisfies StreamUrlsResponse;
       }
 
       const scTrackId = `${episode.key}`;
@@ -600,11 +603,8 @@ export const episodeRouter = router({
       const streamUrlsDetail = await scClient.getStreamUrlDetail(scTrackId);
 
       return {
-        http_mp3_128_url: streamUrlsDetail,
-        hls_mp3_128_url: streamUrlsDetail,
-        hls_opus_64_url: streamUrlsDetail,
-        preview_mp3_128_url: streamUrlsDetail,
-      } satisfies GetStreamUrlsDTO;
+        stream_url: streamUrlsDetail,
+      } satisfies StreamUrlsResponse;
     }),
   "episode.getAccentColor": publicProcedure
     .input(
@@ -720,10 +720,7 @@ export const episodeRouter = router({
       console.log({ episodeId });
 
       const fakeEpisodeUrls = {
-        http_mp3_128_url: `/_test/iL2cZd7Gy8Ol.128.mp3?rand=${timeStr}`,
-        hls_mp3_128_url: "/_test/iL2cZd7Gy8Ol.128.mp3",
-        hls_opus_64_url: "/_test/iL2cZd7Gy8Ol.128.mp3",
-        preview_mp3_128_url: "/_test/iL2cZd7Gy8Ol.128.mp3",
+        stream_url: `/_test/iL2cZd7Gy8Ol.128.mp3?rand=${timeStr}`,
       };
 
       return fakeEpisodeUrls;

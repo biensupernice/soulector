@@ -153,19 +153,48 @@ export class SoundCloudApiClient {
       return result;
     } catch (error) {
       const axiosError = error as any;
-      console.error(`[getStreamUrls] Error getting stream URLs for track ${trackId}:`, {
-        message: axiosError?.message,
-        status: axiosError?.response?.status,
-        data: axiosError?.response?.data,
-      });
+      console.error(
+        `[getStreamUrls] Error getting stream URLs for track ${trackId}:`,
+        {
+          message: axiosError?.message,
+          status: axiosError?.response?.status,
+          data: axiosError?.response?.data,
+        },
+      );
       throw error;
     }
   }
 
+  /**
+   * Resolves to the final, signed HLS playlist URL for a track.
+   *
+   * SoundCloud retired the progressive MP3 and the HLS MP3/Opus transcodings
+   * (developers.soundcloud.com/blog/api-streaming-urls), so `http_mp3_128_url`
+   * — what this used to read — is simply gone from the payload. AAC in
+   * fragmented MP4 is the only remaining transcoding that carries a whole
+   * episode; `preview_mp3_128_url` is a 30-second clip and `hls_mp3_128_url`
+   * still answers today but is on the same deprecation list.
+   */
   async getStreamUrlDetail(trackId: string) {
     try {
       const streamUrls = await this.getStreamUrls(trackId);
-      const streamUrl = streamUrls.http_mp3_128_url;
+
+      // 96k is documented as the alternative bitrate, though no track we serve
+      // has actually offered it.
+      const streamUrl = streamUrls.hls_aac_160_url ?? streamUrls.hls_aac_96_url;
+
+      // Without this guard the failure is silent and deeply confusing: axios
+      // resolves an undefined URL against baseURL, so the play turns into a
+      // GET of the API root, which answers 405 "unknown route". That is what
+      // this outage looked like from the outside — an error mentioning nothing
+      // about a missing transcoding.
+      if (!streamUrl) {
+        throw new Error(
+          `SoundCloud returned no AAC HLS transcoding for track ${trackId}; got: ${Object.keys(
+            streamUrls,
+          ).join(", ")}`,
+        );
+      }
 
       const result = await this.client.get(streamUrl, {
         maxRedirects: 0,
@@ -177,11 +206,14 @@ export class SoundCloudApiClient {
       return redirectUrl;
     } catch (error) {
       const axiosError = error as any;
-      console.error(`[getStreamUrlDetail] Error getting stream URL detail for track ${trackId}:`, {
-        message: axiosError?.message,
-        status: axiosError?.response?.status,
-        data: axiosError?.response?.data,
-      });
+      console.error(
+        `[getStreamUrlDetail] Error getting stream URL detail for track ${trackId}:`,
+        {
+          message: axiosError?.message,
+          status: axiosError?.response?.status,
+          data: axiosError?.response?.data,
+        },
+      );
       throw error;
     }
   }
@@ -256,9 +288,18 @@ interface SoundCloudTrackDTO {
   downloads_remaining: null;
 }
 
+/**
+ * What `GET /tracks/{id}/streams` actually hands back today. Every field is
+ * optional because SoundCloud has already dropped three of them once without
+ * warning, and reading a missing one as a `string` is what turned that into a
+ * 405 against the API root rather than an error anyone could read.
+ *
+ * Not to be confused with the shape `episode.getStreamUrl` returns to clients,
+ * which is frozen for the shipped iOS app — see router.ts.
+ */
 export interface GetStreamUrlsDTO {
-  http_mp3_128_url: string;
-  hls_mp3_128_url: string;
-  hls_opus_64_url: string;
-  preview_mp3_128_url: string;
+  hls_mp3_128_url?: string;
+  hls_aac_160_url?: string;
+  hls_aac_96_url?: string;
+  preview_mp3_128_url?: string;
 }
