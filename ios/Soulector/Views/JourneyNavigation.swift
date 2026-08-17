@@ -229,7 +229,14 @@ struct TrackEpisodesExtras: OptionSet, Codable {
     }
 }
 
-/// How an armed row marks itself.
+/// How an armed destination marks itself while the record playing now runs
+/// out. The fill *is* the wait — it's the only thing that says how much of it
+/// is left — so every layout that can be armed has to answer this.
+///
+/// Read by both `TrackEpisodeRow` and `DestinationCard`. The card shipped
+/// honouring none of it, which left the card layouts with a static border and
+/// no countdown at all; `border` keeps that available to compare against
+/// rather than deleting it unseen.
 enum ArmedRowStyle: String, CaseIterable, Identifiable, Codable {
     /// Today: the row fills edge to edge as the record plays out.
     case sweep
@@ -239,6 +246,9 @@ enum ArmedRowStyle: String, CaseIterable, Identifiable, Codable {
     /// A left bar plus a quiet fill — how the tracklist already marks the
     /// playing track, borrowed so the two agree.
     case bar
+    /// No fill: the armed thing is outlined and nothing counts down. What the
+    /// cards did before they read this setting at all.
+    case border
 
     static let storageKey = "soulector.trackEpisodes.armedRow"
     static let current: ArmedRowStyle = .sweep
@@ -247,9 +257,10 @@ enum ArmedRowStyle: String, CaseIterable, Identifiable, Codable {
 
     var title: String {
         switch self {
-        case .sweep: return "Full sweep"
-        case .card:  return "Inset card"
-        case .bar:   return "Accent bar"
+        case .sweep:  return "Full sweep"
+        case .card:   return "Inset card"
+        case .bar:    return "Accent bar"
+        case .border: return "Just the outline"
         }
     }
 }

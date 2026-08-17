@@ -193,7 +193,7 @@ struct TrackEpisodesScreen: View {
                     DestinationCard(
                         destination: other,
                         context: style,
-                        armed: armedStyle(for: other),
+                        armed: armedTransition(for: other),
                         canQueue: transitionPoint != nil,
                         onTap: { open(other) },
                         onQueue: { audio in queueTransition(other, with: audio) },
@@ -208,12 +208,12 @@ struct TrackEpisodesScreen: View {
         }
     }
 
-    /// The style already arranged for this destination, if it's the one on
+    /// The transition already arranged for this destination, if it's the one on
     /// deck. Matched on the appearance id — episode *and* slot — because the
     /// same set can be reachable through two different records.
-    private func armedStyle(for other: TrackAppearance) -> TransitionAudio? {
+    private func armedTransition(for other: TrackAppearance) -> QueuedTransition? {
         guard let queued = playerStore.queued, queued.id == other.id else { return nil }
-        return queued.audio
+        return queued
     }
 
     /// [journey-variants] The header/empty/scroll frame the newer layouts share,
@@ -574,6 +574,11 @@ struct TrackEpisodeRow: View {
                             Rectangle()
                                 .fill(Color.white)
                                 .frame(width: 3)
+                        case .border:
+                            // A row has no outline of its own, so the quiet
+                            // fill is all that marks it — no countdown, which
+                            // is what this option is for.
+                            Rectangle().fill(Color.white.opacity(0.08))
                         }
                     }
                     // Scoped to the fill: the clock ticks twice a second,

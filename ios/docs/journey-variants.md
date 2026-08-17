@@ -60,6 +60,20 @@ control. Now none of them can forget it.
 `LandingPosition` owns the fraction and its wording, so the three can't drift on
 what "deep in it" means.
 
+### The countdown on a card
+
+The cards shipped marking an armed destination with a static white outline and
+nothing else. Rows drew the wait filling as the record ran out; the cards drew
+no countdown at all, which quietly removed the one signal that says how much of
+the wait is left — on the layout most likely to win.
+
+`DestinationCard` now reads `ArmedRowStyle` the same way `TrackEpisodeRow` does,
+so the three fills apply to both. A fourth option, **Just the outline**, keeps
+the cards' original behaviour reachable rather than deleting it unseen.
+
+`armed` is now the whole `QueuedTransition` rather than its style alone, since
+the fill needs `progress(at:)` as well as the name of what was picked.
+
 Still true, and the one real gap: a cue sheet with no timestamp gets no bar and
 no mark rather than a guessed one, so sparsely-timed sets look emptier in all
 three than they do in rows.

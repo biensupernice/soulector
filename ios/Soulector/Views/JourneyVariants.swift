@@ -546,12 +546,18 @@ struct ShelfCard: View {
 struct DestinationCard: View {
     let destination: TrackAppearance
     let context: TrackEpisodesStyle
-    /// The style already arranged for this destination, if it's on deck.
-    let armed: TransitionAudio?
+    /// The transition already arranged for this destination, if it's on deck.
+    /// The whole thing rather than just its style, because the countdown needs
+    /// `progress(at:)` as well as the name of what was picked.
+    let armed: QueuedTransition?
     let canQueue: Bool
     let onTap: () -> Void
     let onQueue: (TransitionAudio) -> Void
     let onCallOff: () -> Void
+
+    @EnvironmentObject private var playerStore: PlayerStore
+    // [journey-variants] the same countdown treatments the rows offer
+    @Environment(\.armedRowStyle) private var armedRowStyle
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -600,7 +606,7 @@ struct DestinationCard: View {
             }
 
             TransitionChoices(
-                armed: armed,
+                armed: armed?.audio,
                 canQueue: canQueue,
                 onPick: onQueue,
                 onCallOff: onCallOff
@@ -608,13 +614,55 @@ struct DestinationCard: View {
         }
         .padding(14)
         .background(RoundedRectangle(cornerRadius: 16).fill(Color.white.opacity(0.07)))
+        // [journey-variants] the countdown. Clipped to the card's own shape so
+        // a fill can run the full width without squaring off its corners.
+        .background {
+            if let armed {
+                countdown(filled: armed.progress(at: playerStore.currentTime))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
+        }
         .overlay(
             RoundedRectangle(cornerRadius: 16).strokeBorder(
                 armed != nil ? Color.white.opacity(0.85) : Color.white.opacity(0.10),
                 lineWidth: armed != nil ? 2 : 1
             )
         )
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: armed)
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: armed?.id)
+    }
+
+    /// The wait, drawn. Same three treatments the rows offer, plus the outline
+    /// -only case the cards started with.
+    @ViewBuilder
+    private func countdown(filled: Double) -> some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                switch armedRowStyle {
+                case .sweep:
+                    Rectangle()
+                        .fill(Color.white.opacity(0.16))
+                        .frame(width: geo.size.width * filled)
+                case .card:
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.white.opacity(0.08))
+                        .padding(8)
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.white.opacity(0.16))
+                        .frame(width: max(0, (geo.size.width - 16) * filled))
+                        .padding(.leading, 8)
+                case .bar:
+                    Rectangle().fill(Color.white.opacity(0.08))
+                    Rectangle().fill(Color.white).frame(width: 3)
+                case .border:
+                    // The outline is already drawn by the card. Nothing counts
+                    // down, which is the point of having it to compare against.
+                    EmptyView()
+                }
+            }
+            // Scoped to the fill: the clock ticks twice a second, and animating
+            // the whole card on that beat would drag its content along.
+            .animation(.linear(duration: 0.5), value: playerStore.currentTime)
+        }
     }
 }
 
