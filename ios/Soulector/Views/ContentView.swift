@@ -9,24 +9,8 @@ struct ContentView: View {
     @StateObject private var journey = JourneyCoordinator()
     @State private var showDiagnostics = false
 
-    /// Which journey navigation is under trial. Read once here and put into the
-    /// environment rather than re-read per screen, so switching reaches an
-    /// open journey and the list underneath it in the same frame.
-    @AppStorage(JourneyNavigation.storageKey) private var journeyNavigation = JourneyNavigation.current
-    @AppStorage(JourneyLayers.storageKey) private var journeyLayers = JourneyLayers.none
-    @AppStorage(TrackEpisodesStyle.storageKey) private var trackEpisodesStyle = TrackEpisodesStyle.current
-    @AppStorage(TrackEpisodesExtras.storageKey) private var trackEpisodesExtras = TrackEpisodesExtras.none
-    @AppStorage(ArmedRowStyle.storageKey) private var armedRowStyle = ArmedRowStyle.current
-
     var body: some View {
         EpisodesView()
-            .journeyNavigation(journeyNavigation)
-            .journeyLayers(journeyLayers)
-            .trackEpisodesOptions(
-                style: trackEpisodesStyle,
-                extras: trackEpisodesExtras,
-                armedRow: armedRowStyle
-            )
             .environmentObject(playerStore)
             .environmentObject(favoritesStore)
             .environmentObject(episodesVM)

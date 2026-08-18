@@ -139,14 +139,6 @@ struct TrackEpisodesScreen: View {
     @EnvironmentObject var radioStore: RadioStore
     @EnvironmentObject var accents: JourneyAccents
 
-    /// Which row has its transition choices out. One at a time, and owned here
-    /// rather than by the row, so a tap anywhere on the screen can close it.
-    @State private var openRow: String?
-
-    // [journey-variants] what this screen shows and how
-    @Environment(\.trackEpisodesStyle) private var style
-    @Environment(\.trackEpisodesExtras) private var extras
-
     private var others: [TrackAppearance] {
         episodesVM.trackGraph.otherAppearances(
             of: appearance.track,
@@ -172,73 +164,34 @@ struct TrackEpisodesScreen: View {
     var body: some View {
         let elsewhere = others
 
-        // [journey-variants] the layouts that don't need a row's open/close
-        // state get the simple scroller; only the row list carries choices that
-        // have to be dismissable from anywhere.
-        switch style {
-        case .shelf:      shelfBody(elsewhere)
-        case .landing, .runway, .arc: cardBody(elsewhere)
-        case .list:                   listBody(elsewhere)
-        }
-    }
-
-    /// [journey-variants] The card layouts. They share everything except the
-    /// context panel, so they share a body too — and the queue control lives in
-    /// the shared chrome, which is how all three get it for free rather than
-    /// each remembering to add one.
-    private func cardBody(_ elsewhere: [TrackAppearance]) -> some View {
-        simpleBody(elsewhere, alsoWhenEmpty: extras.contains(.youAreHere)) { destinations in
-            VStack(spacing: 12) {
-                // [journey-variants] the set you came from, marked. The row
-                // list has honoured this since it shipped; the cards never did.
-                if extras.contains(.youAreHere) {
-                    HereCard(appearance: appearance)
-                }
-
-                ForEach(destinations) { other in
-                    DestinationCard(
-                        destination: other,
-                        context: style,
-                        armed: armedTransition(for: other),
-                        canQueue: transitionPoint != nil,
-                        onTap: { open(other) },
-                        onQueue: { audio in queueTransition(other, with: audio) },
-                        onCallOff: {
-                            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-                            playerStore.cancelQueued()
-                        }
-                    )
-                }
-            }
-            .padding(.horizontal, 20)
-        }
-    }
-
-    /// The transition already arranged for this destination, if it's the one on
-    /// deck. Matched on the appearance id — episode *and* slot — because the
-    /// same set can be reachable through two different records.
-    private func armedTransition(for other: TrackAppearance) -> QueuedTransition? {
-        guard let queued = playerStore.queued, queued.id == other.id else { return nil }
-        return queued
-    }
-
-    /// [journey-variants] The header/empty/scroll frame the newer layouts share,
-    /// so each one only has to say what a destination looks like.
-    private func simpleBody<Content: View>(
-        _ elsewhere: [TrackAppearance],
-        alsoWhenEmpty: Bool = false,
-        @ViewBuilder content: @escaping ([TrackAppearance]) -> Content
-    ) -> some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
                 header(count: elsewhere.count)
 
-                // A layout can still have something to say with no
-                // destinations — the card stack shows where you're standing.
-                if elsewhere.isEmpty && !alsoWhenEmpty {
+                VStack(spacing: 12) {
+                    // The set you came from, marked. This record's homes
+                    // include the one you're standing in, and leaving it out
+                    // made a one-connection screen read as a stub.
+                    HereCard(appearance: appearance)
+
+                    ForEach(elsewhere) { other in
+                        DestinationCard(
+                            destination: other,
+                            armed: armedTransition(for: other),
+                            canQueue: transitionPoint != nil,
+                            onTap: { open(other) },
+                            onQueue: { audio in queueTransition(other, with: audio) },
+                            onCallOff: {
+                                UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+                                playerStore.cancelQueued()
+                            }
+                        )
+                    }
+                }
+                .padding(.horizontal, 20)
+
+                if elsewhere.isEmpty {
                     emptyState
-                } else {
-                    content(elsewhere)
                 }
 
                 Color.clear.frame(height: 24)
@@ -250,98 +203,12 @@ struct TrackEpisodesScreen: View {
         }
     }
 
-    // [journey-variants] artwork cards, two across
-    private func shelfBody(_ elsewhere: [TrackAppearance]) -> some View {
-        simpleBody(elsewhere) { destinations in
-            LazyVGrid(
-                columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
-                spacing: 12
-            ) {
-                ForEach(destinations) { other in
-                    ShelfCard(
-                        appearance: other,
-                        isOnDeck: playerStore.queued?.episode.id == other.episode.id,
-                        onTap: { open(other) },
-                        onQueue: { audio in queueTransition(other, with: audio) },
-                        canQueue: transitionPoint != nil
-                    )
-                }
-            }
-            .padding(.horizontal, 20)
-        }
-    }
-
-    private func listBody(_ elsewhere: [TrackAppearance]) -> some View {
-
-        // The geometry is here so the content can be made at least a screen
-        // tall: an open row's choices close on a tap anywhere outside them, and
-        // "anywhere" has to include the empty space under a short list.
-        GeometryReader { geo in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    header(count: elsewhere.count)
-
-                    if elsewhere.isEmpty && !extras.contains(.youAreHere) {
-                        emptyState
-                    } else {
-                        // [journey-variants] the episode you came from, marked
-                        if extras.contains(.youAreHere) {
-                            HereRow(appearance: appearance)
-                        }
-
-                        ForEach(elsewhere) { other in
-                            VStack(spacing: 0) {
-                                TrackEpisodeRow(
-                                    appearance: other,
-                                    canQueue: transitionPoint != nil,
-                                    accent: accent,
-                                    isOpen: openRow == other.id,
-                                    onSetOpen: { isOpen in setOpenRow(isOpen ? other.id : nil) },
-                                    onTap: { open(other) },
-                                    onQueue: { style in queueTransition(other, with: style) },
-                                    onCallOff: {
-                                        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-                                        playerStore.cancelQueued()
-                                    }
-                                )
-
-                                // [journey-variants] what it comes out of and
-                                // into over there — the thing you'd choose on
-                                if extras.contains(.landingContext) {
-                                    LandingContext(destination: other)
-                                }
-                            }
-                        }
-                    }
-
-                    Color.clear.frame(height: 24)
-                }
-                .frame(minHeight: geo.size.height, alignment: .top)
-                .contentShape(Rectangle())
-                // Rows and chips take their own taps first; everything that
-                // falls through means "put those away".
-                .onTapGesture { closeOpenRow(haptic: true) }
-            }
-            // Scrolling puts them away too, without a second tap.
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 8).onChanged { _ in closeOpenRow(haptic: false) }
-            )
-        }
-        .journeyChrome(title: appearance.track.name, accent: accent, close: actions.close)
-        .task(id: appearance.episode.id) {
-            await accents.load(appearance.episode.id, playing: playerStore)
-        }
-    }
-
-    private func setOpenRow(_ id: String?) {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) { openRow = id }
-    }
-
-    private func closeOpenRow(haptic: Bool) {
-        guard openRow != nil else { return }
-        if haptic { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
-        withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) { openRow = nil }
+    /// The transition already arranged for this destination, if it's the one on
+    /// deck. Matched on the appearance id — episode *and* slot — because the
+    /// same set can be reachable through two different records.
+    private func armedTransition(for other: TrackAppearance) -> QueuedTransition? {
+        guard let queued = playerStore.queued, queued.id == other.id else { return nil }
+        return queued
     }
 
     private func header(count: Int) -> some View {
@@ -437,232 +304,6 @@ struct TrackEpisodesScreen: View {
         // Load the destination's accent now: the sweep drifts this screen's
         // colour toward it while the record plays out.
         Task { await accents.load(other.episode.id, playing: playerStore) }
-    }
-}
-
-/// An episode that played the track. Tapping it goes there now; the control on
-/// its right holds the slower way — waiting for the record to end.
-struct TrackEpisodeRow: View {
-    let appearance: TrackAppearance
-    /// Whether there's a record playing that a transition could hang off.
-    let canQueue: Bool
-    /// The screen's album accent, worn by the badge once something is armed.
-    let accent: Color
-    /// Whether this row's control is open on its choices. Owned by the screen —
-    /// only one row can be open, and a tap anywhere closes it.
-    let isOpen: Bool
-    let onSetOpen: (Bool) -> Void
-    let onTap: () -> Void
-    let onQueue: (TransitionAudio) -> Void
-    let onCallOff: () -> Void
-
-    @EnvironmentObject var playerStore: PlayerStore
-    @EnvironmentObject var downloadsStore: DownloadsStore
-    @EnvironmentObject var network: NetworkMonitor
-    // [journey-variants]
-    @Environment(\.armedRowStyle) private var armedRowStyle
-
-    private var isCurrent: Bool { playerStore.currentEpisode?.id == appearance.episode.id }
-
-    /// Offline, a set we don't have on the device can't be moved into.
-    private var unavailable: Bool {
-        !network.isOnline && downloadsStore.state(for: appearance.episode.id) != .downloaded
-    }
-
-    /// The arranged transition, when this row is the one on deck.
-    private var transition: QueuedTransition? {
-        guard let queued = playerStore.queued,
-              queued.episode.id == appearance.episode.id,
-              queued.track.order == appearance.track.order
-        else { return nil }
-        return queued
-    }
-
-    var body: some View {
-        // The tap area and the control are siblings rather than one nested in
-        // the other, so each keeps its own taps.
-        HStack(spacing: 12) {
-            HStack(spacing: 12) {
-                EpisodeArtwork(episode: appearance.episode)
-                    .frame(width: 48, height: 48)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(appearance.episode.name)
-                        // On an accent field the playing row earns weight
-                        // rather than a second colour.
-                        .font(.app(size: 14, weight: isCurrent ? .bold : .semibold))
-                        .foregroundColor(.white)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-
-                    // Once something is arranged, the row says so in words —
-                    // the badge alone was too small to carry the news.
-                    if let transition {
-                        HStack(spacing: 5) {
-                            Image(systemName: transition.audio.symbol)
-                                .font(.system(size: 9, weight: .bold))
-                            Text(statusLine(for: transition))
-                                .font(.app(size: 11, weight: .bold))
-                                .tracking(0.7)
-                                .lineLimit(1)
-                        }
-                        .foregroundColor(.white)
-                        .transition(.opacity)
-                    } else {
-                        HStack(spacing: 6) {
-                            Text(appearance.episode.formattedDate)
-                                .font(.app(size: 12))
-                                .foregroundColor(.white.opacity(0.7))
-
-                            Text("·")
-                                .foregroundColor(.white.opacity(0.5))
-
-                            Text(appearance.episode.collectiveName)
-                                .font(.app(size: 12))
-                                .foregroundColor(.white.opacity(0.7))
-                                .lineLimit(1)
-                        }
-                        .transition(.opacity)
-                    }
-                }
-
-                Spacer(minLength: 8)
-            }
-            // The row steps back while its choices are out, so the tray reads
-            // as being on top of it rather than crowded in beside it.
-            .opacity(isOpen ? 0.3 : 1)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                // With the choices open, a tap on the row puts them away
-                // rather than moving the user.
-                if isOpen {
-                    onSetOpen(false)
-                    return
-                }
-                guard !unavailable else { return }
-                onTap()
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isButton)
-
-            trailingControl
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 8)
-        .opacity(unavailable ? 0.4 : 1)
-        // A row that's on deck sits on a lit background — and under the sweep,
-        // that light fills across it as the record plays out.
-        // [journey-variants] three ways for an armed row to mark itself
-        .background(alignment: .leading) {
-            if let transition {
-                let filled = transition.progress(at: playerStore.currentTime)
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        switch armedRowStyle {
-                        case .sweep:
-                            Rectangle()
-                                .fill(Color.white.opacity(0.16))
-                                .frame(width: geo.size.width * filled)
-                        case .card:
-                            // The same fill, inset and rounded, so it reads as
-                            // a card filling rather than a selection that ran
-                            // off both sides of the screen.
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(Color.white.opacity(0.08))
-                                .padding(.horizontal, 12)
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(Color.white.opacity(0.16))
-                                .frame(width: max(0, (geo.size.width - 24) * filled))
-                                .padding(.leading, 12)
-                        case .bar:
-                            // How the tracklist already marks what's playing,
-                            // borrowed so the two agree.
-                            Rectangle()
-                                .fill(Color.white.opacity(0.08))
-                            Rectangle()
-                                .fill(Color.white)
-                                .frame(width: 3)
-                        case .border:
-                            // A row has no outline of its own, so the quiet
-                            // fill is all that marks it — no countdown, which
-                            // is what this option is for.
-                            Rectangle().fill(Color.white.opacity(0.08))
-                        }
-                    }
-                    // Scoped to the fill: the clock ticks twice a second,
-                    // and animating the whole row on that beat would drag
-                    // everything else along with it.
-                    .animation(.linear(duration: 0.5), value: playerStore.currentTime)
-                }
-            }
-        }
-        // The choices unfold over the row rather than shoving its text aside.
-        .overlay(alignment: .trailing) {
-            if isOpen {
-                TransitionChoices(
-                    armed: transition?.audio,
-                    canQueue: canQueue,
-                    onPick: { style in
-                        onSetOpen(false)
-                        onQueue(style)
-                    },
-                    onCallOff: {
-                        onSetOpen(false)
-                        onCallOff()
-                    }
-                )
-                .padding(.trailing, 20)
-                // Grown out of the button it replaced, at the same edge.
-                .transition(.scale(scale: 0.2, anchor: .trailing).combined(with: .opacity))
-            }
-        }
-        .animation(.easeInOut(duration: 0.3), value: transition?.id)
-    }
-
-    /// Idle, this is the landing time and the way in. Armed, it's the
-    /// countdown. Open, it's neither — the choices have taken its place.
-    private var trailingControl: some View {
-        HStack(spacing: 8) {
-            if let transition {
-                TransitionBadge(
-                    transition: transition,
-                    remaining: playerStore.queuedRemaining ?? 0,
-                    isTransitioning: playerStore.isTransitioning,
-                    accent: accent
-                )
-            } else if let timestamp = appearance.track.formattedTimestamp {
-                Text(timestamp)
-                    .font(.app(size: 11, weight: .medium))
-                    .foregroundColor(.white)
-                    .monospacedDigit()
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(Color.black.opacity(0.25)))
-            }
-
-            Button(action: { onSetOpen(!isOpen) }) {
-                // "Put this next" — the same thing the armed row says in words
-                // ("ON DECK") and the episode sheet shows in its panel.
-                Image(systemName: "text.append")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(width: 30, height: 30)
-                    .background(Circle().fill(Color.black.opacity(0.3)))
-                    .contentShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .disabled(unavailable)
-            .accessibilityLabel("Transition options")
-        }
-        // The button doesn't sit next to its own expansion — it becomes it.
-        .opacity(isOpen ? 0 : 1)
-    }
-
-    private func statusLine(for transition: QueuedTransition) -> String {
-        playerStore.isTransitioning
-            ? "IN TRANSITION"
-            : "ON DECK · \(transition.audio.title.uppercased())"
     }
 }
 
@@ -833,7 +474,6 @@ struct EpisodeTracksScreen: View {
         .journeyChrome(
             title: episode.name,
             accent: accent,
-            // [journey-variants]
             path: $path,
             viewed: episode,
             onReturn: { landed in path.append(.episode(landed, landedOn: nil)) },
@@ -969,71 +609,54 @@ struct EpisodeTracksScreen: View {
 struct JourneyChrome: ViewModifier {
     let title: String
     let accent: Color
-    // [journey-variants] the rail needs the route to draw it
+    /// The route, on the screens that have one to draw. Track Episodes is
+    /// reached *from* a set rather than being one, so it has no rail.
     var path: Binding<[JourneyStep]>? = nil
     var viewed: Episode? = nil
     var onReturn: ((Episode) -> Void)? = nil
     let close: () -> Void
 
-    // [journey-variants]
-    @Environment(\.journeyLayers) private var layers
-    @Environment(\.journeyNavigation) private var variant
     @EnvironmentObject private var playerStore: PlayerStore
 
     func body(content: Content) -> some View {
         content
             .background {
-                // [journey-variants] full screen reads as a page in the app, not
-                // a sheet wearing an album — so the accent washes down from the
-                // top over the app's own black rather than flooding the screen.
-                // The drift between accents still animates either way, which is
-                // what tells you the ground has changed under a transition.
-                Group {
-                    if variant == .fullScreen {
-                        ZStack {
-                            Color.black
-                            LinearGradient(
-                                colors: [accent.opacity(0.85), accent.opacity(0.12), .clear],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                            .frame(maxHeight: 320, alignment: .top)
-                            .frame(maxHeight: .infinity, alignment: .top)
-                        }
-                    } else {
-                        ZStack {
-                            accent
-                            LinearGradient(
-                                colors: [
-                                    Color.black.opacity(0.25),
-                                    Color.black.opacity(0.55),
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        }
-                    }
+                // A journey reads as a page in the app, not a sheet wearing an
+                // album — so the accent washes down from the top over the app's
+                // own black rather than flooding the screen. The drift between
+                // accents still animates, which is what tells you the ground
+                // has changed under a transition.
+                ZStack {
+                    Color.black
+                    LinearGradient(
+                        colors: [accent.opacity(0.85), accent.opacity(0.12), .clear],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(maxHeight: 320, alignment: .top)
+                    .frame(maxHeight: .infinity, alignment: .top)
                 }
                 .ignoresSafeArea()
             }
             .animation(.easeInOut(duration: 0.5), value: accent)
-            // [journey-variants] layers ride above whatever the screen draws
+            // What the journey says about itself, above whatever the screen
+            // draws: which set you're viewing versus hearing, then the route.
             .safeAreaInset(edge: .top, spacing: 0) {
                 VStack(spacing: 0) {
-                    if layers.contains(.nowPlayingStrip), let viewed, let onReturn {
+                    if let viewed, let onReturn {
                         NowPlayingStrip(viewed: viewed, onReturn: onReturn)
                     }
-                    if layers.contains(.routeRail), let path {
+                    if let path {
                         RouteRail(path: path)
                     }
                 }
             }
-            // [journey-variants] The Mini Player is layered over the whole
-            // screen rather than laid out inside this stack — that's exactly
-            // what keeps it visible through a full-screen journey — so a scroll
-            // view here has no idea it's there and runs its last card under it.
+            // The Mini Player is layered over the whole screen rather than
+            // laid out inside this stack — that's exactly what keeps it visible
+            // through a journey — so a scroll view here has no idea it's there
+            // and would run its last card underneath it.
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                if variant == .fullScreen, playerStore.hasEpisode {
+                if playerStore.hasEpisode {
                     Color.clear.frame(height: MiniPlayerView.barHeight)
                 }
             }
@@ -1055,7 +678,6 @@ extension View {
     func journeyChrome(
         title: String,
         accent: Color,
-        // [journey-variants] optional so non-journey callers stay unchanged
         path: Binding<[JourneyStep]>? = nil,
         viewed: Episode? = nil,
         onReturn: ((Episode) -> Void)? = nil,

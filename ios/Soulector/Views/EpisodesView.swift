@@ -13,9 +13,7 @@ struct EpisodesView: View {
     @EnvironmentObject var radioStore: RadioStore
     @EnvironmentObject var downloadsStore: DownloadsStore
     @EnvironmentObject var network: NetworkMonitor
-    // [journey-variants]
     @EnvironmentObject var journey: JourneyCoordinator
-    @Environment(\.journeyNavigation) private var journeyNavigation
     /// Same reason as the sheet's: a pushed journey screen needs its accents
     /// supplied by whoever hosts it. Living here also means the cache survives
     /// between journeys instead of being rebuilt each time.
@@ -34,19 +32,17 @@ struct EpisodesView: View {
     private static let tabScrollSpace = "episodeTabs"
     private static let tabFadeWidth: CGFloat = 20
 
-    // [journey-variants] ------------------------------------------------------
+    /// The list is the root of the journey's navigation stack, so a journey
+    /// pushes over it and the Mini Player — a sibling of the stack, not a child
+    /// — stays put through every push.
     @ViewBuilder
-    private func rootStackIfNeeded<Content: View>(@ViewBuilder _ inner: () -> Content) -> some View {
-        if journeyNavigation == .fullScreen {
-            NavigationStack(path: $journey.path) {
-                inner()
-                    .toolbar(.hidden, for: .navigationBar)
-                    .journeyDestinations(path: $journey.path, actions: journeyActions)
-            }
-            .environmentObject(journeyAccents)
-        } else {
+    private func journeyStack<Content: View>(@ViewBuilder _ inner: () -> Content) -> some View {
+        NavigationStack(path: $journey.path) {
             inner()
+                .toolbar(.hidden, for: .navigationBar)
+                .journeyDestinations(path: $journey.path, actions: journeyActions)
         }
+        .environmentObject(journeyAccents)
     }
 
     private var journeyActions: JourneyActions {
@@ -55,7 +51,6 @@ struct EpisodesView: View {
             close: { journey.end() }
         )
     }
-    // [journey-variants] ------------------------------------------------------
 
     private var displayedEpisodes: [Episode] {
         switch selectedTab {
@@ -79,10 +74,10 @@ struct EpisodesView: View {
         ZStack(alignment: .bottom) {
             Color.black.ignoresSafeArea()
 
-            // [journey-variants] fullScreen pushes the journey here — inside
-            // the stack, under the Mini Player and FABs, which are siblings of
-            // it in the ZStack and so survive every push.
-            rootStackIfNeeded {
+            // The journey pushes here — inside the stack, under the Mini
+            // Player and FABs, which are siblings of it in the ZStack and so
+            // survive every push.
+            journeyStack {
             VStack(spacing: 0) {
                 // Navigation bar area
                 navBar
@@ -122,11 +117,11 @@ struct EpisodesView: View {
                 get: { selectedEpisode != nil },
                 set: { presented in if !presented { selectedEpisode = nil } }
             ), onDismiss: {
-                // [journey-variants] the handoff: push only once the sheet is
-                // actually gone, never in the same turn as the dismissal.
+                // The handoff: push only once the sheet is actually gone,
+                // never in the same turn as the dismissal, or the push is lost.
                 if let pending = journey.pending {
                     journey.pending = nil
-                    journey.open(pending, variant: journeyNavigation)
+                    journey.open(pending)
                 }
             }) {
                 if let episode = selectedEpisode {
@@ -169,7 +164,7 @@ struct EpisodesView: View {
             .padding(.trailing, 16)
             .padding(.bottom, playerStore.hasEpisode ? 76 : 16)
             .ignoresSafeArea(.keyboard, edges: .bottom)
-            // [journey-variants] the cluster belongs to the list underneath.
+            // The cluster belongs to the list underneath.
             // Full screen leaves it uncovered, where Play Random reads as an
             // offer this screen is making — so it steps out while a journey is up.
             .opacity(journey.path.isEmpty ? 1 : 0)
@@ -202,11 +197,10 @@ struct EpisodesView: View {
         .sheet(item: $actionsEpisode) { episode in
             EpisodeActionsSheet(episode: episode)
         }
-        // [journey-variants] one place handles a landing, so every variant ends
-        // up looking at the episode the transition arrived in. Previously only
-        // the modal journey sheet did this, and only while it was open.
+        // One place handles a landing, so the journey ends up looking at the
+        // episode the transition arrived in wherever it was arranged from.
         .onReceive(playerStore.transitionsFired) { transition in
-            journey.landed(transition, variant: journeyNavigation)
+            journey.landed(transition)
         }
         .animation(.spring(duration: 0.3), value: playerStore.hasEpisode)
         // Removing the last download takes its tab away with it.

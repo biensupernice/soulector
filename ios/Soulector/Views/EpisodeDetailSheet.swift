@@ -21,9 +21,6 @@ struct EpisodeDetailSheet: View {
     @EnvironmentObject var downloadsStore: DownloadsStore
     @EnvironmentObject var episodesVM: EpisodesViewModel
     @EnvironmentObject var journey: JourneyCoordinator
-    @Environment(\.journeyNavigation) private var journeyNavigation
-    // [journey-variants]
-    @Environment(\.trackEpisodesExtras) private var trackEpisodesExtras
     @Environment(\.dismiss) var dismiss
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
@@ -33,9 +30,6 @@ struct EpisodeDetailSheet: View {
     /// Which episode `detailTracks`/`episodeAccent` were loaded for.
     @State private var loadedEpisodeId: String?
     @State private var showActions = false
-    /// Where a journey ended up, applied once it's fully dismissed — swapping
-    /// this sheet's episode out from under a presented child would be a fight.
-    @State private var journeyLanded: Episode?
     private var tracks: [EpisodeTrack] { detailTracks }
     private var isLoadingTracks: Bool { isLoadingDetailTracks }
     private var isFavorite: Bool { favoritesStore.isFavorite(episode.id) }
@@ -73,9 +67,9 @@ struct EpisodeDetailSheet: View {
         // that's now playing, whether or not the journey is still open over it.
         .onReceive(playerStore.transitionsFired) { transition in
             guard transition.episode.id != episode.id else { return }
-            // [journey-variants] the pushed variants navigate to the landing
-            // instead; retargeting as well would move two things at once.
-            guard !journeyNavigation.hasPushedPath else { return }
+            // Only when no journey is running: a journey pushes the landing
+            // itself, and retargeting as well would move two things at once.
+            guard !journey.isActive else { return }
             onNavigate?(transition.episode)
         }
     }
@@ -102,25 +96,6 @@ struct EpisodeDetailSheet: View {
                 } else {
                     stackedLayout
                 }
-            }
-            // Attached to the layout rather than alongside the actions sheet
-            // below: two `.sheet` modifiers on one view fight over the
-            // presentation.
-            .sheet(item: $journey.origin, onDismiss: {
-                if let landed = journeyLanded, landed.id != episode.id { onNavigate?(landed) }
-                journeyLanded = nil
-                // [journey-variants] the route is shared state now, so closing
-                // the container it was drawn in has to put it away.
-                journey.path = []
-            }) { origin in
-                // [journey-variants] the one sheet-hosted variant left
-                PeekConnections(
-                    appearance: origin,
-                    accent: accentBackground,
-                    onPick: { journeyLanded = $0 }
-                )
-                .presentationDetents([.height(300), .large])
-                .presentationDragIndicator(.visible)
             }
         }
         // Fixed top bar: dismiss and "more" balanced on either side of the drag
@@ -309,14 +284,10 @@ struct EpisodeDetailSheet: View {
                 // is the list this one is sitting armed in.
                 onShowSource: {
                     guard let source = journey.sourceAppearance(playing: playerStore) else { return }
-                    // Same handoff the connections tap makes: full screen can't
+                    // Same handoff the connections tap makes: the journey can't
                     // push until this sheet is out of the way.
-                    if journeyNavigation.leavesTheSheet {
-                        journey.pending = source
-                        dismiss()
-                    } else {
-                        journey.open(source, variant: journeyNavigation)
-                    }
+                    journey.pending = source
+                    dismiss()
                 },
                 onCallOff: { playerStore.cancelQueued() }
             )
@@ -362,27 +333,10 @@ struct EpisodeDetailSheet: View {
                 }
             },
             onOpenConnections: { track in
-                let appearance = TrackAppearance(episode: episode, track: track)
-                let connections = episodesVM.trackGraph.connectionCount(of: track, excluding: episode.id)
-                // [journey-variants] too little to say for a whole screen
-                let sparse = trackEpisodesExtras.contains(.adaptiveTray)
-                    && connections <= TrackEpisodesExtras.trayThreshold
-
-                if sparse {
-                    journey.open(appearance, variant: .peek)
-                } else if journeyNavigation.leavesTheSheet {
-                    // fullScreen has to wait for this sheet to go
-                    journey.pending = appearance
-                    dismiss()
-                } else {
-                    journey.open(appearance, variant: journeyNavigation)
-                }
-            },
-            // [journey-variants] non-nil only for the inline variant
-            expandedOrder: journeyNavigation == .inlineList ? $journey.expandedOrder : .constant(nil),
-            onPickConnection: { landed in
-                journey.expandedOrder = nil
-                onNavigate?(landed)
+                // The journey pushes over the Episodes list, so it has to wait
+                // for this sheet to go before it can push anything.
+                journey.pending = TrackAppearance(episode: episode, track: track)
+                dismiss()
             }
         )
         .background(Color.black.opacity(0.2))
@@ -573,9 +527,6 @@ struct TracklistView: View {
     /// does (leave the radio, tell the sheet underneath where we went).
     let onPlay: (EpisodeTrack) -> Void
     let onOpenConnections: (EpisodeTrack) -> Void
-    // [journey-variants] inline expansion; defaults keep other call sites as-is
-    var expandedOrder: Binding<Int?> = .constant(nil)
-    var onPickConnection: (Episode) -> Void = { _ in }
     @EnvironmentObject var playerStore: PlayerStore
 
     private var currentTrack: EpisodeTrack? {
@@ -598,28 +549,15 @@ struct TracklistView: View {
 
             ForEach(tracks) { track in
                 let isCurrent = currentTrack?.id == track.id
-                VStack(spacing: 0) {
-                    TrackRow(
-                        track: track,
-                        accent: accent,
-                        textColor: textColor,
-                        isCurrent: isCurrent,
-                        connections: graph.connectionCount(of: track, excluding: episode.id),
-                        onPlay: { onPlay(track) },
-                        onOpenConnections: { onOpenConnections(track) }
-                    )
-
-                    // [journey-variants] inline: the connections hang off the row
-                    if expandedOrder.wrappedValue == track.order {
-                        InlineConnections(
-                            appearance: TrackAppearance(episode: episode, track: track),
-                            textColor: textColor,
-                            onPick: onPickConnection
-                        )
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
-                }
-                .animation(.spring(response: 0.34, dampingFraction: 0.8), value: expandedOrder.wrappedValue)
+                TrackRow(
+                    track: track,
+                    accent: accent,
+                    textColor: textColor,
+                    isCurrent: isCurrent,
+                    connections: graph.connectionCount(of: track, excluding: episode.id),
+                    onPlay: { onPlay(track) },
+                    onOpenConnections: { onOpenConnections(track) }
+                )
             }
             .padding(.bottom, 4)
         }

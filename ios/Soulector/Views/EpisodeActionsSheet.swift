@@ -130,11 +130,6 @@ struct EpisodeActionsSheet: View {
                     openURL(url)
                 }
             }
-
-            // Under trial, not a preference: which way journeys open. It sits
-            // here because the panel is reachable from every episode and
-            // because the journey's own chrome is one of the things varying.
-            JourneyNavigationPicker()
         }
         .padding(.top, 6)
         .padding(.bottom, 24)

@@ -52,7 +52,8 @@ ios/Soulector/
 │   ├── EpisodeArtwork.swift    # Album art; prefers the downloaded copy over the network
 │   ├── CollectiveLogo.swift    # Collective brand marks (nav bar trigger + picker rows)
 │   ├── EpisodeDetailSheet.swift # Single sheet for browse + playback; contains ProgressSlider, TracklistView
-│   ├── TrackJourneySheet.swift # Journeys: Track Episodes ⇄ Episode Tracks, alternating
+│   ├── TrackJourneySheet.swift # Journey screens: Track Episodes ⇄ Episode Tracks, alternating
+│   ├── Journey.swift           # JourneyCoordinator, the route rail/playing strip, DestinationCard
 │   ├── MiniPlayerView.swift    # Persistent bottom bar
 │   └── PlayerFabs.swift        # Floating radio/shuffle cluster (near-black pill, accent On Air fill)
 ├── Stores/
@@ -85,10 +86,23 @@ ios/Soulector/
 - **Offline downloads:** `DownloadsStore` is a **singleton**, not a `@StateObject` — iOS relaunches the app to hand back finished background transfers (`SoulectorApp.backgroundTask(.urlSession:)`), which needs the sessions rebuilt from outside the view tree. There are **two background sessions**, because there are two shapes of audio: SoundCloud serves only HLS since its progressive deprecation, so those go through an `AVAssetDownloadURLSession` (`assetSessionIdentifier`) that downloads segments into a `.movpkg` bundle **AVFoundation places and owns** — never move it; the record keeps the path *relative to `NSHomeDirectory()`* and re-resolves it each launch, since the container is re-rooted. Progress for those comes from loaded time ranges, not bytes. MIXCLOUD episodes still resolve to a progressive file from the archive mirror and keep the original file session (`sessionIdentifier`), which is also the shape every pre-HLS download on disk has — `DownloadRecord.bundlePath == nil` is exactly that case, so old downloads keep playing. Sidecars and the `manifest.json` live in `Application Support/Downloads` (excluded from backup); the manifest also stores the `Episode` itself, since the episodes list lives in the evictable caches directory. Each download captures **sidecars** — artwork, tracklist, accent — so a downloaded episode looks and reads the same with no network; `PlayerStore` prefers the local audio/artwork/metadata, and `EpisodeArtwork` prefers the local image. Entry point is the kebab (`EpisodeKebabButton`), which opens `EpisodeActionsSheet` — a self-sizing sheet painted in that episode's album accent, holding download/favorite/SoundCloud. It stays open through an action so state changes are visible in place. **Presentation is owned by the screen** (`EpisodesView.actionsEpisode`), not the row — a sheet attached to a list row dies when the row recycles — and the two `.sheet` modifiers are attached to *different* views, since two on one view fight. Long-press still gets the native menu (`EpisodeActions`). State shows as a `DownloadBadge` in the metadata line, alongside a heart mark when favorited (favoriting is an action, not a row control). Offline (`NetworkMonitor`), non-downloaded rows dim and stop responding, the radio FAB disables, shuffle draws from downloads, and the list count reads "Offline · N downloaded"
 - **Journeys (sideways track navigation):** every tracklist row whose record another episode also
   played carries a connection badge (`TrackConnectionsButton`, count included); tapping
-  it opens `TrackJourneySheet`, whose `NavigationStack` *is* the journey — a track
-  screen lists the other episodes that played it (with the timestamp it lands
-  at), tapping one plays it there **and** pushes that episode's tracklist, from
-  which you can follow another connection. Back retraces the path. Everything is local:
+  it opens a journey. The journey pushes over the **Episodes list**, not inside a
+  sheet — `EpisodesView.journeyStack` is its `NavigationStack` — because that's
+  the only arrangement that keeps the Mini Player visible the whole way: a sheet
+  is bottom-anchored at every detent, so nothing presented as one can leave the
+  bar showing underneath. The episode sheet therefore can't push directly; it
+  parks the tapped track in `JourneyCoordinator.pending` and the root opens it
+  on dismissal, since dismissing and pushing in one turn drops the push.
+  `JourneyCoordinator.open` **continues** a running journey rather than
+  restarting it — the Mini Player can raise the episode sheet over a live
+  journey, so it truncates the route to where that set appears and pushes on top.
+  Steps alternate: Track Episodes (a record, and the sets that played it, as
+  `DestinationCard`s carrying the destination's cue sheet around the drop) then
+  Episode Tracks (a set, and its tracklist). Both wear `JourneyChrome`, which
+  adds the playing strip and the route rail, and insets the bottom by
+  `MiniPlayerView.barHeight` — the bar is layered *over* the stack, so a scroll
+  view would otherwise run its last card underneath it. Back retraces; Done ends
+  the journey. Everything is local:
   `TrackGraph` (`ViewModels/TrackConnections.swift`) buckets every cue sheet in
   the `episodes.searchIndex` snapshot by `TrackIdentity.key`, so the index is no
   longer just for search and is fetched at launch (`EpisodesView.task`), and the
@@ -125,8 +139,7 @@ ios/Soulector/
   control, so choosing the style and arming it are one tap, and tapping the lit
   one calls it off. The wait is drawn by the row filling while the screen's
   accent drifts toward the incoming set (`AccentColor.blended(toward:amount:)`).
-  Three things the variant exploration settled, now behavior rather than
-  settings (the journey toolbar is just Done): arriving in a set **always** scrolls
+  Settled behavior (the journey toolbar is just Done): arriving in a set **always** scrolls
   its tracklist to the track that carried you there, the control is marked
   `text.append` — "put this next", matching the row's own "ON DECK" wording —
   and a landing transition hands the episode sheet over with a **crossfade**
