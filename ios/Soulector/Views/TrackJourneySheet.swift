@@ -978,6 +978,7 @@ struct JourneyChrome: ViewModifier {
     // [journey-variants]
     @Environment(\.journeyLayers) private var layers
     @Environment(\.journeyNavigation) private var variant
+    @EnvironmentObject private var playerStore: PlayerStore
 
     func body(content: Content) -> some View {
         content
@@ -1025,6 +1026,15 @@ struct JourneyChrome: ViewModifier {
                     if layers.contains(.routeRail), let path {
                         RouteRail(path: path)
                     }
+                }
+            }
+            // [journey-variants] The Mini Player is layered over the whole
+            // screen rather than laid out inside this stack — that's exactly
+            // what keeps it visible through a full-screen journey — so a scroll
+            // view here has no idea it's there and runs its last card under it.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if variant == .fullScreen, playerStore.hasEpisode {
+                    Color.clear.frame(height: MiniPlayerView.barHeight)
                 }
             }
             .navigationTitle(title)

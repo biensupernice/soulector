@@ -1,6 +1,12 @@
 import SwiftUI
 
 struct MiniPlayerView: View {
+    /// The bar's own height, excluding the safe area beneath it: 44pt artwork
+    /// plus 10pt above and below. Journey screens inset their scroll views by
+    /// this, because the bar is layered *over* them rather than laid out with
+    /// them and they'd otherwise run their last row underneath it.
+    static let barHeight: CGFloat = 64
+
     @EnvironmentObject var playerStore: PlayerStore
     let onTap: () -> Void
 

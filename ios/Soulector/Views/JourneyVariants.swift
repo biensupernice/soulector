@@ -624,11 +624,20 @@ struct DestinationCard: View {
         }
         .overlay(
             RoundedRectangle(cornerRadius: 16).strokeBorder(
-                armed != nil ? Color.white.opacity(0.85) : Color.white.opacity(0.10),
-                lineWidth: armed != nil ? 2 : 1
+                showsArmedOutline ? Color.white.opacity(0.85) : Color.white.opacity(0.10),
+                lineWidth: showsArmedOutline ? 2 : 1
             )
         )
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: armed?.id)
+    }
+
+    /// The armed outline and the accent bar are two markers doing one job. A
+    /// row has no outline of its own, so there the bar is all there is; a card
+    /// already outlines itself, and stacking both piles white on the left edge
+    /// while the corner radius clips the bar's ends into a pinch. So the bar
+    /// style keeps its bar and drops the outline.
+    private var showsArmedOutline: Bool {
+        armed != nil && armedRowStyle != .bar
     }
 
     /// The wait, drawn. Same three treatments the rows offer, plus the outline
@@ -652,7 +661,12 @@ struct DestinationCard: View {
                         .padding(.leading, 8)
                 case .bar:
                     Rectangle().fill(Color.white.opacity(0.08))
-                    Rectangle().fill(Color.white).frame(width: 3)
+                    // Inset off the corner curves and capsuled, so it reads as
+                    // a deliberate mark rather than a bar the card cut short.
+                    Capsule()
+                        .fill(Color.white)
+                        .frame(width: 3)
+                        .padding(.vertical, 10)
                 case .border:
                     // The outline is already drawn by the card. Nothing counts
                     // down, which is the point of having it to compare against.
