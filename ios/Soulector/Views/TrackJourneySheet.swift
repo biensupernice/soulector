@@ -187,8 +187,14 @@ struct TrackEpisodesScreen: View {
     /// the shared chrome, which is how all three get it for free rather than
     /// each remembering to add one.
     private func cardBody(_ elsewhere: [TrackAppearance]) -> some View {
-        simpleBody(elsewhere) { destinations in
+        simpleBody(elsewhere, alsoWhenEmpty: extras.contains(.youAreHere)) { destinations in
             VStack(spacing: 12) {
+                // [journey-variants] the set you came from, marked. The row
+                // list has honoured this since it shipped; the cards never did.
+                if extras.contains(.youAreHere) {
+                    HereCard(appearance: appearance)
+                }
+
                 ForEach(destinations) { other in
                     DestinationCard(
                         destination: other,
@@ -220,13 +226,16 @@ struct TrackEpisodesScreen: View {
     /// so each one only has to say what a destination looks like.
     private func simpleBody<Content: View>(
         _ elsewhere: [TrackAppearance],
+        alsoWhenEmpty: Bool = false,
         @ViewBuilder content: @escaping ([TrackAppearance]) -> Content
     ) -> some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
                 header(count: elsewhere.count)
 
-                if elsewhere.isEmpty {
+                // A layout can still have something to say with no
+                // destinations — the card stack shows where you're standing.
+                if elsewhere.isEmpty && !alsoWhenEmpty {
                     emptyState
                 } else {
                     content(elsewhere)

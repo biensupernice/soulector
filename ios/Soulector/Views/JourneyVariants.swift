@@ -900,3 +900,55 @@ private struct ArcPanel: View {
         }
     }
 }
+
+/// The set you came from, in the card layouts' shape. `HereRow` carries its own
+/// horizontal padding for the row list, which would double up inside a card
+/// stack that already pads itself — and a row among cards reads as a mistake
+/// rather than a deliberately quieter thing.
+struct HereCard: View {
+    let appearance: TrackAppearance
+
+    var body: some View {
+        HStack(spacing: 12) {
+            EpisodeArtwork(episode: appearance.episode)
+                .frame(width: 44, height: 44)
+                .clipShape(RoundedRectangle(cornerRadius: 7))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 7)
+                        .strokeBorder(.white.opacity(0.45), lineWidth: 1.5)
+                )
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(appearance.episode.name)
+                    .font(.app(size: 13, weight: .semibold))
+                    .foregroundColor(.white)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+
+                Text("YOU ARE HERE")
+                    .font(.app(size: 10, weight: .bold))
+                    .tracking(0.8)
+                    .foregroundColor(.white.opacity(0.55))
+            }
+
+            Spacer(minLength: 8)
+
+            if let ts = appearance.track.formattedTimestamp {
+                Text(ts)
+                    .font(.app(size: 11, weight: .medium))
+                    .monospacedDigit()
+                    .foregroundColor(.white.opacity(0.7))
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // Flatter than a destination: it's context, not somewhere to go.
+        .background(
+            RoundedRectangle(cornerRadius: 16).fill(Color.white.opacity(0.035))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+        )
+    }
+}
