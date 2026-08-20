@@ -33,9 +33,16 @@
 		AA000031 /* SpaceGrotesk-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000031 /* SpaceGrotesk-Bold.ttf */; };
 		AA000032 /* DownloadsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000032 /* DownloadsStore.swift */; };
 		AA000033 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000033 /* NetworkMonitor.swift */; };
+		AA000040 /* TransitionDeck.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000040 /* TransitionDeck.swift */; };
 		AA000034 /* EpisodeActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000034 /* EpisodeActions.swift */; };
 		AA000035 /* EpisodeArtwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000035 /* EpisodeArtwork.swift */; };
+		AA000044 /* CollectiveLogo.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000044 /* CollectiveLogo.swift */; };
 		AA000036 /* EpisodeActionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000036 /* EpisodeActionsSheet.swift */; };
+		AA000037 /* TrackConnections.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000037 /* TrackConnections.swift */; };
+		AA000038 /* JourneyScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000038 /* JourneyScreens.swift */; };
+		AA000039 /* TrackTransition.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000039 /* TrackTransition.swift */; };
+		AA000043 /* Diagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000043 /* Diagnostics.swift */; };
+		AA000042 /* Journey.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000042 /* Journey.swift */; };
 		AA000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000014 /* Assets.xcassets */; };
 		AA000015 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000015 /* Preview Assets.xcassets */; };
 		BA000001 /* NowPlaying.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001 /* NowPlaying.swift */; };
@@ -87,9 +94,16 @@
 		AB000031 /* SpaceGrotesk-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Bold.ttf"; sourceTree = "<group>"; };
 		AB000032 /* DownloadsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsStore.swift; sourceTree = "<group>"; };
 		AB000033 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
+		AB000040 /* TransitionDeck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransitionDeck.swift; sourceTree = "<group>"; };
 		AB000034 /* EpisodeActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeActions.swift; sourceTree = "<group>"; };
 		AB000035 /* EpisodeArtwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeArtwork.swift; sourceTree = "<group>"; };
+		AB000044 /* CollectiveLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectiveLogo.swift; sourceTree = "<group>"; };
 		AB000036 /* EpisodeActionsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeActionsSheet.swift; sourceTree = "<group>"; };
+		AB000037 /* TrackConnections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackConnections.swift; sourceTree = "<group>"; };
+		AB000038 /* JourneyScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JourneyScreens.swift; sourceTree = "<group>"; };
+		AB000039 /* TrackTransition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackTransition.swift; sourceTree = "<group>"; };
+		AB000043 /* Diagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Diagnostics.swift; sourceTree = "<group>"; };
+		AB000042 /* Journey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Journey.swift; sourceTree = "<group>"; };
 		AB000014 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AB000015 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		AB000016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -170,6 +184,7 @@
 			children = (
 				AB000003 /* Episode.swift */,
 				AB000004 /* EpisodeTrack.swift */,
+				AB000039 /* TrackTransition.swift */,
 				AB000020 /* SearchIndexEpisode.swift */,
 				AB000023 /* RadioSchedule.swift */,
 			);
@@ -192,6 +207,7 @@
 				AB000024 /* RadioStore.swift */,
 				AB000032 /* DownloadsStore.swift */,
 				AB000033 /* NetworkMonitor.swift */,
+				AB000040 /* TransitionDeck.swift */,
 			);
 			path = Stores;
 			sourceTree = "<group>";
@@ -201,6 +217,7 @@
 			children = (
 				AB000008 /* EpisodesViewModel.swift */,
 				AB000021 /* EpisodeSearch.swift */,
+				AB000037 /* TrackConnections.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -218,6 +235,10 @@
 				AB000034 /* EpisodeActions.swift */,
 				AB000036 /* EpisodeActionsSheet.swift */,
 				AB000035 /* EpisodeArtwork.swift */,
+				AB000038 /* JourneyScreens.swift */,
+				AB000043 /* Diagnostics.swift */,
+				AB000042 /* Journey.swift */,
+				AB000044 /* CollectiveLogo.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -403,9 +424,16 @@
 				AA000026 /* AppFont.swift in Sources */,
 				AA000032 /* DownloadsStore.swift in Sources */,
 				AA000033 /* NetworkMonitor.swift in Sources */,
+				AA000040 /* TransitionDeck.swift in Sources */,
 				AA000034 /* EpisodeActions.swift in Sources */,
 				AA000036 /* EpisodeActionsSheet.swift in Sources */,
 				AA000035 /* EpisodeArtwork.swift in Sources */,
+				AA000037 /* TrackConnections.swift in Sources */,
+				AA000038 /* JourneyScreens.swift in Sources */,
+				AA000039 /* TrackTransition.swift in Sources */,
+				AA000043 /* Diagnostics.swift in Sources */,
+				AA000042 /* Journey.swift in Sources */,
+				AA000044 /* CollectiveLogo.swift in Sources */,
 				BA000001 /* NowPlaying.swift in Sources */,
 				BA000002 /* SoulectorLink.swift in Sources */,
 			);

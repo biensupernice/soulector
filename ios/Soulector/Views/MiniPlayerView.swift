@@ -1,6 +1,12 @@
 import SwiftUI
 
 struct MiniPlayerView: View {
+    /// The bar's own height, excluding the safe area beneath it: 44pt artwork
+    /// plus 10pt above and below. Journey screens inset their scroll views by
+    /// this, because the bar is layered *over* them rather than laid out with
+    /// them and they'd otherwise run their last row underneath it.
+    static let barHeight: CGFloat = 64
+
     @EnvironmentObject var playerStore: PlayerStore
     let onTap: () -> Void
 
@@ -18,14 +24,26 @@ struct MiniPlayerView: View {
                     .frame(width: 44, height: 44)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
 
-                // Episode name + date
+                // Episode name, and either the date or what's on deck
                 VStack(alignment: .leading, spacing: 2) {
                     MarqueeText(text: episode.name)
                         .foregroundColor(.white)
-                    Text(episode.formattedDate)
-                        .font(.app(size: 12))
-                        .foregroundColor(.white.opacity(0.5))
-                        .lineLimit(1)
+
+                    // A transition arranged in a journey outlives the journey, so the
+                    // bar carries it — otherwise closing the sheet would look
+                    // like it had been called off.
+                    if let queued = playerStore.queued {
+                        Text(onDeckLine(for: queued))
+                            .font(.app(size: 12, weight: .medium))
+                            .foregroundColor(playerStore.accentOnDark)
+                            .lineLimit(1)
+                            .monospacedDigit()
+                    } else {
+                        Text(episode.formattedDate)
+                            .font(.app(size: 12))
+                            .foregroundColor(.white.opacity(0.5))
+                            .lineLimit(1)
+                    }
                 }
 
                 // Loading indicator or controls
@@ -82,6 +100,12 @@ struct MiniPlayerView: View {
                     }
                 }
         )
+    }
+
+    private func onDeckLine(for queued: QueuedTransition) -> String {
+        guard !playerStore.isTransitioning else { return "Transitioning into \(queued.episode.name)" }
+        let seconds = Int((playerStore.queuedRemaining ?? 0).rounded())
+        return String(format: "On deck · %d:%02d", seconds / 60, seconds % 60)
     }
 }
 

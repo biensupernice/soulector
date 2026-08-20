@@ -50,7 +50,10 @@ ios/Soulector/
 │   ├── EpisodeActions.swift    # Kebab button, long-press menu contents, download status badge/ring
 │   ├── EpisodeActionsSheet.swift # The kebab's destination: accent-painted action panel
 │   ├── EpisodeArtwork.swift    # Album art; prefers the downloaded copy over the network
+│   ├── CollectiveLogo.swift    # Collective brand marks (nav bar trigger + picker rows)
 │   ├── EpisodeDetailSheet.swift # Single sheet for browse + playback; contains ProgressSlider, TracklistView
+│   ├── JourneyScreens.swift # Journey screens: Track Episodes ⇄ Episode Tracks, alternating
+│   ├── Journey.swift           # JourneyCoordinator, the route rail/playing strip, DestinationCard
 │   ├── MiniPlayerView.swift    # Persistent bottom bar
 │   └── PlayerFabs.swift        # Floating radio/shuffle cluster (near-black pill, accent On Air fill)
 ├── Stores/
@@ -60,10 +63,13 @@ ios/Soulector/
 │   ├── NetworkMonitor.swift    # NWPathMonitor connectivity
 │   └── FavoritesStore.swift    # UserDefaults persistence
 ├── ViewModels/
-│   └── EpisodesViewModel.swift # Episode list + filter state
+│   ├── EpisodesViewModel.swift # Episode list + filter state + search index/track graph
+│   ├── EpisodeSearch.swift     # Client-side episode/track search over the index
+│   └── TrackConnections.swift  # TrackGraph + TrackIdentity — the same-record index
 ├── Models/
 │   ├── Episode.swift
 │   ├── EpisodeTrack.swift
+│   ├── TrackTransition.swift   # QueuedTransition + the transition's audio/countdown styles
 │   └── RadioSchedule.swift     # Deterministic broadcast schedule — MUST match src/lib/radioSchedule.ts
 └── Networking/
     └── APIClient.swift         # tRPC over HTTPS; singleton
@@ -78,6 +84,73 @@ ios/Soulector/
 - **Haptics:** `UIImpactFeedbackGenerator` (no iOS 17 requirement)
 - **Typography:** Space Grotesk everywhere via `Font.app(size:weight:)` (plus a root `.environment(\.font, ...)` default). SF Symbols keep `.system` fonts — symbols don't render in custom fonts
 - **Offline downloads:** `DownloadsStore` is a **singleton**, not a `@StateObject` — iOS relaunches the app to hand back finished background transfers (`SoulectorApp.backgroundTask(.urlSession:)`), which needs the sessions rebuilt from outside the view tree. There are **two background sessions**, because there are two shapes of audio: SoundCloud serves only HLS since its progressive deprecation, so those go through an `AVAssetDownloadURLSession` (`assetSessionIdentifier`) that downloads segments into a `.movpkg` bundle **AVFoundation places and owns** — never move it; the record keeps the path *relative to `NSHomeDirectory()`* and re-resolves it each launch, since the container is re-rooted. Progress for those comes from loaded time ranges, not bytes. MIXCLOUD episodes still resolve to a progressive file from the archive mirror and keep the original file session (`sessionIdentifier`), which is also the shape every pre-HLS download on disk has — `DownloadRecord.bundlePath == nil` is exactly that case, so old downloads keep playing. Sidecars and the `manifest.json` live in `Application Support/Downloads` (excluded from backup); the manifest also stores the `Episode` itself, since the episodes list lives in the evictable caches directory. Each download captures **sidecars** — artwork, tracklist, accent — so a downloaded episode looks and reads the same with no network; `PlayerStore` prefers the local audio/artwork/metadata, and `EpisodeArtwork` prefers the local image. Entry point is the kebab (`EpisodeKebabButton`), which opens `EpisodeActionsSheet` — a self-sizing sheet painted in that episode's album accent, holding download/favorite/SoundCloud. It stays open through an action so state changes are visible in place. **Presentation is owned by the screen** (`EpisodesView.actionsEpisode`), not the row — a sheet attached to a list row dies when the row recycles — and the two `.sheet` modifiers are attached to *different* views, since two on one view fight. Long-press still gets the native menu (`EpisodeActions`). State shows as a `DownloadBadge` in the metadata line, alongside a heart mark when favorited (favoriting is an action, not a row control). Offline (`NetworkMonitor`), non-downloaded rows dim and stop responding, the radio FAB disables, shuffle draws from downloads, and the list count reads "Offline · N downloaded"
+- **Journeys (sideways track navigation):** every tracklist row whose record another episode also
+  played carries a connection badge (`TrackConnectionsButton`, count included); tapping
+  it opens a journey. The journey pushes over the **Episodes list**, not inside a
+  sheet — `EpisodesView.journeyStack` is its `NavigationStack` — because that's
+  the only arrangement that keeps the Mini Player visible the whole way: a sheet
+  is bottom-anchored at every detent, so nothing presented as one can leave the
+  bar showing underneath. The episode sheet therefore can't push directly; it
+  parks the tapped track in `JourneyCoordinator.pending` and the root opens it
+  on dismissal, since dismissing and pushing in one turn drops the push.
+  `JourneyCoordinator.open` **continues** a running journey rather than
+  restarting it — the Mini Player can raise the episode sheet over a live
+  journey, so it truncates the route to where that set appears and pushes on top.
+  Steps alternate: Track Episodes (a record, and the sets that played it, as
+  `DestinationCard`s carrying the destination's cue sheet around the drop) then
+  Episode Tracks (a set, and its tracklist). Both wear `JourneyChrome`, which
+  adds the playing strip and the route rail, and insets the bottom by
+  `MiniPlayerView.barHeight` — the bar is layered *over* the stack, so a scroll
+  view would otherwise run its last card underneath it. Back retraces; Done ends
+  the journey. Everything is local:
+  `TrackGraph` (`ViewModels/TrackConnections.swift`) buckets every cue sheet in
+  the `episodes.searchIndex` snapshot by `TrackIdentity.key`, so the index is no
+  longer just for search and is fetched at launch (`EpisodesView.task`), and the
+  graph is rebuilt off the main actor whenever it changes.
+  `TrackIdentity` is deliberately exact, not fuzzy — a wrong connection is worse
+  than a missing one. It folds case/diacritics, normalizes `&`, drops guest
+  credits (bracketed *and* bare `feat.`), keeps remix parentheticals, cuts an
+  artist credit at its first name, and refuses to key placeholders ("ID",
+  "Intro") or station idents ("Soulection Radio — Hosted by Joe Kay", 252 rows
+  in the live library and the one cluster that would swamp everything). Against
+  the live index that keys 97% of ~20.6k tracks and gives 42% of them somewhere
+  to go. A journey that leaves a different episode playing reports back through
+  `EpisodeDetailSheet.onNavigate` so the sheet underneath retargets to where the
+  user landed rather than describing the set they left
+- **Queued transitions (on deck):** tapping an episode in the Track Episodes list always goes
+  there now; the slower way lives in each row's own control (`TransitionChoices`),
+  a menu that arranges a `QueuedTransition` for the moment the record playing
+  now runs out, landing where the *same record* ends over there. That control is
+  one thing wearing two faces — the landing timestamp with a menu behind it,
+  which grows into the countdown when something is arranged and settles back
+  when it's called off, staying a menu throughout so the way out is where the
+  way in was. You hear the record once and come out
+  into what the other DJ played next. `PlayerStore` owns it: `queue`/
+  `cancelQueued`, a **deck** `AVPlayer` buffered and cued the instant it's
+  arranged (so the transition is a volume change, not a load), the clock check in
+  the periodic time observer, and `promote` — which swaps the deck in as
+  `player` without stopping the sound and moves episode/tracks/accent/artwork
+  over with it. `transitionsFired` lets the journey follow the audio in. Audio
+  styles: **blend** (both sets play the record's outro at once — same recording
+  at the same point, so it lands as one record heard twice), **run back** (the
+  reload: the other set drops the record again from the top underneath the copy
+  that's ending, so `landsAtRecordStart` puts the landing on the record's first
+  beat instead of its last), **fade** (duck out, come up) — picked per transition from the row's own
+  control, so choosing the style and arming it are one tap, and tapping the lit
+  one calls it off. The wait is drawn by the row filling while the screen's
+  accent drifts toward the incoming set (`AccentColor.blended(toward:amount:)`).
+  Settled behavior (the journey toolbar is just Done): arriving in a set **always** scrolls
+  its tracklist to the track that carried you there, the control is marked
+  `text.append` — "put this next", matching the row's own "ON DECK" wording —
+  and a landing transition hands the episode sheet over with a **crossfade**
+  (`.opacity`, 0.55s ease), slow enough to read as a handover and still enough
+  not to fight the landing focus scrolling underneath it.
+  That sheet is presented on *whether* there's an episode rather than which one
+  — `.sheet(item:)` ties presentation identity to the id, so a landing transition
+  tore the sheet down and put a new one up — and it swaps its contents in place,
+  carrying an `OnDeckPanel` with what's next while a transition is arranged. A manual `play` cancels whatever was on deck,
+  and a transition suppresses auto-advance so the two can't race
+- **Collective logos:** `CollectiveLogo` draws each collective the way the web does — brand artwork, not its name in the app font. Soulection and Sasha Marie Radio have wordmarks (`SoulectionLogotype`, `SashaMarieRadioLogotype` in the asset catalog, vector SVGs ported from `src/client/EpisodesScreen/Navbar/Logos.tsx`); The Love Below Hour has only a symbol, so it pairs its mark with the name. All assets are template-rendered so they take `foregroundColor`. Used in both spots the picker appears — the nav bar trigger and the dropdown rows — so a new collective only needs a case here
 - **Radio mode:** `RadioStore` (wired in `EpisodesView.onAppear` via `configure`) owns tune-in/out, the slot-boundary timer, drift correction, and resume re-sync. `Models/RadioSchedule.swift` computes what's on air and must stay semantically identical to the web's `src/lib/radioSchedule.ts` (same hash, ordering, epoch) — change them together or iOS and web broadcasts diverge
 - **Home-screen widget:** `SoulectorWidget` shows the current mix on an
   album-accent-tinted card (Spotify-widget style — `Color.soulectorCard` clamps

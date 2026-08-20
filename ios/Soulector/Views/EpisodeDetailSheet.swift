@@ -11,14 +11,24 @@ private let sheetHPadding: CGFloat = 20
 /// action buttons, and the tracklist in a translucent dark panel.
 struct EpisodeDetailSheet: View {
     let episode: Episode
+    /// Called with the episode a sideways journey left playing, so the screen that
+    /// owns this sheet can point it at where the user ended up. Without it the
+    /// sheet would sit here describing the set they left.
+    var onNavigate: ((Episode) -> Void)?
+
     @EnvironmentObject var playerStore: PlayerStore
     @EnvironmentObject var favoritesStore: FavoritesStore
     @EnvironmentObject var downloadsStore: DownloadsStore
+    @EnvironmentObject var episodesVM: EpisodesViewModel
+    @EnvironmentObject var journey: JourneyCoordinator
     @Environment(\.dismiss) var dismiss
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     @State private var detailTracks: [EpisodeTrack] = []
     @State private var isLoadingDetailTracks = false
     @State private var episodeAccent: AccentColor?
+    /// Which episode `detailTracks`/`episodeAccent` were loaded for.
+    @State private var loadedEpisodeId: String?
     @State private var showActions = false
     private var tracks: [EpisodeTrack] { detailTracks }
     private var isLoadingTracks: Bool { isLoadingDetailTracks }
@@ -31,7 +41,40 @@ struct EpisodeDetailSheet: View {
     /// Text color over the accent background.
     private var fg: Color { .white }
 
+    /// A short screen (iPhone in landscape) can't stack art over controls over
+    /// tracklist without everything being squeezed off-screen, so that case gets
+    /// a docked layout instead: art and transport parked in a fixed left column,
+    /// the tracklist scrolling beside them.
+    private var isDocked: Bool { verticalSizeClass == .compact }
+
     var body: some View {
+        // The ZStack is what lets the outgoing set stay on screen while the
+        // incoming one arrives; keyed on the episode, the contents are replaced
+        // in place and the sheet itself never goes anywhere — which is what
+        // stopped a landing transition reading as a close and a reopen.
+        ZStack {
+            content
+                .id(episode.id)
+                // The crossfade: the set being left dissolves into the one
+                // arriving. Slow enough to read as a handover rather than a
+                // glitch, still enough not to fight the journey's landing focus,
+                // which is scrolling the new tracklist at the same moment.
+                .transition(.opacity)
+        }
+        .animation(.easeInOut(duration: 0.55), value: episode.id)
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: playerStore.queued?.id)
+        // A transition that lands while this sheet is up retargets it at the set
+        // that's now playing, whether or not the journey is still open over it.
+        .onReceive(playerStore.transitionsFired) { transition in
+            guard transition.episode.id != episode.id else { return }
+            // Only when no journey is running: a journey pushes the landing
+            // itself, and retargeting as well would move two things at once.
+            guard !journey.isActive else { return }
+            onNavigate?(transition.episode)
+        }
+    }
+
+    private var content: some View {
         ZStack {
             accentBackground.ignoresSafeArea()
             // Darker take on the web's overlay (gray-700/30 → white/5): the
@@ -47,75 +90,11 @@ struct EpisodeDetailSheet: View {
             )
             .ignoresSafeArea()
 
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Album art
-                    EpisodeArtwork(episode: episode, contentMode: .fit)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .padding(.horizontal, sheetHPadding)
-                        // Clears the fixed top bar, with the same breathing room
-                        // the drag handle used to leave.
-                        .padding(.top, 52)
-
-                    // Title + date (web: bold white title, white/80 date)
-                    VStack(spacing: 4) {
-                        Text(episode.name)
-                            .font(.app(size: 17, weight: .bold))
-                            .foregroundColor(fg)
-                            .multilineTextAlignment(.center)
-
-                        HStack(spacing: 6) {
-                            Text(episode.formattedDate)
-                                .font(.app(size: 14))
-                                .foregroundColor(fg.opacity(0.8))
-
-                            if downloadState != .notDownloaded {
-                                Text("·")
-                                    .font(.app(size: 14))
-                                    .foregroundColor(fg.opacity(0.5))
-
-                                DownloadBadge(state: downloadState, tint: fg.opacity(0.8), size: 12)
-                            }
-                        }
-                    }
-                    .padding(.horizontal, sheetHPadding)
-
-                    // Player controls
-                    PlayerControlsSection(episode: episode, accent: accentBackground, textColor: fg)
-
-                    // Action buttons (web: 2-col grid of white-outlined buttons)
-                    HStack(spacing: 8) {
-                        if let url = URL(string: episode.permalinkUrl) {
-                            Link(destination: url) {
-                                actionButtonLabel(icon: "link", text: "Open in SoundCloud")
-                            }
-                        }
-
-                        Button(action: {
-                            UIImpactFeedbackGenerator(style: isFavorite ? .light : .medium).impactOccurred()
-                            favoritesStore.toggleFavorite(episode.id)
-                        }) {
-                            actionButtonLabel(
-                                icon: isFavorite ? "heart.fill" : "heart",
-                                text: isFavorite ? "Remove Favorite" : "Add Favorite"
-                            )
-                        }
-                    }
-                    .padding(.horizontal, sheetHPadding)
-
-                    // Tracklist in a translucent panel (web: bg-black/20)
-                    if isLoadingTracks {
-                        ProgressView()
-                            .tint(fg)
-                            .padding()
-                    } else if !tracks.isEmpty {
-                        TracklistView(tracks: tracks, episode: episode, accent: accentBackground, textColor: fg)
-                            .background(Color.black.opacity(0.2))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                            .padding(.horizontal, sheetHPadding)
-                    }
-
-                    Spacer(minLength: 32)
+            Group {
+                if isDocked {
+                    dockedLayout
+                } else {
+                    stackedLayout
                 }
             }
         }
@@ -128,6 +107,15 @@ struct EpisodeDetailSheet: View {
         }
         .animation(.easeInOut(duration: 0.5), value: sheetAccent)
         .task(id: episode.id) {
+            // A journey can retarget this sheet at a different episode without the
+            // view being torn down, so anything loaded for the last one has to
+            // go before the guards below decide there's nothing left to fetch.
+            if loadedEpisodeId != episode.id {
+                loadedEpisodeId = episode.id
+                detailTracks = []
+                episodeAccent = nil
+            }
+
             // Reuse already-loaded data if this is the current episode
             if playerStore.currentEpisode?.id == episode.id {
                 if !playerStore.currentTracks.isEmpty {
@@ -157,6 +145,204 @@ struct EpisodeDetailSheet: View {
         }
     }
 
+    // MARK: - Layouts
+
+    /// Portrait: one column, everything scrolls together.
+    private var stackedLayout: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                EpisodeArtwork(episode: episode, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(.horizontal, sheetHPadding)
+                    // Clears the fixed top bar, with the same breathing room
+                    // the drag handle used to leave.
+                    .padding(.top, 52)
+
+                titleBlock(titleSize: 17, dateSize: 14)
+                    .padding(.horizontal, sheetHPadding)
+
+                onDeckPanel
+                    .padding(.horizontal, sheetHPadding)
+
+                PlayerControlsSection(episode: episode, accent: accentBackground, textColor: fg)
+
+                actionButtons
+                    .padding(.horizontal, sheetHPadding)
+
+                if isLoadingTracks {
+                    ProgressView()
+                        .tint(fg)
+                        .padding()
+                } else if !tracks.isEmpty {
+                    tracklistPanel
+                        .padding(.horizontal, sheetHPadding)
+                }
+
+                Spacer(minLength: 32)
+            }
+        }
+    }
+
+    /// Landscape: the player docks into a fixed left column — art, title,
+    /// transport — while what's on deck, the actions and the tracklist scroll on
+    /// the right. Nothing you need mid-listen (scrubber, skips, play) ever
+    /// scrolls away, and a journey is still one tap from any row.
+    private var dockedLayout: some View {
+        GeometryReader { geo in
+            // The art takes whatever height is left once the dock's text and
+            // transport are accounted for, and never more than a share of the
+            // width — so it stays square and the right column keeps its room.
+            let artSide = min(max(geo.size.height - 216, 96), geo.size.width * 0.36)
+            let dockWidth = max(artSide, 208)
+
+            HStack(alignment: .top, spacing: 20) {
+                VStack(spacing: 10) {
+                    EpisodeArtwork(episode: episode, contentMode: .fill)
+                        .frame(width: artSide, height: artSide)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
+
+                    titleBlock(titleSize: 14, dateSize: 12)
+                        .lineLimit(2)
+
+                    Spacer(minLength: 0)
+
+                    PlayerControlsSection(
+                        episode: episode,
+                        accent: accentBackground,
+                        textColor: fg,
+                        compact: true,
+                        horizontalPadding: 0
+                    )
+                }
+                .frame(width: dockWidth)
+
+                ScrollView {
+                    VStack(spacing: 14) {
+                        onDeckPanel
+
+                        actionButtons
+
+                        if isLoadingTracks {
+                            ProgressView()
+                                .tint(fg)
+                                .padding(.top, 24)
+                        } else if !tracks.isEmpty {
+                            tracklistPanel
+                        }
+                    }
+                    .padding(.bottom, 16)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .padding(.horizontal, sheetHPadding)
+            // Clears the (shorter) docked top bar.
+            .padding(.top, 38)
+            .padding(.bottom, 10)
+        }
+    }
+
+    // MARK: - Shared pieces
+
+    /// Title + date (web: bold white title, white/80 date).
+    private func titleBlock(titleSize: CGFloat, dateSize: CGFloat) -> some View {
+        VStack(spacing: 4) {
+            Text(episode.name)
+                .font(.app(size: titleSize, weight: .bold))
+                .foregroundColor(fg)
+                .multilineTextAlignment(.center)
+
+            HStack(spacing: 6) {
+                Text(episode.formattedDate)
+                    .font(.app(size: dateSize))
+                    .foregroundColor(fg.opacity(0.8))
+
+                if downloadState != .notDownloaded {
+                    Text("·")
+                        .font(.app(size: dateSize))
+                        .foregroundColor(fg.opacity(0.5))
+
+                    DownloadBadge(state: downloadState, tint: fg.opacity(0.8), size: 12)
+                }
+            }
+        }
+    }
+
+    /// What's on deck, when this is the set it's transition from. Same news the
+    /// mini player carries, with room here to say where it's going.
+    @ViewBuilder
+    private var onDeckPanel: some View {
+        if playerStore.currentEpisode?.id == episode.id,
+           let queued = playerStore.queued {
+            OnDeckPanel(
+                queued: queued,
+                remaining: playerStore.queuedRemaining ?? 0,
+                isTransitioning: playerStore.isTransitioning,
+                accent: accentBackground,
+                // Tapping what's on deck goes to where it was arranged: the
+                // record playing now, and everywhere else it turns up — which
+                // is the list this one is sitting armed in.
+                onShowSource: {
+                    guard let source = journey.sourceAppearance(playing: playerStore) else { return }
+                    // Same handoff the connections tap makes: the journey can't
+                    // push until this sheet is out of the way.
+                    journey.pending = source
+                    dismiss()
+                },
+                onCallOff: { playerStore.cancelQueued() }
+            )
+            .transition(.move(edge: .top).combined(with: .opacity))
+        }
+    }
+
+    /// Web: 2-col grid of white-outlined buttons.
+    private var actionButtons: some View {
+        HStack(spacing: 8) {
+            if let url = URL(string: episode.permalinkUrl) {
+                Link(destination: url) {
+                    actionButtonLabel(icon: "link", text: "Open in SoundCloud")
+                }
+            }
+
+            Button(action: {
+                UIImpactFeedbackGenerator(style: isFavorite ? .light : .medium).impactOccurred()
+                favoritesStore.toggleFavorite(episode.id)
+            }) {
+                actionButtonLabel(
+                    icon: isFavorite ? "heart.fill" : "heart",
+                    text: isFavorite ? "Remove Favorite" : "Add Favorite"
+                )
+            }
+        }
+    }
+
+    /// Tracklist in a translucent panel (web: bg-black/20).
+    private var tracklistPanel: some View {
+        TracklistView(
+            tracks: tracks,
+            episode: episode,
+            accent: accentBackground,
+            textColor: fg,
+            graph: episodesVM.trackGraph,
+            onPlay: { track in
+                guard let ts = track.timestamp else { return }
+                if playerStore.currentEpisode?.id == episode.id {
+                    playerStore.seek(to: Double(ts))
+                } else {
+                    Task { await playerStore.play(episode: episode, startingAt: Double(ts)) }
+                }
+            },
+            onOpenConnections: { track in
+                // The journey pushes over the Episodes list, so it has to wait
+                // for this sheet to go before it can push anything.
+                journey.pending = TrackAppearance(episode: episode, track: track)
+                dismiss()
+            }
+        )
+        .background(Color.black.opacity(0.2))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
     private var downloadState: DownloadState {
         downloadsStore.state(for: episode.id)
     }
@@ -167,7 +353,7 @@ struct EpisodeDetailSheet: View {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(fg.opacity(0.8))
-                    .frame(width: 44, height: 44)
+                    .frame(width: 44, height: isDocked ? 34 : 44)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -175,18 +361,22 @@ struct EpisodeDetailSheet: View {
 
             Spacer(minLength: 0)
 
-            Capsule()
-                .fill(fg.opacity(0.3))
-                .frame(width: 40, height: 4)
+            // The handle is a drag affordance, and a landscape sheet is
+            // full-screen with nothing to drag — so it only shows when true.
+            if !isDocked {
+                Capsule()
+                    .fill(fg.opacity(0.3))
+                    .frame(width: 40, height: 4)
 
-            Spacer(minLength: 0)
+                Spacer(minLength: 0)
+            }
 
-            EpisodeKebabButton(tint: fg.opacity(0.8), size: CGSize(width: 44, height: 44)) {
+            EpisodeKebabButton(tint: fg.opacity(0.8), size: CGSize(width: 44, height: isDocked ? 34 : 44)) {
                 showActions = true
             }
         }
         .padding(.horizontal, 8)
-        .padding(.top, 6)
+        .padding(.top, isDocked ? 2 : 6)
     }
 
     private func actionButtonLabel(icon: String, text: String) -> some View {
@@ -213,14 +403,23 @@ private struct PlayerControlsSection: View {
     let accent: Color
     /// Text/glyph color over the accent background.
     let textColor: Color
+    /// Docked (landscape) mode trades glyph size for vertical room.
+    var compact: Bool = false
+    /// The sheet's own inset when the controls sit in a full-width column; the
+    /// dock supplies its own margins, so it passes 0.
+    var horizontalPadding: CGFloat = sheetHPadding
     @EnvironmentObject var playerStore: PlayerStore
 
     @State private var scrubTime: Double? = nil
 
     private var isCurrentEpisode: Bool { playerStore.currentEpisode?.id == episode.id }
 
+    private var playButtonSize: CGFloat { compact ? 58 : 72 }
+    private var playGlyphSize: CGFloat { compact ? 22 : 28 }
+    private var skipGlyphSize: CGFloat { compact ? 24 : 30 }
+
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: compact ? 8 : 14) {
             // Progress (only shown when this episode is playing)
             if isCurrentEpisode {
                 VStack(spacing: 4) {
@@ -233,16 +432,16 @@ private struct PlayerControlsSection: View {
                             playerStore.seek(to: pct * playerStore.duration)
                         }
                     )
-                    .padding(.horizontal, sheetHPadding)
+                    .padding(.horizontal, horizontalPadding)
 
                     HStack {
                         Text(formatTime(scrubTime ?? playerStore.currentTime))
                         Spacer()
                         Text(formatTime(playerStore.duration))
                     }
-                    .font(.app(size: 12))
+                    .font(.app(size: compact ? 11 : 12))
                     .foregroundColor(textColor)
-                    .padding(.horizontal, sheetHPadding)
+                    .padding(.horizontal, horizontalPadding)
                     // The slider's 44pt touch target leaves ~20pt of dead space
                     // below the visible bar; pull the times up to sit closer to it.
                     .padding(.top, -14)
@@ -251,14 +450,14 @@ private struct PlayerControlsSection: View {
 
             // Buttons (web: big white 30s skips around a white circle whose
             // play/pause glyph is accent-colored)
-            HStack(spacing: 24) {
+            HStack(spacing: compact ? 18 : 24) {
                 if isCurrentEpisode {
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         playerStore.rewind(30)
                     }) {
                         Image(systemName: "gobackward.30")
-                            .font(.system(size: 30))
+                            .font(.system(size: skipGlyphSize))
                             .foregroundColor(textColor)
                     }
                 }
@@ -275,14 +474,14 @@ private struct PlayerControlsSection: View {
                     ZStack {
                         Circle()
                             .fill(Color.white)
-                            .frame(width: 72, height: 72)
+                            .frame(width: playButtonSize, height: playButtonSize)
 
                         if isCurrentEpisode && playerStore.isLoading {
                             ProgressView().tint(accent).scaleEffect(1.2)
                         } else {
                             let icon = isCurrentEpisode && playerStore.isPlaying ? "pause.fill" : "play.fill"
                             Image(systemName: icon)
-                                .font(.system(size: 28))
+                                .font(.system(size: playGlyphSize))
                                 .foregroundColor(accent)
                                 .offset(x: (isCurrentEpisode && playerStore.isPlaying) ? 0 : 2)
                         }
@@ -295,7 +494,7 @@ private struct PlayerControlsSection: View {
                         playerStore.forward(30)
                     }) {
                         Image(systemName: "goforward.30")
-                            .font(.system(size: 30))
+                            .font(.system(size: skipGlyphSize))
                             .foregroundColor(textColor)
                     }
                 }
@@ -321,6 +520,13 @@ struct TracklistView: View {
     let accent: Color
     /// Text color over the accent background.
     let textColor: Color
+    /// Which other sets played each of these records — the sideways badge.
+    let graph: TrackGraph
+    /// What a tap on the row means. Hoisted out of the row because the journey
+    /// renders this same tracklist and has more to do on a play than the sheet
+    /// does (leave the radio, tell the sheet underneath where we went).
+    let onPlay: (EpisodeTrack) -> Void
+    let onOpenConnections: (EpisodeTrack) -> Void
     @EnvironmentObject var playerStore: PlayerStore
 
     private var currentTrack: EpisodeTrack? {
@@ -343,7 +549,15 @@ struct TracklistView: View {
 
             ForEach(tracks) { track in
                 let isCurrent = currentTrack?.id == track.id
-                TrackRow(track: track, episode: episode, accent: accent, textColor: textColor, isCurrent: isCurrent)
+                TrackRow(
+                    track: track,
+                    accent: accent,
+                    textColor: textColor,
+                    isCurrent: isCurrent,
+                    connections: graph.connectionCount(of: track, excluding: episode.id),
+                    onPlay: { onPlay(track) },
+                    onOpenConnections: { onOpenConnections(track) }
+                )
             }
             .padding(.bottom, 4)
         }
@@ -370,29 +584,28 @@ private struct PingRing: View {
 
 private struct TrackRow: View {
     let track: EpisodeTrack
-    let episode: Episode
     let accent: Color
     let textColor: Color
     let isCurrent: Bool
-    @EnvironmentObject var playerStore: PlayerStore
+    /// How many other sets played this record. 0 leaves the connection out but
+    /// keeps its column, so timestamps stay in line down the whole tracklist.
+    let connections: Int
+    let onPlay: () -> Void
+    let onOpenConnections: () -> Void
 
     var body: some View {
-        Button(action: {
-            guard let ts = track.timestamp else { return }
-            if playerStore.currentEpisode?.id == episode.id {
-                playerStore.seek(to: Double(ts))
-            } else {
-                Task { await playerStore.play(episode: episode, startingAt: Double(ts)) }
-            }
-        }) {
-            ZStack(alignment: .leading) {
-                // Left current-track bar
-                Rectangle()
-                    .fill(textColor)
-                    .frame(width: 2)
-                    .opacity(isCurrent ? 1 : 0)
-                    .animation(.easeInOut(duration: 0.3), value: isCurrent)
+        // The seek area and the connection are siblings, not a button inside a
+        // button, so each gets its own taps (same shape as EpisodeRowView's
+        // row-and-kebab).
+        ZStack(alignment: .leading) {
+            // Left current-track bar
+            Rectangle()
+                .fill(textColor)
+                .frame(width: 2)
+                .opacity(isCurrent ? 1 : 0)
+                .animation(.easeInOut(duration: 0.3), value: isCurrent)
 
+            HStack(spacing: 8) {
                 HStack(alignment: .center, spacing: 12) {
                     // Track number; the current one sits in a white badge with
                     // an accent-colored number and a ping ring (web parity)
@@ -425,7 +638,7 @@ private struct TrackRow: View {
                     }
                     .animation(.easeInOut(duration: 0.3), value: isCurrent)
 
-                    Spacer()
+                    Spacer(minLength: 8)
 
                     if let ts = track.formattedTimestamp {
                         Text(ts)
@@ -433,12 +646,17 @@ private struct TrackRow: View {
                             .foregroundColor(textColor)
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.leading, 16)
                 .padding(.vertical, 8)
+                .contentShape(Rectangle())
+                .onTapGesture { onPlay() }
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isButton)
+
+                TrackConnectionsSlot(count: connections, tint: textColor, action: onOpenConnections)
             }
+            .padding(.trailing, 16)
         }
-        .buttonStyle(.plain)
-        .disabled(track.timestamp == nil)
     }
 }
 
@@ -496,5 +714,88 @@ struct ProgressSlider: View {
         }
         .frame(height: 44)
         .animation(.easeInOut(duration: 0.1), value: isDragging)
+    }
+}
+
+// MARK: - On deck
+
+/// What the mini player says in one line, with room to say it properly: which
+/// set is next, how it's getting there, and how long the record has left.
+private struct OnDeckPanel: View {
+    let queued: QueuedTransition
+    let remaining: Double
+    let isTransitioning: Bool
+    /// The sheet's accent, worn by the content on the white pill.
+    let accent: Color
+    /// Tapping the panel — everything but the call-off cross — goes to where
+    /// this was arranged from.
+    let onShowSource: () -> Void
+    let onCallOff: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            EpisodeArtwork(episode: queued.episode)
+                .frame(width: 36, height: 36)
+                .clipShape(RoundedRectangle(cornerRadius: 5))
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 5) {
+                    Image(systemName: queued.audio.symbol)
+                        .font(.system(size: 9, weight: .bold))
+                    Text(headline)
+                        .font(.app(size: 11, weight: .bold))
+                        .tracking(0.7)
+                }
+                .foregroundColor(.white)
+
+                Text(queued.episode.name)
+                    .font(.app(size: 13, weight: .medium))
+                    .foregroundColor(.white.opacity(0.8))
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 8)
+
+            Text(countdown)
+                .font(.app(size: 13, weight: .bold))
+                .monospacedDigit()
+                .foregroundColor(accent)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(Color.white))
+
+            Button(action: onCallOff) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.white.opacity(0.8))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Call off the transition")
+            // Above the panel's own tap, so the cross keeps working as a way
+            // out rather than becoming another way in.
+            .zIndex(1)
+        }
+        .padding(.leading, 10)
+        .padding(.trailing, 4)
+        .padding(.vertical, 8)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color.black.opacity(0.25)))
+        .contentShape(RoundedRectangle(cornerRadius: 10))
+        .onTapGesture {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onShowSource()
+        }
+        .accessibilityHint("Shows where this transition was arranged from")
+    }
+
+    private var headline: String {
+        isTransitioning ? "IN TRANSITION" : "ON DECK · \(queued.audio.title.uppercased())"
+    }
+
+    private var countdown: String {
+        guard !isTransitioning else { return "NOW" }
+        let seconds = Int(remaining.rounded())
+        return String(format: "%d:%02d", seconds / 60, seconds % 60)
     }
 }

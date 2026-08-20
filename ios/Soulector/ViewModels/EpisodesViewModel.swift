@@ -37,6 +37,12 @@ final class EpisodesViewModel: ObservableObject {
     @Published private(set) var searchIndex: [SearchIndexEpisode] = []
     private var isLoadingSearchIndex = false
 
+    /// The same index seen sideways: which sets played which record. Empty
+    /// until the first build finishes, which is why the sideways affordance
+    /// simply doesn't appear rather than appearing empty.
+    @Published private(set) var trackGraph = TrackGraph.empty
+    private var trackGraphBuild: Task<Void, Never>?
+
     private let persistedCollectiveKey = "soulector.selectedCollective"
 
     private static let cacheURL: URL? = FileManager.default
@@ -64,6 +70,7 @@ final class EpisodesViewModel: ObservableObject {
            let data = try? Data(contentsOf: url),
            let cached = try? JSONDecoder().decode([SearchIndexEpisode].self, from: data) {
             searchIndex = cached
+            rebuildTrackGraph()
         }
     }
 
@@ -151,8 +158,23 @@ final class EpisodesViewModel: ObservableObject {
             let fetched = try await APIClient.shared.fetchSearchIndex()
             searchIndex = fetched
             persistSearchIndexCache(fetched)
+            rebuildTrackGraph()
         } catch {
             // Ignore; cached index (if present) still serves search this session.
+        }
+    }
+
+    /// Rebuilds the sideways graph from the current index. Walking twenty
+    /// thousand cue-sheet rows is quick but not free, and this runs on launch,
+    /// so it happens off the main actor and lands when it lands — search and
+    /// the episode list never wait on it.
+    private func rebuildTrackGraph() {
+        let index = searchIndex
+        trackGraphBuild?.cancel()
+        trackGraphBuild = Task { [weak self] in
+            let graph = await Task.detached(priority: .utility) { TrackGraph(index: index) }.value
+            guard !Task.isCancelled else { return }
+            self?.trackGraph = graph
         }
     }
 }

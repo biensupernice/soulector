@@ -13,6 +13,11 @@ struct EpisodesView: View {
     @EnvironmentObject var radioStore: RadioStore
     @EnvironmentObject var downloadsStore: DownloadsStore
     @EnvironmentObject var network: NetworkMonitor
+    @EnvironmentObject var journey: JourneyCoordinator
+    /// Same reason as the sheet's: a pushed journey screen needs its accents
+    /// supplied by whoever hosts it. Living here also means the cache survives
+    /// between journeys instead of being rebuilt each time.
+    @StateObject private var journeyAccents = JourneyAccents()
 
     @State private var selectedTab: EpisodeTab = .all
     @State private var showSearch = false
@@ -26,6 +31,26 @@ struct EpisodesView: View {
 
     private static let tabScrollSpace = "episodeTabs"
     private static let tabFadeWidth: CGFloat = 20
+
+    /// The list is the root of the journey's navigation stack, so a journey
+    /// pushes over it and the Mini Player — a sibling of the stack, not a child
+    /// — stays put through every push.
+    @ViewBuilder
+    private func journeyStack<Content: View>(@ViewBuilder _ inner: () -> Content) -> some View {
+        NavigationStack(path: $journey.path) {
+            inner()
+                .toolbar(.hidden, for: .navigationBar)
+                .journeyDestinations(path: $journey.path, actions: journeyActions)
+        }
+        .environmentObject(journeyAccents)
+    }
+
+    private var journeyActions: JourneyActions {
+        JourneyActions(
+            onLanded: { _ in },
+            close: { journey.end() }
+        )
+    }
 
     private var displayedEpisodes: [Episode] {
         switch selectedTab {
@@ -49,6 +74,10 @@ struct EpisodesView: View {
         ZStack(alignment: .bottom) {
             Color.black.ignoresSafeArea()
 
+            // The journey pushes here — inside the stack, under the Mini
+            // Player and FABs, which are siblings of it in the ZStack and so
+            // survive every push.
+            journeyStack {
             VStack(spacing: 0) {
                 // Navigation bar area
                 navBar
@@ -78,10 +107,28 @@ struct EpisodesView: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .topLeading)))
                 }
             }
-            .sheet(item: $selectedEpisode) { episode in
-                EpisodeDetailSheet(episode: episode)
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.hidden)
+            }
+            // Presented on *whether* there's an episode, not on which one.
+            // `.sheet(item:)` ties the presentation's identity to the episode's
+            // id, so a transition landing under the sheet tore it down and put a
+            // new one up — visibly a close and a reopen. Bound this way the
+            // sheet stays put and swaps its contents.
+            .sheet(isPresented: Binding(
+                get: { selectedEpisode != nil },
+                set: { presented in if !presented { selectedEpisode = nil } }
+            ), onDismiss: {
+                // The handoff: push only once the sheet is actually gone,
+                // never in the same turn as the dismissal, or the push is lost.
+                if let pending = journey.pending {
+                    journey.pending = nil
+                    journey.open(pending)
+                }
+            }) {
+                if let episode = selectedEpisode {
+                    EpisodeDetailSheet(episode: episode, onNavigate: { selectedEpisode = $0 })
+                        .presentationDetents([.large])
+                        .presentationDragIndicator(.hidden)
+                }
             }
 
             // Floating radio/shuffle cluster (mirrors the web PlayerFabs),
@@ -117,6 +164,12 @@ struct EpisodesView: View {
             .padding(.trailing, 16)
             .padding(.bottom, playerStore.hasEpisode ? 76 : 16)
             .ignoresSafeArea(.keyboard, edges: .bottom)
+            // The cluster belongs to the list underneath.
+            // Full screen leaves it uncovered, where Play Random reads as an
+            // offer this screen is making — so it steps out while a journey is up.
+            .opacity(journey.path.isEmpty ? 1 : 0)
+            .allowsHitTesting(journey.path.isEmpty)
+            .animation(.easeInOut(duration: 0.2), value: journey.path.isEmpty)
 
             // Mini player pinned to the bottom of the *screen*, not to the top
             // of the keyboard. Search raises the keyboard, and riding it up
@@ -144,12 +197,22 @@ struct EpisodesView: View {
         .sheet(item: $actionsEpisode) { episode in
             EpisodeActionsSheet(episode: episode)
         }
+        // One place handles a landing, so the journey ends up looking at the
+        // episode the transition arrived in wherever it was arranged from.
+        .onReceive(playerStore.transitionsFired) { transition in
+            journey.landed(transition)
+        }
         .animation(.spring(duration: 0.3), value: playerStore.hasEpisode)
         // Removing the last download takes its tab away with it.
         .onChange(of: downloadsStore.isEmpty) { isEmpty in
             if isEmpty && selectedTab == .downloads { selectedTab = .all }
         }
         .task { await episodesVM.fetchEpisodes() }
+        // The tracks index isn't just for search any more — the sideways badges
+        // in every tracklist read from the graph it builds, so it comes down at
+        // launch instead of waiting for the search field to open. Cached on
+        // disk, so this is a refresh, not a cold fetch, after the first run.
+        .task { await episodesVM.refreshSearchIndex() }
         .onAppear {
             radioStore.configure(player: playerStore, episodesVM: episodesVM)
             playerStore.onEpisodeEnded = { [weak episodesVM, weak playerStore, weak radioStore] finished in
@@ -211,16 +274,17 @@ struct EpisodesView: View {
             Button(action: {
                 withAnimation(.spring(duration: 0.2)) { showCollectivePicker.toggle() }
             }) {
-                HStack(spacing: 5) {
-                    Text(episodesVM.selectedCollective.displayName)
-                        .font(.app(size: 22, weight: .bold))
-                        .foregroundColor(.white)
+                HStack(spacing: 8) {
+                    CollectiveLogo(collective: episodesVM.selectedCollective, placement: .navBar)
                     Image(systemName: showCollectivePicker ? "chevron.up" : "chevron.down")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.white.opacity(0.6))
                 }
             }
             .buttonStyle(.plain)
+            // The marks are resizable artwork, so without this the trailing
+            // Spacer would split the row with them and squash the wordmark.
+            .layoutPriority(1)
 
             Spacer()
 
@@ -412,8 +476,9 @@ struct EpisodesView: View {
                     episodesVM.selectCollective(collective)
                 }) {
                     HStack(spacing: 0) {
-                        collectiveLogo(collective)
-                        Spacer()
+                        CollectiveLogo(collective: collective)
+                            .layoutPriority(1)
+                        Spacer(minLength: 12)
                         if episodesVM.selectedCollective == collective {
                             Image(systemName: "checkmark")
                                 .font(.system(size: 14, weight: .bold))
@@ -436,51 +501,6 @@ struct EpisodesView: View {
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .zIndex(100)
-    }
-
-    @ViewBuilder
-    private func collectiveLogo(_ collective: CollectiveFilter) -> some View {
-        switch collective {
-        case .all:
-            HStack(spacing: 12) {
-                Image(systemName: "square.stack.fill")
-                    .font(.system(size: 22))
-                    .frame(width: 28)
-                    .foregroundColor(.white)
-                Text("All Collectives")
-                    .font(.app(size: 18, weight: .bold))
-                    .foregroundColor(.white)
-            }
-        case .soulection:
-            HStack(spacing: 12) {
-                Image("SoulectionIcon")
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 28, height: 19)
-                    .foregroundColor(.white)
-                Text("Soulection")
-                    .font(.app(size: 18, weight: .bold))
-                    .foregroundColor(.white)
-            }
-        case .sashaMarieRadio:
-            Text("SASHA MARIE RADIO")
-                .font(.app(size: 16, weight: .bold))
-                .tracking(1.5)
-                .foregroundColor(.white)
-        case .theLoveBelowHour:
-            HStack(spacing: 12) {
-                Image("TheLoveBelowIcon")
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 26, height: 26)
-                    .foregroundColor(.white)
-                Text("The Love Below Hour")
-                    .font(.app(size: 18, weight: .bold))
-                    .foregroundColor(.white)
-            }
-        }
     }
 
     private var emptyStateText: String {
