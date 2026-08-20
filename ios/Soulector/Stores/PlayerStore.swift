@@ -346,6 +346,17 @@ final class PlayerStore: ObservableObject {
         publishNowPlaying()
     }
 
+    /// Reach a point in a set, whether or not it's the one playing: a seek if
+    /// it is, a load if it isn't. The two read the same to whoever tapped and
+    /// differ only in what they cost, so callers shouldn't have to branch.
+    func go(to episode: Episode, at seconds: Double?) {
+        if currentEpisode?.id == episode.id {
+            if let seconds { seek(to: seconds) }
+        } else {
+            Task { await play(episode: episode, startingAt: seconds) }
+        }
+    }
+
     func forward(_ seconds: Double = 15) {
         seek(to: currentTime + seconds)
     }

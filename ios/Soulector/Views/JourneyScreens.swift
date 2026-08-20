@@ -81,6 +81,18 @@ enum JourneyStep: Hashable {
     }
 }
 
+/// What a journey screen knows about the route it sits on: where it can push,
+/// which set it's showing, and how to come back to the one playing.
+///
+/// One value rather than three parameters because they're all-or-nothing — a
+/// screen either sits on a route or it doesn't — and as three optionals the
+/// "or it doesn't" had to be re-derived at every use.
+struct JourneyRoute {
+    let path: Binding<[JourneyStep]>
+    let viewed: Episode
+    let onReturn: (Episode) -> Void
+}
+
 /// The bits every screen in the journey needs but doesn't own.
 struct JourneyActions {
     /// Reports the episode the journey is now playing, so the screen underneath
@@ -270,18 +282,7 @@ struct TrackEpisodesScreen: View {
         // A manual play takes over from the radio, same as anywhere else.
         radioStore.tuneOut()
 
-        if playerStore.currentEpisode?.id == other.episode.id {
-            if let timestamp = other.track.timestamp {
-                playerStore.seek(to: Double(timestamp))
-            }
-        } else {
-            Task {
-                await playerStore.play(
-                    episode: other.episode,
-                    startingAt: other.track.timestamp.map(Double.init)
-                )
-            }
-        }
+        playerStore.go(to: other.episode, at: other.track.timestamp.map(Double.init))
 
         actions.onLanded(other.episode)
         path.append(.episode(other.episode, landedOn: other.track.order))
@@ -474,9 +475,11 @@ struct EpisodeTracksScreen: View {
         .journeyChrome(
             title: episode.name,
             accent: accent,
-            path: $path,
-            viewed: episode,
-            onReturn: { landed in path.append(.episode(landed, landedOn: nil)) },
+            route: JourneyRoute(
+                path: $path,
+                viewed: episode,
+                onReturn: { landed in path.append(.episode(landed, landedOn: nil)) }
+            ),
             close: actions.close
         )
         .task(id: episode.id) {
@@ -591,13 +594,11 @@ struct EpisodeTracksScreen: View {
     private func play(_ track: EpisodeTrack) {
         guard let timestamp = track.timestamp else { return }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        if isCurrent {
-            playerStore.seek(to: Double(timestamp))
-            return
+        if !isCurrent {
+            radioStore.tuneOut()
+            actions.onLanded(episode)
         }
-        radioStore.tuneOut()
-        actions.onLanded(episode)
-        Task { await playerStore.play(episode: episode, startingAt: Double(timestamp)) }
+        playerStore.go(to: episode, at: Double(timestamp))
     }
 }
 
@@ -609,11 +610,10 @@ struct EpisodeTracksScreen: View {
 struct JourneyChrome: ViewModifier {
     let title: String
     let accent: Color
-    /// The route, on the screens that have one to draw. Track Episodes is
-    /// reached *from* a set rather than being one, so it has no rail.
-    var path: Binding<[JourneyStep]>? = nil
-    var viewed: Episode? = nil
-    var onReturn: ((Episode) -> Void)? = nil
+    /// The route this screen sits on, when it sits on one. Track Episodes is
+    /// reached *from* a set rather than being one, so it has no route and no
+    /// rail.
+    var route: JourneyRoute? = nil
     let close: () -> Void
 
     @EnvironmentObject private var playerStore: PlayerStore
@@ -643,11 +643,9 @@ struct JourneyChrome: ViewModifier {
             // draws: which set you're viewing versus hearing, then the route.
             .safeAreaInset(edge: .top, spacing: 0) {
                 VStack(spacing: 0) {
-                    if let viewed, let onReturn {
-                        NowPlayingStrip(viewed: viewed, onReturn: onReturn)
-                    }
-                    if let path {
-                        RouteRail(path: path)
+                    if let route {
+                        NowPlayingStrip(viewed: route.viewed, onReturn: route.onReturn)
+                        RouteRail(path: route.path)
                     }
                 }
             }
@@ -678,18 +676,9 @@ extension View {
     func journeyChrome(
         title: String,
         accent: Color,
-        path: Binding<[JourneyStep]>? = nil,
-        viewed: Episode? = nil,
-        onReturn: ((Episode) -> Void)? = nil,
+        route: JourneyRoute? = nil,
         close: @escaping () -> Void
     ) -> some View {
-        modifier(JourneyChrome(
-            title: title,
-            accent: accent,
-            path: path,
-            viewed: viewed,
-            onReturn: onReturn,
-            close: close
-        ))
+        modifier(JourneyChrome(title: title, accent: accent, route: route, close: close))
     }
 }

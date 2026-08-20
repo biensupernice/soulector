@@ -39,7 +39,7 @@
 		AA000044 /* CollectiveLogo.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000044 /* CollectiveLogo.swift */; };
 		AA000036 /* EpisodeActionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000036 /* EpisodeActionsSheet.swift */; };
 		AA000037 /* TrackConnections.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000037 /* TrackConnections.swift */; };
-		AA000038 /* TrackJourneySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000038 /* TrackJourneySheet.swift */; };
+		AA000038 /* JourneyScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000038 /* JourneyScreens.swift */; };
 		AA000039 /* TrackTransition.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000039 /* TrackTransition.swift */; };
 		AA000043 /* Diagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000043 /* Diagnostics.swift */; };
 		AA000042 /* Journey.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000042 /* Journey.swift */; };
@@ -100,7 +100,7 @@
 		AB000044 /* CollectiveLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectiveLogo.swift; sourceTree = "<group>"; };
 		AB000036 /* EpisodeActionsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeActionsSheet.swift; sourceTree = "<group>"; };
 		AB000037 /* TrackConnections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackConnections.swift; sourceTree = "<group>"; };
-		AB000038 /* TrackJourneySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackJourneySheet.swift; sourceTree = "<group>"; };
+		AB000038 /* JourneyScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JourneyScreens.swift; sourceTree = "<group>"; };
 		AB000039 /* TrackTransition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackTransition.swift; sourceTree = "<group>"; };
 		AB000043 /* Diagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Diagnostics.swift; sourceTree = "<group>"; };
 		AB000042 /* Journey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Journey.swift; sourceTree = "<group>"; };
@@ -235,7 +235,7 @@
 				AB000034 /* EpisodeActions.swift */,
 				AB000036 /* EpisodeActionsSheet.swift */,
 				AB000035 /* EpisodeArtwork.swift */,
-				AB000038 /* TrackJourneySheet.swift */,
+				AB000038 /* JourneyScreens.swift */,
 				AB000043 /* Diagnostics.swift */,
 				AB000042 /* Journey.swift */,
 				AB000044 /* CollectiveLogo.swift */,
@@ -429,7 +429,7 @@
 				AA000036 /* EpisodeActionsSheet.swift in Sources */,
 				AA000035 /* EpisodeArtwork.swift in Sources */,
 				AA000037 /* TrackConnections.swift in Sources */,
-				AA000038 /* TrackJourneySheet.swift in Sources */,
+				AA000038 /* JourneyScreens.swift in Sources */,
 				AA000039 /* TrackTransition.swift in Sources */,
 				AA000043 /* Diagnostics.swift in Sources */,
 				AA000042 /* Journey.swift in Sources */,

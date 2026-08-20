@@ -52,7 +52,7 @@ ios/Soulector/
 │   ├── EpisodeArtwork.swift    # Album art; prefers the downloaded copy over the network
 │   ├── CollectiveLogo.swift    # Collective brand marks (nav bar trigger + picker rows)
 │   ├── EpisodeDetailSheet.swift # Single sheet for browse + playback; contains ProgressSlider, TracklistView
-│   ├── TrackJourneySheet.swift # Journey screens: Track Episodes ⇄ Episode Tracks, alternating
+│   ├── JourneyScreens.swift # Journey screens: Track Episodes ⇄ Episode Tracks, alternating
 │   ├── Journey.swift           # JourneyCoordinator, the route rail/playing strip, DestinationCard
 │   ├── MiniPlayerView.swift    # Persistent bottom bar
 │   └── PlayerFabs.swift        # Floating radio/shuffle cluster (near-black pill, accent On Air fill)
