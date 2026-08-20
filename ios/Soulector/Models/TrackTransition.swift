@@ -112,7 +112,9 @@ struct QueuedTransition: Identifiable, Equatable {
     let armedFrom: Double
     let audio: TransitionAudio
 
-    var id: String { "\(episode.id)#\(track.order)" }
+    /// The playing this transition lands on, so it can be matched against the
+    /// appearance in a list without either side formatting a key by hand.
+    var id: TrackPlaying { TrackPlaying(episodeId: episode.id, order: track.order) }
 
     /// 0 at the moment it was arranged, 1 at the transition.
     func progress(at time: Double) -> Double {

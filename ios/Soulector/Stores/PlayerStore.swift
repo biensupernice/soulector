@@ -85,12 +85,11 @@ final class PlayerStore: ObservableObject {
     private var loadedArtworkEpisodeId: String?
     private var pendingSeek: Double?
 
-    /// The incoming set, buffered and cued while the current one plays out, so
-    /// a transition is a volume change rather than a load.
-    private var deck: AVPlayer?
-    private var deckReady = false
-    private var deckTask: Task<Void, Never>?
-    private var deckCancellables = Set<AnyCancellable>()
+    /// The set on deck, buffered and cued the instant a transition is arranged
+    /// so the transition is a volume change rather than a load. It owns its own
+    /// player and observers, so none of that is lying around in here while
+    /// nothing is arranged.
+    private let deck = TransitionDeck()
     private var transitionTask: Task<Void, Never>?
 
     // MARK: Init
@@ -380,7 +379,7 @@ final class PlayerStore: ObservableObject {
     func queue(_ transition: QueuedTransition) {
         cancelQueued()
         queued = transition
-        deckTask = Task { [weak self] in await self?.prepareDeck(for: transition) }
+        deck.prepare(for: transition)
     }
 
     func cancelQueued() {
@@ -388,60 +387,9 @@ final class PlayerStore: ObservableObject {
         isTransitioning = false
         transitionTask?.cancel()
         transitionTask = nil
-        deckTask?.cancel()
-        deckTask = nil
-        deckCancellables.removeAll()
-        deck?.pause()
-        deck = nil
-        deckReady = false
+        deck.cancel()
         // A cancelled fade would otherwise leave the set half ducked.
         player?.volume = 1
-    }
-
-    /// Loads and cues the incoming set behind the one playing, so the transition
-    /// itself is a volume change rather than a network round trip.
-    private func prepareDeck(for transition: QueuedTransition) async {
-        let url: URL?
-        if let local = DownloadsStore.shared.audioURL(for: transition.episode.id) {
-            url = local
-        } else if let urls = try? await APIClient.shared.fetchStreamUrl(episodeId: transition.episode.id),
-                  !urls.streamUrl.isEmpty {
-            url = URL(string: urls.streamUrl)
-        } else {
-            url = nil
-        }
-
-        guard let url, !Task.isCancelled, queued?.id == transition.id else { return }
-
-        // Same asset-backed load as `startPlayback`: the deck resolves to an HLS
-        // playlist or a downloaded `.movpkg` bundle just as often as the set in
-        // front of it, and only `AVURLAsset` knows how to open either.
-        let item = AVPlayerItem(asset: AVURLAsset(url: url))
-        let player = AVPlayer(playerItem: item)
-        player.volume = 0
-        deck = player
-
-        // The cue point is the landing, pulled back by whatever head start the
-        // style wants: a blend needs the incoming set already inside the
-        // record's outro when the two meet.
-        let cue = max(0, transition.startAt - transition.audio.deckLead)
-        item.publisher(for: \.status)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] status in
-                guard status == .readyToPlay, let self, self.deck === player else { return }
-                player.seek(
-                    to: CMTime(seconds: cue, preferredTimescale: 600),
-                    toleranceBefore: .zero,
-                    toleranceAfter: .zero
-                ) { [weak self] finished in
-                    guard finished else { return }
-                    Task { @MainActor [weak self] in
-                        guard let self, self.deck === player else { return }
-                        self.deckReady = true
-                    }
-                }
-            }
-            .store(in: &deckCancellables)
     }
 
     /// Called on every clock tick: starts the transition once we're inside its
@@ -461,13 +409,13 @@ final class PlayerStore: ObservableObject {
         if transition.audio.overlaps {
             // The incoming set comes up under the outgoing one and they trade
             // places across what's left of the record.
-            if let deck, deckReady {
-                deck.volume = 0
-                deck.play()
+            if let incoming = deck.readyPlayer {
+                incoming.volume = 0
+                incoming.play()
                 let span = max(0.5, remaining)
                 async let outgoing: Void = ramp(player, to: 0, duration: span)
-                async let incoming: Void = ramp(deck, to: 1, duration: span)
-                _ = await (outgoing, incoming)
+                async let arriving: Void = ramp(incoming, to: 1, duration: span)
+                _ = await (outgoing, arriving)
             }
         } else {
             await ramp(player, to: 0, duration: max(0.3, remaining))
@@ -479,7 +427,7 @@ final class PlayerStore: ObservableObject {
 
     /// The moment itself.
     private func land(_ transition: QueuedTransition) {
-        guard let incoming = deck, deckReady else {
+        guard let incoming = deck.take() else {
             // Nothing buffered in time — take the straight route and accept the
             // load. Better a late transition than a dropped one.
             queued = nil
@@ -519,12 +467,9 @@ final class PlayerStore: ObservableObject {
         }
         player?.pause()
         cancellables.removeAll()
-        deckCancellables.removeAll()
 
         player = incoming
         playerItem = item
-        deck = nil
-        deckReady = false
 
         currentEpisode = transition.episode
         currentTracks = []

@@ -33,6 +33,7 @@
 		AA000031 /* SpaceGrotesk-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB000031 /* SpaceGrotesk-Bold.ttf */; };
 		AA000032 /* DownloadsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000032 /* DownloadsStore.swift */; };
 		AA000033 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000033 /* NetworkMonitor.swift */; };
+		AA000040 /* TransitionDeck.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000040 /* TransitionDeck.swift */; };
 		AA000034 /* EpisodeActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000034 /* EpisodeActions.swift */; };
 		AA000035 /* EpisodeArtwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000035 /* EpisodeArtwork.swift */; };
 		AA000044 /* CollectiveLogo.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000044 /* CollectiveLogo.swift */; };
@@ -93,6 +94,7 @@
 		AB000031 /* SpaceGrotesk-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceGrotesk-Bold.ttf"; sourceTree = "<group>"; };
 		AB000032 /* DownloadsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsStore.swift; sourceTree = "<group>"; };
 		AB000033 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
+		AB000040 /* TransitionDeck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransitionDeck.swift; sourceTree = "<group>"; };
 		AB000034 /* EpisodeActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeActions.swift; sourceTree = "<group>"; };
 		AB000035 /* EpisodeArtwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeArtwork.swift; sourceTree = "<group>"; };
 		AB000044 /* CollectiveLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectiveLogo.swift; sourceTree = "<group>"; };
@@ -205,6 +207,7 @@
 				AB000024 /* RadioStore.swift */,
 				AB000032 /* DownloadsStore.swift */,
 				AB000033 /* NetworkMonitor.swift */,
+				AB000040 /* TransitionDeck.swift */,
 			);
 			path = Stores;
 			sourceTree = "<group>";
@@ -421,6 +424,7 @@
 				AA000026 /* AppFont.swift in Sources */,
 				AA000032 /* DownloadsStore.swift in Sources */,
 				AA000033 /* NetworkMonitor.swift in Sources */,
+				AA000040 /* TransitionDeck.swift in Sources */,
 				AA000034 /* EpisodeActions.swift in Sources */,
 				AA000036 /* EpisodeActionsSheet.swift in Sources */,
 				AA000035 /* EpisodeArtwork.swift in Sources */,

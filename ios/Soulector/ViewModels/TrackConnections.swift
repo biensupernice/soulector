@@ -2,14 +2,25 @@ import Foundation
 
 // MARK: - Appearance
 
+/// Which record, in which set. Unique across the library: a playing is
+/// identified by the set it happened in and its slot in that cue sheet.
+///
+/// Its own type rather than a formatted string because two unrelated types need
+/// to agree on it — a `TrackAppearance` in a list and the `QueuedTransition`
+/// aimed at it are compared to decide which card is armed. As a string that
+/// agreement was a coincidence of two `\(a)#\(b)` expressions in different
+/// files, and either one could drift without the compiler noticing.
+struct TrackPlaying: Hashable {
+    let episodeId: String
+    let order: Int
+}
+
 /// One playing of a track: which episode, and where inside it.
 struct TrackAppearance: Identifiable, Hashable {
     let episode: Episode
     let track: EpisodeTrack
 
-    /// Unique across the library — a track is identified by the set it played
-    /// in and its slot in that cue sheet.
-    var id: String { "\(episode.id)#\(track.order)" }
+    var id: TrackPlaying { TrackPlaying(episodeId: episode.id, order: track.order) }
 }
 
 // MARK: - Graph
