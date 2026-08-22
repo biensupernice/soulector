@@ -149,36 +149,40 @@ struct EpisodeDetailSheet: View {
 
     /// Portrait: one column, everything scrolls together.
     private var stackedLayout: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                EpisodeArtwork(episode: episode, contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .padding(.horizontal, sheetHPadding)
-                    // Clears the fixed top bar, with the same breathing room
-                    // the drag handle used to leave.
-                    .padding(.top, 52)
-
-                titleBlock(titleSize: 17, dateSize: 14)
-                    .padding(.horizontal, sheetHPadding)
-
-                onDeckPanel
-                    .padding(.horizontal, sheetHPadding)
-
-                PlayerControlsSection(episode: episode, accent: accentBackground, textColor: fg)
-
-                actionButtons
-                    .padding(.horizontal, sheetHPadding)
-
-                if isLoadingTracks {
-                    ProgressView()
-                        .tint(fg)
-                        .padding()
-                } else if !tracks.isEmpty {
-                    tracklistPanel
+        // The reader is what lets the now-playing line reach the tracklist
+        // below it — the same trick the journey uses to land on a track.
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 20) {
+                    EpisodeArtwork(episode: episode, contentMode: .fit)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                         .padding(.horizontal, sheetHPadding)
-                }
+                        // Clears the fixed top bar, with the same breathing room
+                        // the drag handle used to leave.
+                        .padding(.top, 52)
 
-                Spacer(minLength: 32)
+                    titleBlock(titleSize: 17, dateSize: 14, onFocusTrack: { focus($0, in: proxy) })
+                        .padding(.horizontal, sheetHPadding)
+
+                    onDeckPanel
+                        .padding(.horizontal, sheetHPadding)
+
+                    PlayerControlsSection(episode: episode, accent: accentBackground, textColor: fg)
+
+                    actionButtons
+                        .padding(.horizontal, sheetHPadding)
+
+                    if isLoadingTracks {
+                        ProgressView()
+                            .tint(fg)
+                            .padding()
+                    } else if !tracks.isEmpty {
+                        tracklistPanel
+                            .padding(.horizontal, sheetHPadding)
+                    }
+
+                    Spacer(minLength: 32)
+                }
             }
         }
     }
@@ -195,50 +199,54 @@ struct EpisodeDetailSheet: View {
             let artSide = min(max(geo.size.height - 216, 96), geo.size.width * 0.36)
             let dockWidth = max(artSide, 208)
 
-            HStack(alignment: .top, spacing: 20) {
-                VStack(spacing: 10) {
-                    EpisodeArtwork(episode: episode, contentMode: .fill)
-                        .frame(width: artSide, height: artSide)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                        .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
+            // Wraps both columns: the now-playing line sits in the dock, and
+            // the tracklist it points at scrolls on the other side.
+            ScrollViewReader { proxy in
+                HStack(alignment: .top, spacing: 20) {
+                    VStack(spacing: 10) {
+                        EpisodeArtwork(episode: episode, contentMode: .fill)
+                            .frame(width: artSide, height: artSide)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
 
-                    titleBlock(titleSize: 14, dateSize: 12)
-                        .lineLimit(2)
+                        titleBlock(titleSize: 14, dateSize: 12, onFocusTrack: { focus($0, in: proxy) })
+                            .lineLimit(2)
 
-                    Spacer(minLength: 0)
+                        Spacer(minLength: 0)
 
-                    PlayerControlsSection(
-                        episode: episode,
-                        accent: accentBackground,
-                        textColor: fg,
-                        compact: true,
-                        horizontalPadding: 0
-                    )
-                }
-                .frame(width: dockWidth)
-
-                ScrollView {
-                    VStack(spacing: 14) {
-                        onDeckPanel
-
-                        actionButtons
-
-                        if isLoadingTracks {
-                            ProgressView()
-                                .tint(fg)
-                                .padding(.top, 24)
-                        } else if !tracks.isEmpty {
-                            tracklistPanel
-                        }
+                        PlayerControlsSection(
+                            episode: episode,
+                            accent: accentBackground,
+                            textColor: fg,
+                            compact: true,
+                            horizontalPadding: 0
+                        )
                     }
-                    .padding(.bottom, 16)
+                    .frame(width: dockWidth)
+
+                    ScrollView {
+                        VStack(spacing: 14) {
+                            onDeckPanel
+
+                            actionButtons
+
+                            if isLoadingTracks {
+                                ProgressView()
+                                    .tint(fg)
+                                    .padding(.top, 24)
+                            } else if !tracks.isEmpty {
+                                tracklistPanel
+                            }
+                        }
+                        .padding(.bottom, 16)
+                    }
+                    .frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: .infinity)
+                .padding(.horizontal, sheetHPadding)
+                // Clears the (shorter) docked top bar.
+                .padding(.top, 38)
+                .padding(.bottom, 10)
             }
-            .padding(.horizontal, sheetHPadding)
-            // Clears the (shorter) docked top bar.
-            .padding(.top, 38)
-            .padding(.bottom, 10)
         }
     }
 
@@ -252,22 +260,45 @@ struct EpisodeDetailSheet: View {
         return tracks.playing(at: playerStore.currentTime)
     }
 
+    /// Puts the record playing in front of you. The line up top names it; the
+    /// tracklist is the rest of what it has to say — where it sits in the set,
+    /// what it ran into, which other sets played it — and that can be a long
+    /// scroll down. Animated, unlike the journey's landing: here you're looking
+    /// at the screen when you ask, so the travel is what tells you where it went.
+    private func focus(_ track: EpisodeTrack, in proxy: ScrollViewProxy) {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        withAnimation(.easeInOut(duration: 0.45)) {
+            proxy.scrollTo(track.id, anchor: .center)
+        }
+    }
+
     /// Now playing + title + date (web: bold white title, white/80 date).
-    private func titleBlock(titleSize: CGFloat, dateSize: CGFloat) -> some View {
+    private func titleBlock(
+        titleSize: CGFloat,
+        dateSize: CGFloat,
+        onFocusTrack: @escaping (EpisodeTrack) -> Void
+    ) -> some View {
         VStack(spacing: 4) {
             // What's actually in your ears, above the name of the set it came
-            // from — the tracklist says it too, but only if you scroll to it.
+            // from — the tracklist says it too, but only if you scroll to it,
+            // which is exactly what tapping this does.
             if let track = nowPlayingTrack {
-                HStack(spacing: 5) {
-                    Image(systemName: "waveform")
-                        .font(.system(size: dateSize - 1, weight: .semibold))
+                Button { onFocusTrack(track) } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "waveform")
+                            .font(.system(size: dateSize - 1, weight: .semibold))
 
-                    Text("\(track.name) · \(track.artist)")
-                        .font(.app(size: dateSize, weight: .semibold))
-                        .lineLimit(2)
+                        Text("\(track.name) · \(track.artist)")
+                            .font(.app(size: dateSize, weight: .semibold))
+                            .lineLimit(2)
+                    }
+                    .foregroundColor(fg.opacity(0.9))
+                    .multilineTextAlignment(.center)
+                    .contentShape(Rectangle())
                 }
-                .foregroundColor(fg.opacity(0.9))
-                .multilineTextAlignment(.center)
+                .buttonStyle(.plain)
+                .accessibilityLabel("Now playing: \(track.name) by \(track.artist)")
+                .accessibilityHint("Shows this track in the tracklist")
                 .padding(.bottom, 2)
                 .transition(.opacity)
             }
