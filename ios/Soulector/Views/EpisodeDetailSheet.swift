@@ -244,9 +244,34 @@ struct EpisodeDetailSheet: View {
 
     // MARK: - Shared pieces
 
-    /// Title + date (web: bold white title, white/80 date).
+    /// The record playing right now, when this is the set that's playing. Read
+    /// off the sheet's own tracklist, so it's right whether the tracks came
+    /// from the player, from a download, or from the fetch above.
+    private var nowPlayingTrack: EpisodeTrack? {
+        guard playerStore.currentEpisode?.id == episode.id else { return nil }
+        return tracks.playing(at: playerStore.currentTime)
+    }
+
+    /// Now playing + title + date (web: bold white title, white/80 date).
     private func titleBlock(titleSize: CGFloat, dateSize: CGFloat) -> some View {
         VStack(spacing: 4) {
+            // What's actually in your ears, above the name of the set it came
+            // from — the tracklist says it too, but only if you scroll to it.
+            if let track = nowPlayingTrack {
+                HStack(spacing: 5) {
+                    Image(systemName: "waveform")
+                        .font(.system(size: dateSize - 1, weight: .semibold))
+
+                    Text("\(track.name) · \(track.artist)")
+                        .font(.app(size: dateSize, weight: .semibold))
+                        .lineLimit(2)
+                }
+                .foregroundColor(fg.opacity(0.9))
+                .multilineTextAlignment(.center)
+                .padding(.bottom, 2)
+                .transition(.opacity)
+            }
+
             Text(episode.name)
                 .font(.app(size: titleSize, weight: .bold))
                 .foregroundColor(fg)
@@ -266,6 +291,7 @@ struct EpisodeDetailSheet: View {
                 }
             }
         }
+        .animation(.easeInOut(duration: 0.3), value: nowPlayingTrack)
     }
 
     /// What's on deck, when this is the set it's transition from. Same news the
@@ -531,11 +557,7 @@ struct TracklistView: View {
 
     private var currentTrack: EpisodeTrack? {
         guard playerStore.currentEpisode?.id == episode.id else { return nil }
-        let t = playerStore.currentTime
-        return tracks.filter { track in
-            guard let ts = track.timestamp else { return false }
-            return t >= Double(ts)
-        }.last
+        return tracks.playing(at: playerStore.currentTime)
     }
 
     var body: some View {

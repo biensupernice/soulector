@@ -19,3 +19,14 @@ struct EpisodeTrack: Identifiable, Equatable, Hashable, Codable {
         return String(format: "%d:%02d", m, s)
     }
 }
+
+extension Array where Element == EpisodeTrack {
+    /// The record playing at `seconds`: the last one whose timestamp has gone by.
+    /// Tracks with no timestamp can't be placed on the clock, so they're skipped.
+    func playing(at seconds: Double) -> EpisodeTrack? {
+        last { track in
+            guard let timestamp = track.timestamp else { return false }
+            return Double(timestamp) <= seconds
+        }
+    }
+}
