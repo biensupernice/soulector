@@ -58,10 +58,7 @@ final class JourneyCoordinator: ObservableObject {
     func sourceAppearance(playing: PlayerStore) -> TrackAppearance? {
         guard let episode = playing.currentEpisode else { return nil }
         let now = playing.currentTime
-        let record = playing.currentTracks.last { track in
-            guard let timestamp = track.timestamp else { return false }
-            return Double(timestamp) <= now
-        }
+        let record = playing.currentTracks.playing(at: now)
         guard let record else { return nil }
         Diagnostics.breadcrumb("on deck tapped · source \(record.name)")
         return TrackAppearance(episode: episode, track: record)
