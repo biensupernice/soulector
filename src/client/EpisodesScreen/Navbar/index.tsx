@@ -1,7 +1,6 @@
 import {
   SashaMarieRadioLogo,
   SoulectionLogo,
-  TheLoveBelowHourLogo,
 } from "./Logos";
 import React, { useEffect } from "react";
 import { IconChevron, IconSearch, Soulection } from "../../components/Icons";
@@ -20,6 +19,7 @@ import EpisodeListSpinner from "../EpisodeList/EpisodeListSpinner";
 import { CardStackIcon } from "@radix-ui/react-icons";
 import { SelectSeparator } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { usableCollective } from "@/lib/collectives";
 import { EpisodeCollectiveSlugProjection } from "@/server/router";
 
 export type NavbarStore = {
@@ -60,11 +60,9 @@ export const useCollectiveSelectStore = create<CollectiveSelectStore>()(
     loadPersisted: () => {
       const persistedCollective = localStorage.getItem("selectedCollective");
       if (persistedCollective) {
-        set({
-          selected: persistedCollective as
-            | "all"
-            | EpisodeCollectiveSlugProjection,
-        });
+        // Someone whose last visit ended on a since-hidden collective would
+        // otherwise come back to a screen that is empty and stays empty.
+        set({ selected: usableCollective(persistedCollective) });
       }
     },
   })
@@ -126,9 +124,6 @@ export default function Navbar({
               </CollectiveSelectItem>
               <CollectiveSelectItem value="soulection">
                 <SoulectionLogo />
-              </CollectiveSelectItem>
-              <CollectiveSelectItem value="the-love-below-hour">
-                <TheLoveBelowHourLogo />
               </CollectiveSelectItem>
             </CollectiveSelectContent>
           </CollectiveSelect>

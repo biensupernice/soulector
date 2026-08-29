@@ -19,6 +19,13 @@ enum CollectiveFilter: String, CaseIterable, Identifiable {
         }
     }
 
+    /// See `HiddenCollectives`. The case itself stays, because episodes cached
+    /// on a device before the takedown still carry the slug and have to decode
+    /// into something.
+    var isHidden: Bool { HiddenCollectives.slugs.contains(rawValue) }
+
+    /// What the picker may offer. `allCases` is the wrong list to show anyone.
+    static var selectable: [CollectiveFilter] { allCases.filter { !$0.isHidden } }
 }
 
 // MARK: - EpisodesViewModel
@@ -55,21 +62,28 @@ final class EpisodesViewModel: ObservableObject {
         .appendingPathComponent("search_index_cache_v1.json")
 
     init() {
-        // Restore last-used collective
+        // Restore last-used collective, unless it has since been hidden —
+        // otherwise whoever last left the app on The Love Below comes back to a
+        // screen that is empty and stays empty, with nothing to say why.
         if let raw = UserDefaults.standard.string(forKey: persistedCollectiveKey),
-           let filter = CollectiveFilter(rawValue: raw) {
+           let filter = CollectiveFilter(rawValue: raw),
+           !filter.isHidden {
             selectedCollective = filter
         }
-        // Populate from cache immediately so the list is visible before the network returns
+        // Populate from cache immediately so the list is visible before the
+        // network returns. Both caches are filtered on the way in: they were
+        // written before the collective was hidden and are the only path left
+        // that can still surface episodes the API has stopped serving — the
+        // list from one, search and the track graph from the other.
         if let url = Self.cacheURL,
            let data = try? Data(contentsOf: url),
            let cached = try? JSONDecoder().decode([Episode].self, from: data) {
-            episodes = cached
+            episodes = cached.filter { !$0.isFromHiddenCollective }
         }
         if let url = Self.searchIndexCacheURL,
            let data = try? Data(contentsOf: url),
            let cached = try? JSONDecoder().decode([SearchIndexEpisode].self, from: data) {
-            searchIndex = cached
+            searchIndex = cached.filter { !$0.episode.isFromHiddenCollective }
             rebuildTrackGraph()
         }
     }
