@@ -466,7 +466,7 @@ struct EpisodesView: View {
 
     private var collectiveDropdown: some View {
         VStack(spacing: 0) {
-            ForEach(Array(CollectiveFilter.allCases.enumerated()), id: \.element.id) { index, collective in
+            ForEach(Array(CollectiveFilter.selectable.enumerated()), id: \.element.id) { index, collective in
                 if index == 1 {
                     Divider()
                         .overlay(Color.white.opacity(0.12))

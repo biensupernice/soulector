@@ -8,6 +8,7 @@ import fs from "fs";
 import { asyncResult } from "@expo/results";
 import Vibrant from "node-vibrant";
 import { initTRPC, TRPCError } from "@trpc/server";
+import { HIDDEN_COLLECTIVES } from "@/lib/collectives";
 import { runEpisodesSync } from "@/server/sync-episodes";
 import {
   DEFAULT_BATCH_LIMIT,
@@ -482,9 +483,13 @@ export const episodeRouter = router({
         ? localEpisodesCollection.map(episodeProjectionFromFromObj)
         : [];
 
+      // Hidden collectives are excluded here rather than in the client,
+      // because the client asks for "all" and filters locally — so anything
+      // left in the response still reaches search, radio and shuffle even
+      // when no list is showing it.
       let dbTracksFilter =
         collective === "all" || collective === "local"
-          ? {}
+          ? { collective_slug: { $nin: HIDDEN_COLLECTIVES } }
           : { collective_slug: collective };
 
       const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
@@ -532,7 +537,7 @@ export const episodeRouter = router({
     const trackCollection = ctx.db.collection<DBEpisode>("tracksOld");
     const allDbTracks = await trackCollection
       .find(
-        {},
+        { collective_slug: { $nin: HIDDEN_COLLECTIVES } },
         {
           projection: {
             source: 1,

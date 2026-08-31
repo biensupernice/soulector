@@ -1,5 +1,18 @@
 import Foundation
 
+/// Collectives the app no longer surfaces.
+///
+/// The Love Below Hour deleted 133 of its 134 episodes from SoundCloud in 2026.
+/// The API stopped serving them, so anything still offering the collective can
+/// only lead somewhere empty.
+///
+/// This lives beside `Episode` rather than beside `CollectiveFilter` because
+/// `Episode` is compiled into the widget target too, and the view models are
+/// not. `CollectiveFilter.isHidden` reads from here so there is one list.
+enum HiddenCollectives {
+    static let slugs: Set<String> = ["the-love-below-hour"]
+}
+
 struct Episode: Identifiable, Equatable, Hashable, Codable {
     let id: String
     let source: String
@@ -67,6 +80,12 @@ struct Episode: Identifiable, Equatable, Hashable, Codable {
         f.numberStyle = .ordinal
         return f
     }()
+
+    /// True for an episode whose collective the app no longer surfaces. Only
+    /// reachable from a device cache written before the collective was hidden.
+    var isFromHiddenCollective: Bool {
+        HiddenCollectives.slugs.contains(collectiveSlug)
+    }
 
     var collectiveName: String {
         switch collectiveSlug {
