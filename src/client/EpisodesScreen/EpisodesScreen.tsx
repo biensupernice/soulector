@@ -49,6 +49,8 @@ import { useSearchIndex } from "./useSearchIndex";
 import { useEpisodeSearch } from "./useEpisodeSearch";
 import { useWarmIndexes } from "./useWarmIndexes";
 import { SearchResults } from "./SearchResults";
+import { TranscriptResults } from "./TranscriptResults";
+import { useTranscriptSearch } from "./EpisodeTranscript";
 
 type Props = {
   searchText: string;
@@ -149,6 +151,37 @@ export function EpisodesScreen({ searchText }: Props) {
     () => searchResults.reduce((sum, r) => sum + r.matchedTracks.length, 0),
     [searchResults],
   );
+  // What was said, as opposed to what was listed. Searched on the server,
+  // because the transcripts are far too big to ship to the browser.
+  const { hits: transcriptHits, loading: transcriptsLoading } =
+    useTranscriptSearch(searchText);
+  const transcriptEpisodeCount = useMemo(
+    () => new Set(transcriptHits.map((h) => h.episodeId)).size,
+    [transcriptHits],
+  );
+
+  /**
+   * The count beside the search field, which has three kinds of match to
+   * report and should mention only the kinds that found something — "0
+   * episodes" above a list of transcript hits reads as a bug.
+   */
+  const searchSummary = useMemo(() => {
+    const parts: string[] = [];
+    if (searchResults.length > 0) {
+      parts.push(
+        `${searchResults.length} ${searchResults.length === 1 ? "episode" : "episodes"}`,
+      );
+    }
+    if (matchedTrackCount > 0) {
+      parts.push(
+        `${matchedTrackCount} ${matchedTrackCount === 1 ? "track" : "tracks"}`,
+      );
+    }
+    if (transcriptEpisodeCount > 0) {
+      parts.push(`${transcriptEpisodeCount} in transcripts`);
+    }
+    return parts.length > 0 ? parts.join(" · ") : "No matches";
+  }, [searchResults.length, matchedTrackCount, transcriptEpisodeCount]);
 
   function onFavoriteClick(episode: EpisodeProjection) {
     if (isFavoriteFast(episode.id)) {
@@ -183,15 +216,7 @@ export function EpisodesScreen({ searchText }: Props) {
                 rightContent={
                   <div className="font-semibold text-gray-600">
                     {isSearching
-                      ? `${searchResults.length} ${
-                          searchResults.length === 1 ? "episode" : "episodes"
-                        }${
-                          matchedTrackCount > 0
-                            ? ` · ${matchedTrackCount} ${
-                                matchedTrackCount === 1 ? "track" : "tracks"
-                              }`
-                            : ""
-                        }`
+                      ? searchSummary
                       : `${activeEpisodes.length} Total`}
                   </div>
                 }
@@ -200,16 +225,25 @@ export function EpisodesScreen({ searchText }: Props) {
                 onSectionClick={onSectionClick}
               />
               {isSearching ? (
-                <SearchResults
-                  results={searchResults}
-                  loading={searchIndex === null}
-                  currentEpisodeId={currentEpisodeId}
-                  onEpisodeClick={onEpisodeClick}
-                  onTrackClick={onTrackClick}
-                  isFavorite={isFavoriteFast}
-                  onFavoriteClick={onFavoriteClick}
-                  onOptionsClick={setContextMenuEpisode}
-                />
+                <>
+                  <SearchResults
+                    results={searchResults}
+                    loading={searchIndex === null}
+                    suppressEmptyState={transcriptHits.length > 0}
+                    currentEpisodeId={currentEpisodeId}
+                    onEpisodeClick={onEpisodeClick}
+                    onTrackClick={onTrackClick}
+                    isFavorite={isFavoriteFast}
+                    onFavoriteClick={onFavoriteClick}
+                    onOptionsClick={setContextMenuEpisode}
+                  />
+                  <TranscriptResults
+                    hits={transcriptHits}
+                    loading={transcriptsLoading}
+                    query={searchText}
+                    onHitClick={onTrackClick}
+                  />
+                </>
               ) : deferredSelectedSection === "favorites" ? (
                 <div>
                   {favorites.map((episode) => (

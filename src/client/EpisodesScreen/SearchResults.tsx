@@ -10,6 +10,12 @@ type SearchResultsProps = {
   results: SearchResult[];
   /** True while the search index is still being fetched/loaded for the first time. */
   loading?: boolean;
+  /**
+   * Something else on the screen matched — transcripts, say. "No matches
+   * found" sitting directly above a list of matches is a worse lie than
+   * showing nothing here at all.
+   */
+  suppressEmptyState?: boolean;
   currentEpisodeId?: string;
   onEpisodeClick: (episodeId: string) => void;
   onTrackClick: (episodeId: string, timestampSecs?: number) => void;
@@ -21,6 +27,7 @@ type SearchResultsProps = {
 export function SearchResults({
   results,
   loading = false,
+  suppressEmptyState = false,
   currentEpisodeId,
   onEpisodeClick,
   onTrackClick,
@@ -37,6 +44,7 @@ export function SearchResults({
   }
 
   if (results.length === 0) {
+    if (suppressEmptyState) return null;
     return (
       <div className="flex flex-col items-center justify-center px-6 py-16 text-center text-gray-500">
         <IconMusicNote className="mb-3 h-8 w-8 fill-current text-gray-300" />

@@ -22,6 +22,22 @@ import {
   getRecentSyncRuns,
   recordSyncRun,
 } from "@/server/sync-runs";
+import {
+  searchTranscripts,
+  transcriptProjection,
+  transcriptsCollection,
+} from "@/server/transcripts";
+import {
+  applyBatch,
+  applyEditRequest,
+  editRequestHint,
+  editRequestsCollection,
+  getEditRequest,
+  listBatches,
+  listEditRequests,
+  submitEditRequests,
+  updateEditRequest,
+} from "@/server/editRequests";
 
 const ENABLE_LOCAL_SOURCE = process.env.ENABLE_LOCAL_SOURCE
   ? process.env.ENABLE_LOCAL_SOURCE.toLowerCase() === "true"
@@ -393,16 +409,36 @@ export const episodeRouter = router({
         startEpisode,
       );
 
-      const [lastEpisodesRun, lastEpisodeTracksRun] = await Promise.all([
-        getLastSyncRun(ctx.db, "episodes"),
-        getLastSyncRun(ctx.db, "episode-tracks"),
-      ]);
+      const [lastEpisodesRun, lastEpisodeTracksRun, transcriptRows, openRequests] =
+        await Promise.all([
+          getLastSyncRun(ctx.db, "episodes"),
+          getLastSyncRun(ctx.db, "episode-tracks"),
+          // Transcripts carry their collective, so coverage per collective is
+          // one grouping here rather than a join against the episodes.
+          transcriptsCollection(ctx.db)
+            .aggregate<{ _id: string; count: number }>([
+              { $group: { _id: "$collectiveSlug", count: { $sum: 1 } } },
+            ])
+            .toArray(),
+          editRequestsCollection(ctx.db)
+            .find({ status: "open" }, { projection: { batchId: 1 } })
+            .toArray(),
+        ]);
+
+      const transcriptsByCollective = new Map(
+        transcriptRows.map((r) => [r._id, r.count]),
+      );
 
       return {
+        editRequests: {
+          open: openRequests.length,
+          batches: new Set(openRequests.map((r) => r.batchId)).size,
+        },
         collectives: collectiveRows.map((row) => ({
           collectiveSlug: row._id,
           episodeCount: row.episodeCount,
           withTracksCount: row.withTracksCount,
+          withTranscriptsCount: transcriptsByCollective.get(row._id) ?? 0,
           latestEpisode: row.latestName
             ? {
                 name: row.latestName,
@@ -710,6 +746,185 @@ export const episodeRouter = router({
 
       const tracks = episode?.tracks ?? [];
       return tracks.map(episodeTrackProjection);
+    }),
+  /**
+   * Take in a batch of proposed changes from the pipeline that produces them.
+   *
+   * This is the only way episode data gets in from outside, and it does not
+   * change anything: it files proposals for a person to review in /admin.
+   */
+  "internal.submitEditRequests": authenticatedProcedure
+    .input(
+      z.object({
+        batchLabel: z.string().min(1).max(120),
+        source: z.string().min(1).max(120),
+        requests: z
+          .array(
+            z.object({
+              episodeId: z.string(),
+              note: z.string().max(2000).optional(),
+              proposal: z.object({
+                kind: z.literal("transcript"),
+                durationS: z.number().nonnegative(),
+                model: z.string(),
+                pipeline: z.string(),
+                segments: z
+                  .array(
+                    z.object({
+                      start: z.number().nonnegative(),
+                      end: z.number().nonnegative(),
+                      text: z.string(),
+                      lang: z.string().optional(),
+                    }),
+                  )
+                  .min(1),
+              }),
+              evidence: z
+                .object({
+                  sharedAudio: z
+                    .array(
+                      z.object({
+                        otherEpisodeId: z.string(),
+                        otherEpisodeName: z.string(),
+                        from: z.number(),
+                        to: z.number(),
+                        otherFrom: z.number(),
+                        otherTo: z.number(),
+                        tempo: z.number(),
+                        semitones: z.number(),
+                        votes: z.number(),
+                      }),
+                    )
+                    .optional(),
+                })
+                .optional(),
+            }),
+          )
+          .min(1)
+          .max(100),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return submitEditRequests(ctx.db, {
+        batchLabel: input.batchLabel,
+        source: input.source,
+        requests: input.requests.map((r) => ({
+          episodeId: r.episodeId,
+          kind: "transcript" as const,
+          proposal: r.proposal,
+          evidence: r.evidence,
+          note: r.note,
+        })),
+      });
+    }),
+  /**
+   * What the submitting side needs in order not to send the same work twice:
+   * which episodes already have a transcript here, and which already have a
+   * proposal waiting.
+   */
+  "internal.transcriptStatus": authenticatedProcedure.query(async ({ ctx }) => {
+    const [published, open] = await Promise.all([
+      transcriptsCollection(ctx.db)
+        .find({}, { projection: { revision: 1 } })
+        .toArray(),
+      editRequestsCollection(ctx.db)
+        .find({ status: "open", kind: "transcript" }, { projection: { episodeId: 1 } })
+        .toArray(),
+    ]);
+    return {
+      published: published.map((t) => ({
+        episodeId: t._id.toString(),
+        revision: t.revision,
+      })),
+      openRequests: open.map((r) => r.episodeId.toString()),
+    };
+  }),
+  "admin.editRequestBatches": authenticatedProcedure.query(async ({ ctx }) => {
+    return listBatches(ctx.db);
+  }),
+  "admin.editRequests": authenticatedProcedure
+    .input(
+      z
+        .object({
+          batchId: z.string().optional(),
+          status: z.enum(["open", "applied", "rejected"]).optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      return listEditRequests(ctx.db, input ?? {});
+    }),
+  "admin.editRequest": authenticatedProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return getEditRequest(ctx.db, input.id);
+    }),
+  "admin.updateEditRequest": authenticatedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        note: z.string().max(2000).optional(),
+        status: z.enum(["open", "rejected"]).optional(),
+        segments: z
+          .array(
+            z.object({
+              start: z.number().nonnegative(),
+              end: z.number().nonnegative(),
+              text: z.string(),
+              lang: z.string().optional(),
+            }),
+          )
+          .optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...patch } = input;
+      return updateEditRequest(ctx.db, id, patch);
+    }),
+  /** What was playing at one moment — the tools panel beside the transcript. */
+  "admin.editRequestHint": authenticatedProcedure
+    .input(z.object({ id: z.string(), at: z.number().nonnegative() }))
+    .query(async ({ ctx, input }) => {
+      return editRequestHint(ctx.db, input.id, input.at);
+    }),
+  "admin.applyEditRequest": authenticatedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return applyEditRequest(ctx.db, input.id);
+    }),
+  "admin.applyEditRequestBatch": authenticatedProcedure
+    .input(z.object({ batchId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return applyBatch(ctx.db, input.batchId);
+    }),
+  "episode.getTranscript": publicProcedure
+    .input(z.object({ episodeId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      if (!ObjectId.isValid(input.episodeId)) return null;
+      const doc = await transcriptsCollection(ctx.db).findOne({
+        _id: new ObjectId(input.episodeId),
+      });
+      return doc ? transcriptProjection(doc) : null;
+    }),
+  /**
+   * Which episodes have a transcript at all. Small enough to fetch once and
+   * cache, which is what lets the list mark them without a request per row.
+   */
+  "transcripts.available": publicProcedure.query(async ({ ctx }) => {
+    const rows = await transcriptsCollection(ctx.db)
+      .find({}, { projection: { _id: 1 } })
+      .toArray();
+    return rows.map((r) => r._id.toString());
+  }),
+  /**
+   * Lines matching a phrase, across every published transcript. Server-side
+   * on purpose: the episode search index is cached in the browser, but the
+   * transcripts are two orders of magnitude bigger and never will be.
+   */
+  "transcripts.search": publicProcedure
+    .input(z.object({ q: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return searchTranscripts(ctx.db, input.q);
     }),
   "episode.getFakeStreamUrl": publicProcedure
     .input(
