@@ -21,13 +21,18 @@ import {
 } from "../PlayerStore";
 import { useGetEpisode } from "../useEpisodeHooks";
 import { Drawer } from "vaul";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { create } from "zustand";
 import { trpc } from "@/utils/trpc";
 import { cn } from "@/lib/utils";
 import { EpisodeTrackProjection } from "@/server/router";
 import { useEpisodesScreenState } from "../useEpisodesScreenState";
 import { useEpisodeOptionsStore } from "../EpisodeOptionsModal";
+import { getScrollParent } from "../scrollParent";
+import {
+  EpisodeTranscriptList,
+  useHasTranscript,
+} from "../EpisodeTranscript";
 
 interface EpisodeModalSheetStore {
   isOpen: boolean;
@@ -151,6 +156,23 @@ function EpisodeSheetTopBar({
 function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
   const episode = useGetEpisode(episodeId);
   const { hasTracks } = useEpisodeTracks(episodeId);
+  const hasTranscript = useHasTranscript(episodeId);
+
+  const [panel, setPanel] = useState<"tracks" | "transcript">("tracks");
+  // The sheet is reused across episodes rather than remounted, so a choice
+  // made on one would otherwise carry to the next — where it may not exist.
+  useEffect(() => setPanel("tracks"), [episodeId]);
+
+  // What is actually shown, which is not always what was picked: an episode
+  // may have only one of the two, or neither.
+  const shown =
+    panel === "transcript" && hasTranscript
+      ? "transcript"
+      : hasTracks
+        ? "tracks"
+        : hasTranscript
+          ? "transcript"
+          : null;
 
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-between space-y-3 overflow-auto pb-safe-top">
@@ -186,16 +208,56 @@ function EpisodeSheetContent({ episodeId }: { episodeId: string }) {
         </a>
         <EpisodeSheetFavoriteToggle episodeId={episodeId} />
       </div>
-      {hasTracks && (
+      {shown && (
         <div className="relative mx-3 flex h-1/2 min-h-[14rem] shrink-0 flex-col self-stretch rounded-lg">
           <div className="absolute rounded-lg inset-0 bg-black/20"></div>
+          {hasTracks && hasTranscript && (
+            <div className="relative flex shrink-0 gap-1 p-2">
+              <PanelTab
+                label="Tracks"
+                active={shown === "tracks"}
+                onClick={() => setPanel("tracks")}
+              />
+              <PanelTab
+                label="Transcript"
+                active={shown === "transcript"}
+                onClick={() => setPanel("transcript")}
+              />
+            </div>
+          )}
           <div className="relative min-h-0 overflow-y-auto">
-            <EpisodeTracksList key={episodeId} episodeId={episodeId} />
+            {shown === "tracks" ? (
+              <EpisodeTracksList key={episodeId} episodeId={episodeId} />
+            ) : (
+              <EpisodeTranscriptList key={episodeId} episodeId={episodeId} />
+            )}
           </div>
         </div>
       )}
       <br />
     </div>
+  );
+}
+
+function PanelTab({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "rounded-full px-3 py-1 text-xs font-semibold",
+        active ? "bg-white text-accent" : "bg-white/10 text-white/80",
+      )}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -216,21 +278,6 @@ export function useEpisodeTracks(episodeId: string, enabled: boolean = true) {
     loaded: status === "success",
     hasTracks: status === "success" && data.length > 0,
   };
-}
-
-function getScrollParent(el: HTMLElement): HTMLElement | null {
-  let node = el.parentElement;
-  while (node) {
-    const overflowY = getComputedStyle(node).overflowY;
-    if (
-      (overflowY === "auto" || overflowY === "scroll") &&
-      node.scrollHeight > node.clientHeight
-    ) {
-      return node;
-    }
-    node = node.parentElement;
-  }
-  return null;
 }
 
 export function EpisodeTracksList({ episodeId }: { episodeId: string }) {
