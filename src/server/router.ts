@@ -775,6 +775,7 @@ export const episodeRouter = router({
                       end: z.number().nonnegative(),
                       text: z.string(),
                       lang: z.string().optional(),
+                      logprob: z.number().optional(),
                     }),
                   )
                   .min(1),
@@ -872,6 +873,7 @@ export const episodeRouter = router({
               end: z.number().nonnegative(),
               text: z.string(),
               lang: z.string().optional(),
+              logprob: z.number().optional(),
             }),
           )
           .optional(),

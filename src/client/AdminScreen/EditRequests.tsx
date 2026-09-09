@@ -2,6 +2,10 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { trpc } from "@/utils/trpc";
 import { cn } from "@/lib/utils";
+import {
+  LOW_CONFIDENCE_LOGPROB,
+  LOW_CONFIDENCE_MIN_WORDS,
+} from "@/lib/transcriptConfidence";
 import { formatTimeSecs } from "@/client/helpers";
 import {
   AdminPage,
@@ -284,7 +288,7 @@ function BatchView({
 
 // ---------------------------------------------------------------------------
 
-type Line = { start: number; end: number; text: string; lang?: string };
+type Line = { start: number; end: number; text: string; lang?: string; logprob?: number };
 
 /**
  * The same identity the server's diff uses: start time, plus which one it is
@@ -316,6 +320,7 @@ function RequestView({ id, onBack }: { id: string; onBack: () => void }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [changesOnly, setChangesOnly] = useState(false);
+  const [lowConfOnly, setLowConfOnly] = useState(false);
   const [shown, setShown] = useState(PAGE);
   const [note, setNote] = useState<string | null>(null);
 
@@ -360,14 +365,38 @@ function RequestView({ id, onBack }: { id: string; onBack: () => void }) {
     return map;
   }, [data?.diff]);
 
+  /**
+   * Which lines whisper itself was unsure of. The model reports an average
+   * log-probability per segment, and the worst tenth of lines — the mishears,
+   * the lyrics transcribed as speech — sit below it. Very short lines are
+   * left out on purpose: their score is noise, and they were drowning the
+   * filter in "Thank you." (see transcriptConfidence for the numbers).
+   * Requests made before the number was carried through have none, and their
+   * reviewers see nothing new.
+   */
+  const lowConfLines = useMemo(() => {
+    const keys = new Set<string>();
+    for (const l of lines) {
+      if (
+        l.logprob != null &&
+        l.logprob < LOW_CONFIDENCE_LOGPROB &&
+        l.text.split(/\s+/).filter(Boolean).length >= LOW_CONFIDENCE_MIN_WORDS
+      ) {
+        keys.add(l.key);
+      }
+    }
+    return keys;
+  }, [lines]);
+
   const visible = useMemo(() => {
     const needle = filter.trim().toLowerCase();
     return lines.filter((l) => {
       if (changesOnly && !changedLines.has(l.key)) return false;
+      if (lowConfOnly && !lowConfLines.has(l.key)) return false;
       if (needle && !l.text.toLowerCase().includes(needle)) return false;
       return true;
     });
-  }, [lines, filter, changesOnly, changedLines]);
+  }, [lines, filter, changesOnly, lowConfOnly, changedLines, lowConfLines]);
 
   const dirty = draft !== null || cut.size > 0;
 
@@ -409,7 +438,12 @@ function RequestView({ id, onBack }: { id: string; onBack: () => void }) {
   return (
     <AdminPage
       title={data.episodeName}
-      subtitle={changeSummary(data)}
+      subtitle={
+        changeSummary(data) +
+        (lowConfLines.size > 0
+          ? ` · ${lowConfLines.size} ${lowConfLines.size === 1 ? "line" : "lines"} to check`
+          : "")
+      }
       back={{ label: "Batch", onClick: onBack }}
       actions={
         <>
@@ -514,6 +548,17 @@ function RequestView({ id, onBack }: { id: string; onBack: () => void }) {
                 Changes only
               </Button>
             ) : null}
+            {lowConfLines.size > 0 ? (
+              <Button
+                variant={lowConfOnly ? "primary" : "secondary"}
+                onClick={() => {
+                  setLowConfOnly((v) => !v);
+                  setShown(PAGE);
+                }}
+              >
+                Low confidence
+              </Button>
+            ) : null}
           </div>
 
           <ul className="divide-y divide-gray-50">
@@ -586,6 +631,15 @@ function RequestView({ id, onBack }: { id: string; onBack: () => void }) {
                         {line.text}
                       </button>
                     )}
+
+                    {lowConfLines.has(line.key) ? (
+                      <span
+                        className="shrink-0 self-center rounded-full bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500"
+                        title={`Whisper was unsure of this line and may have misheard it (confidence ${line.logprob?.toFixed(2)})`}
+                      >
+                        low
+                      </span>
+                    ) : null}
 
                     <button
                       onClick={() => toggleCut(line.key)}

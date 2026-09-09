@@ -22,6 +22,12 @@ export type TranscriptSegment = {
   text: string;
   /** Detected per segment, not per episode — these shows are multilingual. */
   lang?: string;
+  /**
+   * The segment's average token log-probability from whisper — how unsure the
+   * model was of what it heard. Absent on transcripts made before the number
+   * was carried through, and on lines a reviewer typed by hand.
+   */
+  logprob?: number;
 };
 
 export type DBEpisodeTranscript = {
