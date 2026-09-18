@@ -8,6 +8,7 @@ import {
   usePlayerCuePosition,
   usePlayerEpisodeDuration,
   usePlayerLoadingStatus,
+  usePlayerSkipInterval,
 } from "../PlayerStore";
 import Head from "next/head";
 import { useGetEpisode } from "../useEpisodeHooks";
@@ -31,6 +32,7 @@ export default function Player({ currentEpisodeId }: PlayerProps) {
   const cuePosition = usePlayerCuePosition();
   const episodeDuration = usePlayerEpisodeDuration();
   const loadingStatus = usePlayerLoadingStatus();
+  const skipInterval = usePlayerSkipInterval();
 
   const playerActions = usePlayerActions();
   const episodeModalSheetActions = useEpisodeModalSheetActions();
@@ -98,6 +100,7 @@ export default function Player({ currentEpisodeId }: PlayerProps) {
             onRewind={playerActions.rewind}
             episodeDuration={episodeDuration}
             loading={loadingStatus === "loading"}
+            skipInterval={skipInterval}
           />
         )}
       </div>
@@ -119,6 +122,7 @@ export default function Player({ currentEpisodeId }: PlayerProps) {
           episodeDuration={episodeDuration}
           onClick={onMiniPlayerClick}
           loading={loadingStatus === "loading"}
+          skipInterval={skipInterval}
         />
       )}
     </>

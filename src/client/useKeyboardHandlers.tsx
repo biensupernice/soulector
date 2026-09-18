@@ -2,6 +2,9 @@ import {
   usePlayerActions,
   usePlayerPlaying,
   usePlayerEpisodeDuration,
+  usePlayerCurrentEpisodeId,
+  usePlayerProgress,
+  usePlayerSkipInterval,
 } from "./EpisodesScreen/PlayerStore";
 import { useEffect, useMemo } from "react";
 import {
@@ -12,6 +15,21 @@ import {
   EVENT,
 } from "./helpers";
 import { useNavbarStore } from "./EpisodesScreen/Navbar";
+import { useEpisodeTracks } from "./EpisodesScreen/EpisodeModalSheet";
+import { EpisodeTrackProjection } from "@/server/router";
+
+// Tracks with a known timestamp, sorted so we can walk forward/back through
+// them regardless of the order they were stored in.
+function timedTracksSorted(
+  tracks: EpisodeTrackProjection[] | undefined,
+): (EpisodeTrackProjection & { timestamp: number })[] {
+  return (tracks ?? [])
+    .filter(
+      (t): t is EpisodeTrackProjection & { timestamp: number } =>
+        typeof t.timestamp === "number",
+    )
+    .sort((a, b) => a.timestamp - b.timestamp);
+}
 
 export interface KeyboardAction {
   perform: Function;
@@ -27,11 +45,59 @@ export function useShortcutHandlers() {
   const playerActions = usePlayerActions();
   const playing = usePlayerPlaying();
   const episodeDuration = usePlayerEpisodeDuration();
+  const progress = usePlayerProgress();
+  const skipInterval = usePlayerSkipInterval();
+  const currentEpisodeId = usePlayerCurrentEpisodeId();
   const openSearch = useNavbarStore((state) => state.openSearch);
+
+  const { data: tracks } = useEpisodeTracks(
+    currentEpisodeId ?? "",
+    Boolean(currentEpisodeId),
+  );
 
   const togglePlay = useMemo(() => {
     return playing ? playerActions.pause : playerActions.resume;
   }, [playing, playerActions]);
+
+  // Shift+forward: jump to the next track when the episode is tracklisted,
+  // otherwise fast-forward by an incrementing amount of time.
+  function skipForward() {
+    const progressSecs = progress / 1000;
+    const timed = timedTracksSorted(tracks);
+    const nextTrack = timed.find((t) => t.timestamp > progressSecs + 0.5);
+    if (nextTrack) {
+      playerActions.setCuePosition(nextTrack.timestamp * 1000);
+    } else {
+      playerActions.skipForwardIncrementing();
+    }
+  }
+
+  // Shift+back: jump to the previous track (or restart the current one when
+  // we're a few seconds into it), otherwise rewind by an incrementing amount.
+  function skipBackward() {
+    const progressSecs = progress / 1000;
+    const timed = timedTracksSorted(tracks);
+
+    let currentIdx = -1;
+    for (let i = 0; i < timed.length; i++) {
+      if (timed[i].timestamp <= progressSecs) {
+        currentIdx = i;
+      }
+    }
+
+    if (currentIdx === -1) {
+      playerActions.skipBackwardIncrementing();
+      return;
+    }
+
+    const RESTART_THRESHOLD_SECS = 3;
+    const intoCurrent = progressSecs - timed[currentIdx].timestamp;
+    const target =
+      intoCurrent > RESTART_THRESHOLD_SECS
+        ? timed[currentIdx]
+        : (timed[currentIdx - 1] ?? timed[0]);
+    playerActions.setCuePosition(target.timestamp * 1000);
+  }
 
   const keyboardActions: KeyboarActionsMap = {
     VOLUME_UP: {
@@ -58,17 +124,32 @@ export function useShortcutHandlers() {
       },
       perform: togglePlay,
     },
-    FORWARD_THIRTY: {
+    FORWARD_SKIP: {
       keyTest: (event: globalThis.KeyboardEvent) => {
-        return event.key === KEYS.ARROW_RIGHT;
+        return event.key === KEYS.ARROW_RIGHT && !event.shiftKey;
       },
-      perform: () => playerActions.forward(30),
+      perform: () => playerActions.forward(skipInterval),
     },
-    REWIND_THIRTY: {
+    REWIND_SKIP: {
       keyTest: (event: globalThis.KeyboardEvent) => {
-        return event.key === KEYS.ARROW_LEFT;
+        return event.key === KEYS.ARROW_LEFT && !event.shiftKey;
       },
-      perform: () => playerActions.rewind(30),
+      perform: () => playerActions.rewind(skipInterval),
+    },
+    SHIFT_FORWARD: {
+      // Higher priority so it wins over any plain ArrowRight handler.
+      keyPriority: 1,
+      keyTest: (event: globalThis.KeyboardEvent) => {
+        return event.key === KEYS.ARROW_RIGHT && event.shiftKey;
+      },
+      perform: skipForward,
+    },
+    SHIFT_REWIND: {
+      keyPriority: 1,
+      keyTest: (event: globalThis.KeyboardEvent) => {
+        return event.key === KEYS.ARROW_LEFT && event.shiftKey;
+      },
+      perform: skipBackward,
     },
     OPEN_SEARCH: {
       keyTest: (event: globalThis.KeyboardEvent) => {
