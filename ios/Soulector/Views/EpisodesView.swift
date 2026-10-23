@@ -26,7 +26,6 @@ struct EpisodesView: View {
     @State private var showCollectivePicker = false
     @State private var navBarHeight: CGFloat = 0
     @State private var tabMetrics = TabScrollMetrics()
-    @State private var tabViewportWidth: CGFloat = 0
     @FocusState private var searchFieldFocused: Bool
 
     private static let tabScrollSpace = "episodeTabs"
@@ -393,7 +392,11 @@ struct EpisodesView: View {
                 }
             )
             .onPreferenceChange(TabScrollMetricsKey.self) { tabMetrics = $0 }
-            .onPreferenceChange(TabViewportWidthKey.self) { tabViewportWidth = $0 }
+            .onPreferenceChange(TabViewportWidthKey.self) { tabMetrics.viewportWidth = $0 }
+            // Preferences no longer arrive from inside a ScrollView on current
+            // SwiftUI — the fades they fed never lit. iOS 18+ reports the same
+            // geometry directly; older releases keep the plumbing above.
+            .modifier(TabScrollGeometryHook(metrics: $tabMetrics))
             // A pill sliced mid-word at the edge reads as a rendering bug.
             // Fading it says "there's more this way" instead — and only on the
             // side that actually has more, so a fully scrolled row looks solid.
@@ -431,7 +434,7 @@ struct EpisodesView: View {
     // A pixel of slack so rounding at the scroll limits doesn't leave a fade on.
     private var tabFadeLeading: Bool { tabMetrics.offset > 1 }
     private var tabFadeTrailing: Bool {
-        tabMetrics.contentWidth - tabViewportWidth - tabMetrics.offset > 1
+        tabMetrics.contentWidth - tabMetrics.viewportWidth - tabMetrics.offset > 1
     }
 
     private var countText: String {
@@ -607,11 +610,12 @@ struct EpisodesView: View {
 
 // MARK: - Tab strip scroll metrics
 
-/// Where the tab strip is scrolled and how wide its content is, reported up
-/// from inside the ScrollView so the edge fades know which side has more.
+/// Where the tab strip is scrolled, how wide its content is, and how wide its
+/// viewport is — reported up so the edge fades know which side has more.
 struct TabScrollMetrics: Equatable {
     var offset: CGFloat = 0
     var contentWidth: CGFloat = 0
+    var viewportWidth: CGFloat = 0
 }
 
 private struct TabScrollMetricsKey: PreferenceKey {
@@ -627,5 +631,30 @@ private struct TabViewportWidthKey: PreferenceKey {
 
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = nextValue()
+    }
+}
+
+/// Reads the tab strip's scroll geometry on iOS 18+, where the preference
+/// plumbing stopped being delivered from inside a ScrollView. The mapping
+/// mirrors the preference path: `contentOffset.x` is how far the strip has
+/// scrolled, `contentSize.width` the full row, `containerSize.width` the
+/// visible part.
+private struct TabScrollGeometryHook: ViewModifier {
+    @Binding var metrics: TabScrollMetrics
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.onScrollGeometryChange(for: TabScrollMetrics.self) { geo in
+                TabScrollMetrics(
+                    offset: geo.contentOffset.x,
+                    contentWidth: geo.contentSize.width,
+                    viewportWidth: geo.containerSize.width
+                )
+            } action: { _, now in
+                metrics = now
+            }
+        } else {
+            content
+        }
     }
 }
