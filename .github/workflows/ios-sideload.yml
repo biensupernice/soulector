@@ -43,10 +43,21 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY=""
 
+      # SideStore signs with the entitlements its provisioning profile and
+      # the binary's own signature *both* declare (SideSign's
+      # CodeSignerAPI), so an unsigned binary loses all of them — App
+      # Groups included. An ad-hoc signature carrying each target's
+      # .entitlements file gives SideStore something to keep. Inside-out:
+      # the widget before the app that contains it.
       - name: Package IPA
         run: |
           mkdir -p build/Payload
           cp -R "build/Soulector.xcarchive/Products/Applications/Soulector.app" build/Payload/
+          app=build/Payload/Soulector.app
+          codesign --force --sign - --entitlements ios/SoulectorWidget/SoulectorWidget.entitlements "$app/PlugIns/SoulectorWidget.appex"
+          codesign --force --sign - --entitlements ios/Soulector/Soulector.entitlements "$app"
+          codesign -d --entitlements - "$app"
+          codesign -d --entitlements - "$app/PlugIns/SoulectorWidget.appex"
           cd build
           zip -qry Soulector.ipa Payload
 
