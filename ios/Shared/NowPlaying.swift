@@ -8,7 +8,31 @@ enum SoulectorShared {
     /// App Group container both targets read/write. Must be enabled as an
     /// App Group capability on both targets' signing (see the `.entitlements`
     /// files); the container is where the now-playing snapshot + artwork live.
-    static let appGroupID = "group.com.soulector.app"
+    ///
+    /// The group is declared as `group.com.soulector.app`, but a sideloader
+    /// re-signing under its own team has to register it under a new name —
+    /// SideStore appends the team ID — so the name actually granted is read
+    /// from the provisioning profile embedded in this bundle. Without a
+    /// profile (the simulator) the declared name stands.
+    static let appGroupID = provisionedAppGroupID() ?? declaredAppGroupID
+    static let declaredAppGroupID = "group.com.soulector.app"
+
+    /// `embedded.mobileprovision` is a signed envelope around a plain XML
+    /// plist, so the plist can be cut out by its markers without unwrapping
+    /// the signature.
+    private static func provisionedAppGroupID() -> String? {
+        guard let url = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision"),
+              let data = try? Data(contentsOf: url),
+              let start = data.range(of: Data("<?xml".utf8)),
+              let end = data.range(of: Data("</plist>".utf8), in: start.lowerBound..<data.endIndex),
+              let profile = try? PropertyListSerialization.propertyList(
+                  from: data[start.lowerBound..<end.upperBound], format: nil
+              ) as? [String: Any],
+              let entitlements = profile["Entitlements"] as? [String: Any],
+              let groups = entitlements["com.apple.security.application-groups"] as? [String]
+        else { return nil }
+        return groups.first { $0.hasPrefix(declaredAppGroupID) }
+    }
 }
 
 /// A snapshot of what the app is playing, written to the shared App Group
