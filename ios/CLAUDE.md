@@ -9,7 +9,11 @@
 - **App Group:** `group.com.soulector.app` — shared container for the widget's
   now-playing snapshot + artwork. Enabled via `Soulector/Soulector.entitlements`
   and `SoulectorWidget/SoulectorWidget.entitlements`; the capability must be
-  toggled on in signing (Automatic signing provisions it).
+  toggled on in signing (Automatic signing provisions it). Sideloaded builds get
+  it under another name (SideStore registers `group.com.soulector.app.<TEAMID>`),
+  so `SoulectorShared.appGroupID` reads the granted name from the bundle's
+  `embedded.mobileprovision`. CI ad-hoc signs the IPA with both `.entitlements`
+  files because SideStore keeps only entitlements the binary itself declares.
 
 ## Building
 
